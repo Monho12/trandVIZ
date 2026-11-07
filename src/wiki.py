@@ -29,7 +29,7 @@ _session.headers.update({"User-Agent": USER_AGENT})
 _last_call = 0.0
 
 
-def _get_json(url: str, cache_dir: Path | None, min_interval: float = 0.8, max_retries: int = 8):
+def _get_json(url: str, cache_dir: Path | None, min_interval: float = 2.0, max_retries: int = 25):
     """URL-аас JSON татна. Cache байвал түүнийг уншина. 404 бол None буцаана."""
     global _last_call
     cache_file = None

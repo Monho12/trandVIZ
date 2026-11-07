@@ -1,0 +1,199 @@
+/* ───────── Фонт (өөрийн серверээс, Монгол Ө Ү үсэгтэй) ───────── */
+@font-face { font-family: "Onest"; font-weight: 400; font-display: swap; src: url(fonts/onest-cyrillic-400-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Onest"; font-weight: 400; font-display: swap; src: url(fonts/onest-cyrillic-ext-400-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
+@font-face { font-family: "Onest"; font-weight: 400; font-display: swap; src: url(fonts/onest-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Onest"; font-weight: 500; font-display: swap; src: url(fonts/onest-cyrillic-500-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Onest"; font-weight: 500; font-display: swap; src: url(fonts/onest-cyrillic-ext-500-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
+@font-face { font-family: "Onest"; font-weight: 500; font-display: swap; src: url(fonts/onest-latin-500-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Onest"; font-weight: 700; font-display: swap; src: url(fonts/onest-cyrillic-700-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Onest"; font-weight: 700; font-display: swap; src: url(fonts/onest-cyrillic-ext-700-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
+@font-face { font-family: "Onest"; font-weight: 700; font-display: swap; src: url(fonts/onest-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Tektur"; font-weight: 600; font-display: swap; src: url(fonts/tektur-cyrillic-600-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Tektur"; font-weight: 600; font-display: swap; src: url(fonts/tektur-cyrillic-ext-600-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
+@font-face { font-family: "Tektur"; font-weight: 600; font-display: swap; src: url(fonts/tektur-latin-600-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family: "Tektur"; font-weight: 800; font-display: swap; src: url(fonts/tektur-cyrillic-800-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
+@font-face { font-family: "Tektur"; font-weight: 800; font-display: swap; src: url(fonts/tektur-cyrillic-ext-800-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
+@font-face { font-family: "Tektur"; font-weight: 800; font-display: swap; src: url(fonts/tektur-latin-800-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+
+/* ───────── Өнгө: өнгө бүр нэг утгатай ───────── */
+:root {
+  --night: #0f1426;     /* дэвсгэр: шөнийн бэх цэнхэр */
+  --panel: #161d35;     /* хэсгийн дэвсгэр */
+  --rule:  #263052;     /* зураас, тор */
+  --text:  #e8ebf5;
+  --muted: #8a93b4;
+  --now:   #f6b544;     /* шар: "одоо" */
+  --surge: #ff6f61;     /* шүрэн: хэвийнээс их өсөлт */
+  --cast:  #7cd6f7;     /* цэнхэр: таамаг */
+
+  --display: "Tektur", "Onest", system-ui, sans-serif;
+  --body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px;
+  --wrap: 1180px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--night); color: var(--text);
+  font: 400 16px/1.55 var(--body);
+  font-feature-settings: "tnum" 1;      /* тоонууд ижил өргөнтэй — жагсаалтад тэгш харагдана */
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--now); outline-offset: 3px; border-radius: 4px; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: var(--s4); top: var(--s4); background: var(--panel); padding: var(--s2) var(--s3); z-index: 10; }
+
+/* ───────── Толгой ───────── */
+.top {
+  max-width: var(--wrap); margin: 0 auto; padding: var(--s5) var(--s4);
+  display: flex; align-items: center; gap: var(--s6); flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: var(--s2); text-decoration: none;
+  font: 800 22px/1 var(--display); letter-spacing: .01em; }
+.brand-mark { width: 28px; height: 20px; color: var(--now); }
+.nav { display: flex; gap: var(--s1); }
+.nav a { text-decoration: none; color: var(--muted); padding: var(--s2) var(--s3); border-radius: 8px; font-weight: 500; }
+.nav a:hover { color: var(--text); }
+.nav a[aria-current="page"] { color: var(--text); background: var(--panel); }
+.asof { margin: 0 0 0 auto; color: var(--muted); font-size: 14px; }
+
+.mock-note { max-width: var(--wrap); margin: 0 auto var(--s4); padding: 0 var(--s4);
+  color: var(--now); font-size: 14px; }
+
+main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--s4) var(--s8); }
+main:focus, main:focus-visible { outline: none; }
+.foot { max-width: var(--wrap); margin: 0 auto; padding: var(--s6) var(--s4); color: var(--muted);
+  font-size: 13px; border-top: 1px solid var(--rule); }
+
+/* ───────── Hero: шуугианы хэмжигч ───────── */
+.hero { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: var(--s6);
+  padding: var(--s5) 0 var(--s7); border-bottom: 1px solid var(--rule); }
+.hero-q { margin: 0 0 var(--s3); color: var(--muted); font-size: 17px; font-weight: 500; }
+.hero-title { margin: 0; font: 800 clamp(34px, 5.4vw, 64px)/1.02 var(--display); letter-spacing: -.01em;
+  overflow-wrap: anywhere; }
+.hero-title a { text-decoration: none; }
+.hero-title a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.hero-facts { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin: var(--s4) 0 var(--s4); font-size: 15px; }
+.hero-facts b { font: 600 20px/1 var(--display); }
+.f-surge b { color: var(--surge); }
+.f-cast b { color: var(--cast); }
+.hero-chart { height: 300px; margin-top: var(--s2); }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--s4); margin: var(--s3) 0 0; padding: 0; list-style: none;
+  font-size: 13px; color: var(--muted); }
+.legend li::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px;
+  vertical-align: middle; border-radius: 2px; background: currentColor; }
+.lg-hist { color: var(--text); } .lg-hist span, .lg-now span, .lg-cast span { color: var(--muted); }
+.lg-now { color: var(--now); } .lg-cast { color: var(--cast); }
+
+/* Хажуугийн жагсаалт */
+.side h2, .sec h2 { font: 600 18px/1.3 var(--display); margin: 0 0 var(--s3); }
+.side ol { list-style: none; margin: 0; padding: 0; counter-reset: r 1; }
+.side li { counter-increment: r; display: grid; grid-template-columns: 26px 1fr auto; gap: var(--s3);
+  align-items: baseline; padding: var(--s3) 0; border-top: 1px solid var(--rule); }
+.side li::before { content: counter(r); color: var(--muted); font: 600 15px var(--display); }
+.side a { text-decoration: none; font-weight: 500; }
+.side a:hover { text-decoration: underline; }
+.side .cat { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
+.x { font: 600 15px var(--display); color: var(--surge); white-space: nowrap; }
+.x.calm { color: var(--muted); }
+
+/* ───────── Хэсгүүд ───────── */
+.sec { padding: var(--s7) 0 0; }
+.sec-lead { color: var(--muted); margin: 0 0 var(--s5); max-width: 62ch; }
+
+/* Ангиллын жижиг графикууд */
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s5) var(--s6); }
+.cat-block h3 { font: 600 16px/1.3 var(--body); margin: 0 0 var(--s2); display: flex; gap: var(--s2); }
+.cat-block ul { list-style: none; margin: 0; padding: 0; }
+.cat-block li { display: grid; grid-template-columns: 1fr 96px; gap: var(--s3); align-items: center;
+  padding: 6px 0; border-top: 1px solid var(--rule); font-size: 14px; }
+.cat-block li a { text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cat-block li a:hover { text-decoration: underline; }
+.spark { height: 28px; }
+
+/* ───────── Шуугианы жагсаалт ───────── */
+.rows { list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1.6fr); gap: var(--s5);
+  align-items: center; padding: var(--s4) 0; border-top: 1px solid var(--rule); }
+.row .rk { font: 800 22px var(--display); color: var(--muted); }
+.row h3 { margin: 0; font-size: 17px; font-weight: 700; }
+.row h3 a { text-decoration: none; } .row h3 a:hover { text-decoration: underline; }
+.row .meta { margin: 4px 0 0; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px var(--s3); }
+.row .meta .x { font-size: 13px; }
+.row-chart { height: 64px; }
+
+/* ───────── Сэдвийн хуудас ───────── */
+.back { color: var(--muted); text-decoration: none; font-size: 14px; }
+.topic-chart { height: 380px; margin: var(--s5) 0; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s5); margin: var(--s5) 0 0; }
+.stats div { border-top: 1px solid var(--rule); padding-top: var(--s3); }
+.stats dt { color: var(--muted); font-size: 13px; }
+.stats dd { margin: 4px 0 0; font: 600 24px var(--display); }
+.fc-table { width: 100%; border-collapse: collapse; margin-top: var(--s5); font-size: 15px; }
+.fc-table th, .fc-table td { text-align: right; padding: var(--s2) var(--s3); border-top: 1px solid var(--rule); }
+.fc-table th:first-child, .fc-table td:first-child { text-align: left; }
+.fc-table th { color: var(--muted); font-weight: 500; font-size: 13px; }
+.fc-table td.y { color: var(--cast); font-weight: 700; }
+
+/* ───────── Загварын хуудас ───────── */
+.mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s6); }
+.mchart { height: 260px; }
+.note { color: var(--muted); font-size: 14px; max-width: 62ch; }
+
+/* ───────── График (SVG) ───────── */
+svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
+.ch .grid line { stroke: var(--rule); stroke-width: 1; }
+.ch .axis text { fill: var(--muted); font: 400 11px var(--body); }
+.ch .hist { fill: none; stroke: var(--text); stroke-width: 1.6; stroke-linejoin: round; }
+.ch .area { fill: var(--text); opacity: .06; }
+.ch .future { fill: url(#hatch); }
+.ch .band { fill: var(--cast); opacity: .18; }
+.ch .cast { fill: none; stroke: var(--cast); stroke-width: 1.8; stroke-dasharray: 5 4; }
+.ch .castdot { fill: var(--cast); }
+.ch .nowline { stroke: var(--now); stroke-width: 1.5; }
+.ch .nowlabel { fill: var(--now); font: 600 11px var(--body); }
+.ch .nowdot { fill: var(--now); }
+.ch .bar { fill: var(--muted); } .ch .bar.mine { fill: var(--cast); }
+.ch .tr { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+.ch .va { fill: none; stroke: var(--cast); stroke-width: 1.8; }
+.ch .best { stroke: var(--now); stroke-dasharray: 3 3; }
+.ch .lbl { fill: var(--text); font: 400 12px var(--body); }
+.ch .lbl.m { fill: var(--muted); }
+
+/* ───────── Хөдөлгөөн: ганцхан мөч ─────────
+   Hero-гийн шугам нэг удаа "бичигдэж", "одоо" цэг зөөлөн лугшина.
+   Зөвхөн transform/opacity болон нэг удаагийн stroke ашиглана — CPU бараг ачаалахгүй. */
+.hero .ch .hist { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.4s ease-out .1s forwards; }
+.hero .ch .cast, .hero .ch .band, .hero .ch .castdot { opacity: 0; animation: fade .5s ease-out 1.4s forwards; }
+.hero .ch .band { animation-name: fade-band; }
+.ch .pulse { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-out infinite; fill: var(--now); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade { to { opacity: 1; } }
+@keyframes fade-band { to { opacity: .18; } }
+@keyframes pulse { 0% { transform: scale(1); opacity: .55; } 70%, 100% { transform: scale(3.2); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero .ch .hist { animation: none; stroke-dashoffset: 0; }
+  .hero .ch .cast, .hero .ch .castdot { animation: none; opacity: 1; }
+  .hero .ch .band { animation: none; opacity: .18; }
+  .ch .pulse { animation: none; opacity: 0; }
+}
+
+/* Ачаалж байна / алдаа */
+.state { color: var(--muted); padding: var(--s7) 0; }
+
+/* ───────── Утас ───────── */
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; gap: var(--s6); }
+  .hero-chart { height: 230px; }
+  .row { grid-template-columns: 30px minmax(0, 1fr); }
+  .row-chart { grid-column: 1 / -1; height: 56px; }
+  .mgrid { grid-template-columns: 1fr; }
+  .asof { width: 100%; margin: 0; order: 3; }
+  .top { gap: var(--s3) var(--s5); }
+  .topic-chart { height: 280px; }
+}

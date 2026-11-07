@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Шуугиан — дэлхий юуг шуугиж байна</title>
+  <meta name="description" content="Wikipedia-ийн хандалтаар дэлхийн анхаарлыг хэмжиж, ирэх 3 өдрийг таамагладаг.">
+  <meta name="theme-color" content="#0f1426">
+  <link rel="preload" href="/static/fonts/tektur-cyrillic-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Үндсэн агуулга руу шилжих</a>
+
+  <header class="top">
+    <a class="brand" href="#/" aria-label="Шуугиан — нүүр">
+      <svg class="brand-mark" viewBox="0 0 28 20" aria-hidden="true">
+        <path d="M1 10h4l2-6 3 12 3-15 3 17 3-11 2 3h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+      <span>Шуугиан</span>
+    </a>
+    <nav class="nav" aria-label="Хуудсууд">
+      <a href="#/" data-route="trend">Тренд</a>
+      <a href="#/shuugian" data-route="shuugian">Шуугиан</a>
+      <a href="#/model" data-route="model">Загвар</a>
+    </nav>
+    <p class="asof" id="asof"></p>
+  </header>
+
+  <div class="mock-note" id="mock-note" hidden>
+    Жишээ өгөгдөл: таамгууд одоохондоо хуурамч. Model Мягмар гарагт холбогдоно.
+  </div>
+
+  <main id="main" tabindex="-1"></main>
+
+  <footer class="foot">
+    <p>Өгөгдөл: Wikimedia Pageviews API, англи Wikipedia, зөвхөн хүний хандалт.
+      Таамаг: LightGBM, ирэх 3 өдөр. <a href="https://github.com/Monho12/trandVIZ">Код</a></p>
+  </footer>
+
+  <script src="/static/charts.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

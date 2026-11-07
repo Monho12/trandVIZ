@@ -64,7 +64,7 @@ def pick_viral_candidates(curated: set[str], end: pd.Timestamp) -> pd.DataFrame:
         n_months=("month", "nunique"), best_rank=("rank", "min"), peak_month=("month", "min")
     ).reset_index()
     # Богино хугацааны (1-2 сар) бөгөөд нэлээд өндөр байранд орсон сэдвүүд
-    cand = g[(g["n_months"] <= 2) & (g["best_rank"] <= 300)].copy()
+    cand = g[(g["n_months"] <= 2) & (g["best_rank"] <= 200)].copy()
     cand["year"] = cand["peak_month"].str[:4]
     return cand
 
@@ -87,7 +87,7 @@ def main():
     # 3) Вирал сэдвүүд: жил бүрээс тэнцүү шахуу санамсаргүй сонгоно
     cand = pick_viral_candidates(set(arts["article"]), end)
     rng = np.random.default_rng(SEED)
-    per_year = int(np.ceil(N_VIRAL * 1.8 / cand["year"].nunique()))
+    per_year = int(np.ceil(N_VIRAL * 1.25 / cand["year"].nunique()))
     sampled = (
         cand.groupby("year", group_keys=False)
         .apply(lambda d: d.sample(min(len(d), per_year), random_state=int(rng.integers(1e9))))
