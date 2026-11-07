@@ -1,27 +1,28 @@
 /* ══════════ Шуугиан ══════════
-   Энгийн, цэвэрхэн. Өнгө бүр нэг утгатай:
+   Энгийн, цэвэрхэн, light горим. Өнгө бүр нэг утгатай:
      цэнхэр  = бодит уншилт (өнгөрсөн)
      улбар шар = таамаг (ирээдүй)
      улаан   = хэвийнээсээ хэт их өссөн (үргэлж ▲ тэмдэг, тоотой хамт)            */
 :root {
-  --bg: #14161c;
-  --surface: #1b1e26;
-  --line: #2a2e3a;
-  --text: #eef0f5;
-  --text-2: #b9bdca;
-  --muted: #858b9c;
-  --blue: #3987e5;
-  --blue-soft: rgba(57, 135, 229, .14);
-  --orange: #d95926;
-  --orange-2: #f08a5d;
-  --orange-soft: rgba(217, 89, 38, .14);
-  --red: #e66767;
-  --red-soft: rgba(230, 103, 103, .15);
+  --bg: #f4f5f7;          /* хуудасны дэвсгэр */
+  --surface: #ffffff;     /* карт */
+  --line: #e3e5ea;
+  --text: #15171c;
+  --text-2: #4a4f5c;
+  --muted: #737887;
+  --blue: #2a78d6;
+  --blue-soft: rgba(42, 120, 214, .10);
+  --orange: #eb6834;
+  --orange-2: #c4501f;
+  --orange-soft: rgba(235, 104, 52, .10);
+  --red: #d03b3b;
+  --red-soft: rgba(208, 59, 59, .10);
+  --gray-bar: #b7bcc8;
 
   --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
   --wrap: 1120px;
   --r: 10px;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -44,7 +45,7 @@ main:focus, main:focus-visible { outline: none; }
 .nav { display: flex; gap: 4px; }
 .nav a { text-decoration: none; color: var(--muted); padding: 7px 12px; border-radius: 8px; font-weight: 500; font-size: 15px; }
 .nav a:hover { color: var(--text); }
-.nav a[aria-current="page"] { color: var(--text); background: var(--surface); }
+.nav a[aria-current="page"] { color: var(--text); background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
 .asof { margin: 0 0 0 auto; color: var(--muted); font-size: 14px; }
 .mock-note { max-width: var(--wrap); margin: 0 auto; padding: 0 16px; color: var(--text-2); font-size: 14px; }
 .mock-note::before { content: "ⓘ "; color: var(--muted); }
@@ -60,7 +61,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .surge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
   background: var(--red-soft); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .surge::before { content: "▲"; color: var(--red); font-size: 10px; }
-.surge.calm { background: var(--surface); color: var(--text-2); font-weight: 500; }
+.surge.calm { background: var(--bg); color: var(--text-2); font-weight: 500; }
 .surge.calm::before { content: "•"; color: var(--muted); font-size: 14px; }
 
 /* ── Сэдэв сонгох товчнууд ── */
@@ -73,7 +74,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .pick .surge { font-size: 12px; padding: 1px 7px; }
 
 /* ── Сонгосон сэдэв ── */
-.focus { background: var(--surface); border-radius: 14px; padding: 24px 24px 18px; }
+.focus { background: var(--surface); border-radius: 14px; padding: 24px 24px 18px; border: 1px solid var(--line); }
 .focus-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
 .focus-title { margin: 0; font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; letter-spacing: -.01em; }
 .focus-title a { text-decoration: none; } .focus-title a:hover { text-decoration: underline; }
@@ -99,7 +100,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .sec { padding-top: 44px; }
 .sec h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
 .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-.cat { background: var(--surface); border-radius: var(--r); padding: 14px 16px 10px; }
+.cat { background: var(--surface); border-radius: var(--r); padding: 14px 16px 10px; border: 1px solid var(--line); }
 .cat h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
 .cat ul { list-style: none; margin: 0; padding: 0; }
 .cat li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0;
@@ -131,7 +132,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 
 /* ── Загвар ── */
 .mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.mcard { background: var(--surface); border-radius: var(--r); padding: 18px 18px 12px; }
+.mcard { background: var(--surface); border-radius: var(--r); padding: 18px 18px 12px; border: 1px solid var(--line); }
 .mcard h3 { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
 .mchart { height: 240px; position: relative; }
 .note { color: var(--muted); font-size: 13.5px; margin: 10px 0 0; }
@@ -139,23 +140,23 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 /* ── SVG ── */
 svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
 .ch .grid { stroke: var(--line); }
-.ch .base { stroke: #3a3f4e; }
+.ch .base { stroke: #c9cdd6; }
 .ch .tick { fill: var(--muted); font: 400 11px var(--font); }
 .ch .val { fill: var(--text); font: 600 12px var(--font); }
 .ch .val2 { fill: var(--text-2); font: 500 11px var(--font); }
 .ch .b-blue { fill: var(--blue); }
 .ch .b-orange { fill: var(--orange); }
-.ch .b-gray { fill: #4a5061; }
+.ch .b-gray { fill: var(--gray-bar); }
 .ch .range { stroke: var(--orange-2); stroke-width: 2; stroke-linecap: round; }
 .ch .split { stroke: var(--muted); stroke-dasharray: 3 4; }
-.ch .hl { fill: rgba(255, 255, 255, .05); }
-.ch .l-gray { fill: none; stroke: #6c7284; stroke-width: 2; }
+.ch .hl { fill: rgba(21, 23, 28, .05); }
+.ch .l-gray { fill: none; stroke: #9aa0ad; stroke-width: 2; }
 .ch .l-blue { fill: none; stroke: var(--blue); stroke-width: 2; }
 .ch .stop { stroke: var(--orange-2); stroke-dasharray: 4 4; }
 
 /* Tooltip */
-.tip { position: fixed; z-index: 20; pointer-events: none; background: #0d0f14; border: 1px solid var(--line);
-  border-radius: 8px; padding: 7px 10px; font-size: 13px; line-height: 1.4; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.tip { position: fixed; z-index: 20; pointer-events: none; background: #fff; border: 1px solid var(--line);
+  border-radius: 8px; padding: 7px 10px; font-size: 13px; line-height: 1.4; box-shadow: 0 6px 18px rgba(21,23,28,.12); }
 .tip b { display: block; font-weight: 600; }
 .tip span { color: var(--text-2); }
 

@@ -148,8 +148,8 @@
           <div class="mchart" id="m-bars"></div>
           <ul class="key">
             <li><i class="k-blue"></i>LightGBM</li>
-            <li><i style="background:#4a5061"></i>Өчигдрийнх шиг</li>
-            <li><i style="background:#4a5061;opacity:.6"></i>7 хоногийн өмнөх шиг</li>
+            <li><i style="background:var(--gray-bar)"></i>Өчигдрийнх шиг</li>
+            <li><i style="background:var(--gray-bar);opacity:.6"></i>7 хоногийн өмнөх шиг</li>
           </ul>
           <p class="note">MAE, log хуваарьт. "Өчигдрийнх шиг" нь маргаашийг өнөөдөртэй адил гэж үздэг энгийн арга.</p>
         </div>
