@@ -43,7 +43,7 @@ main:focus, main:focus-visible { outline: none; }
 .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; font-weight: 700; font-size: 20px; }
 .brand-mark { width: 24px; height: 24px; }
 .nav { display: flex; gap: 4px; }
-.nav a { text-decoration: none; color: var(--muted); padding: 7px 12px; border-radius: 8px; font-weight: 500; font-size: 15px; }
+.nav a { white-space: nowrap; text-decoration: none; color: var(--muted); padding: 7px 12px; border-radius: 8px; font-weight: 500; font-size: 15px; }
 .nav a:hover { color: var(--text); }
 .nav a[aria-current="page"] { color: var(--text); background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
 .asof { margin: 0 0 0 auto; color: var(--muted); font-size: 14px; }
@@ -93,7 +93,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .key { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--text-2); }
 .key li { display: flex; align-items: center; gap: 7px; }
 .key i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.key .k-blue { background: var(--blue); } .key .k-orange { background: var(--orange); }
+.key .k-blue { background: linear-gradient(#3d8ef0, #2a78d6); } .key .k-orange { background: repeating-linear-gradient(45deg, #eb6834 0 2px, #f6b293 2px 4px); outline: 1px solid #eb6834; outline-offset: -1px; }
 .key .k-range { width: 2px; height: 14px; border-radius: 1px; background: var(--orange-2); }
 .key .k-norm { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed #5b6170; }
 .hint { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
@@ -211,4 +211,41 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
   .fgrid { grid-template-columns: 1fr; }
   .minis { grid-template-columns: 1fr 1fr; }
   .big b { font-size: 24px; }
+}
+
+/* ── Анхаарлын газрын зураг (treemap) ── */
+.map-key { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 4px 0 12px; font-size: 14px; color: var(--text-2); }
+.map-key b { color: var(--text); font-weight: 600; }
+.map-key .scale { display: inline-flex; align-items: center; gap: 6px; }
+.map-key .scale i { width: 16px; height: 12px; border-radius: 3px; display: inline-block; }
+.map-key .scale em { font-style: normal; margin-right: 6px; }
+.tmap { position: relative; height: 440px; border-radius: 16px; overflow: hidden; background: var(--surface); }
+.tm-cell { position: absolute; box-sizing: border-box; border: 2px solid var(--bg); border-radius: 8px; padding: 8px 10px;
+  text-decoration: none; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px;
+  transition: filter .15s; animation: tm-in .45s ease-out both; animation-delay: calc(var(--i) * 12ms); }
+.tm-cell:hover { filter: brightness(1.06) saturate(1.1); }
+.tm-cell:focus-visible { outline: 3px solid var(--text); outline-offset: -3px; }
+.tm-t { font-size: 12.5px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tm-t.tm-big { font-size: 17px; }
+.tm-v { font-size: 13px; opacity: .85; font-weight: 500; }
+@keyframes tm-in { from { opacity: 0; transform: scale(.96); } }
+.sub-h { margin: 40px 0 2px; font-size: 22px; font-weight: 700; }
+
+/* Ангиллын картын sparkline */
+.cat li { display: grid; grid-template-columns: minmax(0, 1fr) 64px auto; }
+.sp { height: 22px; display: block; }
+.ch .sp-area { fill: rgba(42, 120, 214, .12); }
+.ch .sp-line { fill: none; stroke: #2a78d6; stroke-width: 1.5; }
+.ch .sp-dot { fill: #2a78d6; }
+
+/* Илүү амьд багана */
+.ch .b-grad { fill: url(#g-blue); }
+.ch .b-grad-soft { fill: url(#g-blue-soft); }
+.ch .b-hatch { fill: url(#p-cast); stroke: #eb6834; stroke-width: 1; }
+.ch .peak { fill: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .tm-cell { animation: none; } }
+@media (max-width: 760px) { .tmap { height: 380px; } .tm-t.tm-big { font-size: 15px; } }
+@media (max-width: 760px) {
+  .nav { gap: 0; } .nav a { padding: 7px 8px; font-size: 14px; }
+  .map-key { flex-direction: column; gap: 4px; font-size: 13px; }
 }

@@ -44,6 +44,18 @@
   }
   const hideTip = () => { tip.hidden = true; };
 
+  // Хуудсанд нэг удаа: баганын налуу өнгө (gradient) ба таамгийн зураасан хээ
+  const defs = document.createElementNS(NS, "svg");
+  defs.setAttribute("width", "0"); defs.setAttribute("height", "0"); defs.setAttribute("aria-hidden", "true");
+  defs.style.position = "absolute";
+  defs.innerHTML = `<defs>
+    <linearGradient id="g-blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d8ef0"/><stop offset="1" stop-color="#2a78d6"/></linearGradient>
+    <linearGradient id="g-blue-soft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fbcf2"/><stop offset="1" stop-color="#bcd6f6"/></linearGradient>
+    <pattern id="p-cast" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="6" fill="#f6b293"/><line x1="0" y1="0" x2="0" y2="6" stroke="#eb6834" stroke-width="3"/></pattern>
+  </defs>`;
+  document.body.prepend(defs);
+
   /**
    * Баганан график: өдөр бүр нэг багана, тэгээс эхэлнэ.
    * Цэнхэр = бодит уншилт, улбар шар = таамаг; нимгэн шугам = таамгийн 80% бүс.
@@ -70,12 +82,12 @@
     const hl = el("rect", { class: "hl", y: pad.t, height: base - pad.t, width: slot, visibility: "hidden" }, svg);
 
     history.forEach((p, i) => {
-      const b = el("path", { class: "bar b-blue", d: colPath(X(i), Y(p.v), bw, base - Y(p.v)) }, svg);
+      const b = el("path", { class: "bar " + (axis ? (i === H - 1 ? "b-grad" : "b-grad-soft") : "b-blue"), d: colPath(X(i), Y(p.v), bw, base - Y(p.v)) }, svg);
       b.style.setProperty("--i", i);
     });
     forecast.forEach((f, j) => {
       const i = H + j, x = X(i);
-      const b = el("path", { class: "bar b-orange", d: colPath(x, Y(f.y), bw, base - Y(f.y)) }, svg);
+      const b = el("path", { class: "bar " + (axis ? "b-hatch" : "b-orange"), d: colPath(x, Y(f.y), bw, base - Y(f.y)) }, svg);
       b.style.setProperty("--i", i);
       if (axis) el("line", { class: "range", x1: x + bw / 2, x2: x + bw / 2, y1: Y(f.hi), y2: Y(f.lo) }, svg);
     });
@@ -93,6 +105,13 @@
       if (normal) {
         el("line", { class: "norm", x1: pad.l, x2: X(H - 1) + bw, y1: Y(normal), y2: Y(normal) }, svg);
         el("text", { class: "val2", x: pad.l + 4, y: Y(normal) - 6 }, svg).textContent = `ердийн өдөр ≈ ${fmt(normal)}`;
+      }
+      // Оргил өдөр өчигдөр биш бол түүнийг тэмдэглэнэ
+      let pk = 0; history.forEach((p, i) => { if (p.v > history[pk].v) pk = i; });
+      if (pk < H - 2 && history[pk].v > 1.5 * history[H - 1].v) {
+        const px = X(pk) + bw / 2, py = Y(history[pk].v);
+        el("circle", { class: "peak", cx: px, cy: py - 10, r: 3 }, svg);
+        el("text", { class: "val2", x: px - 8, y: py - 7, "text-anchor": "end" }, svg).textContent = `оргил ${md(history[pk].d)}: ${fmt(history[pk].v)}`;
       }
       // Сонгомол шошго: өчигдрийн утга
       const lx = X(H - 1) + bw / 2, lv = history[H - 1].v;
@@ -214,5 +233,70 @@
     });
   }
 
-  window.Charts = { columns, groups, curve, hbars, bars, hbarsV, lines, fmt, longDate };
+  /** Squarified treemap: тэгш өнцөгтүүдийг аль болох дөрвөлжин байлгаж хуваана */
+  function squarify(items, x, y, w, h) {
+    const out = [], total = items.reduce((s, d) => s + d.v, 0);
+    let rest = items.map((d) => ({ ...d, a: (d.v / total) * w * h }));
+    while (rest.length) {
+      const short = Math.min(w, h);
+      let row = [rest[0]], worst = Infinity;
+      for (let i = 1; i <= rest.length; i++) {
+        const r = rest.slice(0, i), s = r.reduce((a, d) => a + d.a, 0);
+        const mx = Math.max(...r.map((d) => d.a)), mn = Math.min(...r.map((d) => d.a));
+        const wst = Math.max((short * short * mx) / (s * s), (s * s) / (short * short * mn));
+        if (wst > worst) break;
+        worst = wst; row = r;
+      }
+      const s = row.reduce((a, d) => a + d.a, 0), thick = s / short;
+      let off = 0;
+      row.forEach((d) => {
+        const len = d.a / thick;
+        out.push(w >= h ? { ...d, x, y: y + off, w: thick, h: len } : { ...d, x: x + off, y, w: len, h: thick });
+        off += len;
+      });
+      if (w >= h) { x += thick; w -= thick; } else { y += thick; h -= thick; }
+      rest = rest.slice(row.length);
+    }
+    return out;
+  }
+  // Өсөлтийн өнгө: цэнхэр = буурсан, саарал = ердийн, улаан = шуугиж байна
+  const HEAT = [[0.67, "#2a78d6", "#fff"], [0.9, "#9ec5f4", "#13294b"], [1.5, "#e6e8ee", "#1d1d1f"],
+    [2.5, "#f7c3b0", "#5a1f0c"], [5, "#ef8a62", "#3d1406"], [15, "#e34948", "#fff"], [Infinity, "#b42828", "#fff"]];
+  const heat = (r) => HEAT.find((h) => r < h[0]);
+
+  function treemap(box, items, { onPick, emoji = {}, label } = {}) {
+    box.innerHTML = "";
+    const w = box.clientWidth, h = box.clientHeight;
+    const n = w < 600 ? 14 : items.length;   // утсан дээр цөөн, том хайрцаг
+    const rects = squarify(items.map((d) => ({ ...d, v: d.views })).sort((a, b) => b.v - a.v).slice(0, n), 0, 0, w, h);
+    rects.forEach((r, i) => {
+      const [, bg, fg] = heat(r.ratio);
+      const a = document.createElement("a");
+      a.className = "tm-cell";
+      a.href = "#/topic/" + encodeURIComponent(r.article);
+      a.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${bg};color:${fg};--i:${i}`;
+      a.setAttribute("aria-label", `${r.title}: ${fmt(r.views)} уншилт, ердийнхөөс ×${r.ratio}`);
+      const big = r.w > 120 && r.h > 70, mid = r.w > 56 && r.h > 34;
+      if (mid) a.innerHTML = `<span class="tm-t${big ? " tm-big" : ""}">${emoji[r.category] || ""} ${r.title}</span>` +
+        (big ? `<span class="tm-v">${fmt(r.views)}, ×${r.ratio}</span>` : "");
+      a.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Ердийнхөөс ×${r.ratio}</span>`));
+      a.addEventListener("pointerleave", hideTip);
+      box.appendChild(a);
+    });
+    box.setAttribute("role", "list"); box.setAttribute("aria-label", label || "");
+  }
+
+  /** Жижиг sparkline: сүүлийн 30 хоног, өчигдрийн цэг тод */
+  function spark(box, history) {
+    const { svg, w, h } = svgFor(box, "");
+    svg.setAttribute("aria-hidden", "true");
+    const max = Math.max(...history.map((p) => p.v)) || 1, n = history.length;
+    const X = (i) => 2 + (i / (n - 1)) * (w - 6), Y = (v) => h - 2 - (v / max) * (h - 6);
+    const pts = history.map((p, i) => `${X(i).toFixed(1)},${Y(p.v).toFixed(1)}`);
+    el("path", { class: "sp-area", d: `M${X(0)},${h - 1} L${pts.join(" L")} L${X(n - 1)},${h - 1} Z` }, svg);
+    el("path", { class: "sp-line", d: "M" + pts.join(" L") }, svg);
+    el("circle", { class: "sp-dot", cx: X(n - 1), cy: Y(history[n - 1].v), r: 2.5 }, svg);
+  }
+
+  window.Charts = { columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate };
 })();

@@ -61,12 +61,22 @@
 
   // ═════════ Нүүр ═════════
   async function home() {
-    const [tr, cs] = await Promise.all([api("/api/trending"), api("/api/categories")]);
+    const [tr, cs, mp] = await Promise.all([api("/api/trending"), api("/api/categories"), api("/api/map")]);
     meta(tr);
     const top = tr.items.slice(0, 10);
     const chans = ORDER.map((k) => cs.categories.find((c) => c.key === k)).filter(Boolean);
+    const EMO = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, v[0]]));
     main.innerHTML = `
-      <h1 class="page-h">Өчигдөр дэлхий юуг хамгийн их уншив?</h1>
+      <h1 class="page-h">Өчигдөр дэлхий юуг уншив?</h1>
+      <div class="map-key">
+        <span><b>Том</b> = олон хүн уншсан</span>
+        <span class="scale"><b>Өнгө</b> = ердийнхөөс
+          <i style="background:#2a78d6"></i><em>бага</em>
+          <i style="background:#e6e8ee"></i><em>ердийн</em>
+          <i style="background:#ef8a62"></i><i style="background:#b42828"></i><em>их шуугиж байна</em></span>
+      </div>
+      <div class="tmap" id="tmap"></div>
+      <h2 class="sub-h">Сэдэв бүрээр</h2>
       <p class="lead">▲ ×3 = ердийн өдрөөс 3 дахин их уншигдсан</p>
       <ul class="picker" aria-label="Сэдэв сонгох">${top.map((t, i) => `
         <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${surge(t.ratio, true)}</button></li>`).join("")}
@@ -77,11 +87,17 @@
         <div class="cats">${chans.map((c) => `
           <div class="cat">
             <h3>${cat(c.key)}</h3>
-            <ul>${c.topics.slice(0, 4).map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a>${surge(t.ratio, true)}</li>`).join("")}</ul>
+            <ul>${c.topics.slice(0, 4).map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t.ratio, true)}</li>`).join("")}</ul>
           </div>`).join("")}
         </div>
       </section>`;
 
+    draw(() => C.treemap(document.getElementById("tmap"), mp.items, { emoji: EMO, label: "Өчигдрийн анхаарлын газрын зураг" }));
+    const byKey = Object.fromEntries(cs.categories.map((c) => [c.key, c.topics]));
+    draw(() => main.querySelectorAll(".sp").forEach((b) => {
+      const t = byKey[b.dataset.k].find((x) => x.article === b.dataset.a);
+      if (t) C.spark(b, t.history);
+    }));
     const btns = [...main.querySelectorAll(".pick")];
     let fn = null;
     function select(i) {

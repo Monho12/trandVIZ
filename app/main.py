@@ -47,6 +47,12 @@ def topic(article: str):
     return {"asof": _load("topics")["asof"], "mock": True, **t}
 
 
+@app.get("/api/map")
+def attention_map():
+    """Анхаарлын газрын зураг: өчигдрийн топ 40 сэдэв (уншилт ба өсөлт)."""
+    return _load("map")
+
+
 @app.get("/api/insights")
 def insights():
     """"Сонирхолтой" хуудасны баримтууд (бодит өгөгдлөөс тооцоолсон)."""

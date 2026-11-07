@@ -54,6 +54,11 @@ for t in all_t:
 categories = [{"key": k, "topics": sorted(v, key=lambda t: t["views"], reverse=True)[:4]} for k, v in cats.items()]
 
 meta = {"asof": end.strftime("%Y-%m-%d"), "mock": True}
+# Анхаарлын газрын зураг: өчигдөр хамгийн их уншигдсан 40 сэдэв (хэмжээ = уншилт, өнгө = өсөлт)
+mapped = sorted(all_t, key=lambda t: t["views"], reverse=True)[:40]
+json.dump({**meta, "total_topics": len(all_t), "total_views": int(sum(t["views"] for t in all_t)),
+           "items": [{k: t[k] for k in ("article", "title", "category", "views", "ratio")} for t in mapped]},
+          open(OUT / "map.json", "w"), ensure_ascii=False)
 json.dump({**meta, "items": trending}, open(OUT / "trending.json", "w"), ensure_ascii=False)
 json.dump({**meta, "categories": categories}, open(OUT / "categories.json", "w"), ensure_ascii=False)
 topics = {a: topic(a, days=180) for a in series}
