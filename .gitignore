@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Түүхий cache (дахин татаж болно) — git-д оруулахгүй
+data/raw/
+
+# Орчин
+.env
+.DS_Store
