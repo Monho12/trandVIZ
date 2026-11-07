@@ -52,7 +52,7 @@
     <linearGradient id="g-blue" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d8ef0"/><stop offset="1" stop-color="#2a78d6"/></linearGradient>
     <linearGradient id="g-blue-soft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fbcf2"/><stop offset="1" stop-color="#bcd6f6"/></linearGradient>
     <pattern id="p-cast" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <rect width="6" height="6" fill="#f6b293"/><line x1="0" y1="0" x2="0" y2="6" stroke="#eb6834" stroke-width="3"/></pattern>
+      <rect width="6" height="6" fill="#f9c5c9"/><line x1="0" y1="0" x2="0" y2="6" stroke="#e63946" stroke-width="3"/></pattern>
   </defs>`;
   document.body.prepend(defs);
 
@@ -260,8 +260,8 @@
     return out;
   }
   // Өсөлтийн өнгө: цэнхэр = буурсан, саарал = ердийн, улаан = шуугиж байна
-  const HEAT = [[0.67, "#2a78d6", "#fff"], [0.9, "#9ec5f4", "#13294b"], [1.5, "#e6e8ee", "#1d1d1f"],
-    [2.5, "#f7c3b0", "#5a1f0c"], [5, "#ef8a62", "#3d1406"], [15, "#e34948", "#fff"], [Infinity, "#b42828", "#fff"]];
+  const HEAT = [[0.67, "#2a78d6", "#fff"], [0.9, "#a9c9f0", "#13294b"], [1.5, "#eef1f5", "#1D3557"],
+    [2.5, "#fbd5d8", "#5c1219"], [5, "#f4a3a9", "#4a0e14"], [15, "#e63946", "#fff"], [Infinity, "#b5222e", "#fff"]];
   const heat = (r) => HEAT.find((h) => r < h[0]);
 
   function treemap(box, items, { onPick, emoji = {}, label } = {}) {

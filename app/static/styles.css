@@ -12,11 +12,11 @@
   --muted: #737887;
   --blue: #2a78d6;
   --blue-soft: rgba(42, 120, 214, .10);
-  --orange: #eb6834;
-  --orange-2: #c4501f;
-  --orange-soft: rgba(235, 104, 52, .10);
-  --red: #d03b3b;
-  --red-soft: rgba(208, 59, 59, .10);
+  --orange: #e63946;   /* таамаг = улаан */
+  --orange-2: #b5222e;
+  --orange-soft: rgba(230, 57, 70, .10);
+  --red: #e63946;
+  --red-soft: rgba(230, 57, 70, .10);
   --gray-bar: #b7bcc8;
 
   --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -93,7 +93,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .key { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--text-2); }
 .key li { display: flex; align-items: center; gap: 7px; }
 .key i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.key .k-blue { background: linear-gradient(#3d8ef0, #2a78d6); } .key .k-orange { background: repeating-linear-gradient(45deg, #eb6834 0 2px, #f6b293 2px 4px); outline: 1px solid #eb6834; outline-offset: -1px; }
+.key .k-blue { background: linear-gradient(#3d8ef0, #2a78d6); } .key .k-orange { background: repeating-linear-gradient(45deg, #e63946 0 2px, #f6b0b5 2px 4px); outline: 1px solid #e63946; outline-offset: -1px; }
 .key .k-range { width: 2px; height: 14px; border-radius: 1px; background: var(--orange-2); }
 .key .k-norm { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed #5b6170; }
 .hint { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
@@ -204,9 +204,9 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
 .fchart.mini { height: 110px; }
 .ch .b-soft { fill: #c9d9ee; }
 .ch .l-c1, .ch .l-c2, .ch .l-c3 { fill: none; stroke-width: 2; }
-.ch path.l-c1 { stroke: #2a78d6; } .ch path.l-c2 { stroke: #eb6834; } .ch path.l-c3 { stroke: #1baf7a; }
+.ch path.l-c1 { stroke: #2a78d6; } .ch path.l-c2 { stroke: #e63946; } .ch path.l-c3 { stroke: #1D3557; }
 .ch text.lname { font: 600 12px var(--font); }
-.ch text.l-c1 { fill: #1f5ea8; } .ch text.l-c2 { fill: #b4461a; } .ch text.l-c3 { fill: #11724f; }
+.ch text.l-c1 { fill: #1f5ea8; } .ch text.l-c2 { fill: #b5222e; } .ch text.l-c3 { fill: #11724f; }
 @media (max-width: 760px) {
   .fgrid { grid-template-columns: 1fr; }
   .minis { grid-template-columns: 1fr 1fr; }
@@ -241,7 +241,7 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
 /* Илүү амьд багана */
 .ch .b-grad { fill: url(#g-blue); }
 .ch .b-grad-soft { fill: url(#g-blue-soft); }
-.ch .b-hatch { fill: url(#p-cast); stroke: #eb6834; stroke-width: 1; }
+.ch .b-hatch { fill: url(#p-cast); stroke: #e63946; stroke-width: 1; }
 .ch .peak { fill: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .tm-cell { animation: none; } }
 @media (max-width: 760px) { .tmap { height: 380px; } .tm-t.tm-big { font-size: 15px; } }

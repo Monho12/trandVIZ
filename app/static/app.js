@@ -72,8 +72,8 @@
         <span><b>Том</b> = олон хүн уншсан</span>
         <span class="scale"><b>Өнгө</b> = ердийнхөөс
           <i style="background:#2a78d6"></i><em>бага</em>
-          <i style="background:#e6e8ee"></i><em>ердийн</em>
-          <i style="background:#ef8a62"></i><i style="background:#b42828"></i><em>их шуугиж байна</em></span>
+          <i style="background:#eef1f5;outline:1px solid #d5dae3;outline-offset:-1px"></i><em>ердийн</em>
+          <i style="background:#f4a3a9"></i><i style="background:#b5222e"></i><em>их шуугиж байна</em></span>
       </div>
       <div class="tmap" id="tmap"></div>
       <h2 class="sub-h">Сэдэв бүрээр</h2>
@@ -220,7 +220,7 @@
           <h3>Баяр жил бүр давтагддаг</h3>
           <p class="big"><b>Хамгийн таамаглахад амар</b> сэдэв</p>
           <div class="fchart" id="f-hol"></div>
-          <ul class="key"><li><i style="background:#2a78d6"></i>Зул сар</li><li><i style="background:#eb6834"></i>Halloween</li><li><i style="background:#1baf7a"></i>Валентин</li></ul>
+          <ul class="key"><li><i style="background:#2a78d6"></i>Зул сар</li><li><i style="background:#e63946"></i>Halloween</li><li><i style="background:#1D3557"></i>Валентин</li></ul>
         </section>
         <section class="fcard">
           <h3>Дэлхий Монголын юуг уншдаг вэ?</h3>
