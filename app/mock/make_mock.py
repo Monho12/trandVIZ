@@ -4,7 +4,6 @@ Model бэлэн болохоос өмнө вэбийн дизайныг тур�
 Бодит түүх (cache-д татагдсан сэдвүүд) + ХУУРАМЧ таамаг ашиглана.
 Model бэлэн болмогц app/main.py бодит таамгийг өгөх тул энэ файлыг устгана.
 """
-import glob
 import json
 from pathlib import Path
 
@@ -15,17 +14,9 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent
 rng = np.random.default_rng(7)
 
-arts = pd.read_csv(ROOT / "data" / "articles.csv")
-cat_of = dict(zip(arts["article"], arts["category"]))
-
-series = {}
-for f in glob.glob(str(ROOT / "data" / "raw" / "cache" / "*.json")):
-    d = json.load(open(f))
-    if not d or not d.get("items") or "article" not in d["items"][0]:
-        continue
-    df = pd.DataFrame(d["items"])
-    df["date"] = pd.to_datetime(df["timestamp"].str[:8], format="%Y%m%d")
-    series[df["article"].iloc[0]] = df.set_index("date")["views"]
+pv = pd.read_parquet(ROOT / "data" / "processed" / "pageviews.parquet")
+cat_of = dict(zip(pv["article"], pv["category"]))
+series = {a: g.set_index("date")["views"] for a, g in pv.groupby("article")}
 
 end = max(s.index.max() for s in series.values())
 

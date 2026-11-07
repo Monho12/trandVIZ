@@ -84,6 +84,12 @@ def main():
     curated = fetch_many(arts["article"].tolist(), START, end, "сонгосон")
     curated = curated.merge(arts, on="article", how="left")
 
+    # 2b) Нэр солигдсон нийтлэлүүдийн ХУУЧИН нэрийн түүх (02 notebook-д нэгтгэнэ)
+    al = pd.read_csv(DATA / "aliases.csv")
+    alias_pv = fetch_many(al["old_title"].tolist(), START, end, "хуучин нэр")
+    alias_pv.rename(columns={"article": "old_title"}).merge(al[["old_title", "article"]], on="old_title") \
+        .to_parquet(OUT / "alias_pageviews.parquet", index=False)
+
     # 3) Вирал сэдвүүд: жил бүрээс тэнцүү шахуу санамсаргүй сонгоно
     cand = pick_viral_candidates(set(arts["article"]), end)
     rng = np.random.default_rng(SEED)
@@ -99,6 +105,9 @@ def main():
     stats = viral.groupby("article")["views"].agg(peak="max", median="median", n_days="count").reset_index()
     stats["ratio"] = stats["peak"] / stats["median"].clip(lower=1)
     keep = stats[(stats["ratio"] >= VIRAL_MIN_RATIO) & (stats["n_days"] >= 180)]
+    # Олон нийтийн сайтад тохиромжгүй сэдвүүдийг гараар хасна
+    excl = set(pd.read_csv(DATA / "exclude.csv")["article"])
+    keep = keep[~keep["article"].isin(excl)]
     keep = keep.sample(min(N_VIRAL, len(keep)), random_state=SEED)
     viral = viral[viral["article"].isin(keep["article"])].assign(category="viral")
     (sampled.merge(keep[["article", "ratio"]], on="article")
