@@ -1,199 +1,220 @@
-/* ───────── Фонт (өөрийн серверээс, Монгол Ө Ү үсэгтэй) ───────── */
-@font-face { font-family: "Onest"; font-weight: 400; font-display: swap; src: url(fonts/onest-cyrillic-400-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: "Onest"; font-weight: 400; font-display: swap; src: url(fonts/onest-cyrillic-ext-400-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
-@font-face { font-family: "Onest"; font-weight: 400; font-display: swap; src: url(fonts/onest-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: "Onest"; font-weight: 500; font-display: swap; src: url(fonts/onest-cyrillic-500-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: "Onest"; font-weight: 500; font-display: swap; src: url(fonts/onest-cyrillic-ext-500-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
-@font-face { font-family: "Onest"; font-weight: 500; font-display: swap; src: url(fonts/onest-latin-500-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: "Onest"; font-weight: 700; font-display: swap; src: url(fonts/onest-cyrillic-700-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: "Onest"; font-weight: 700; font-display: swap; src: url(fonts/onest-cyrillic-ext-700-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
-@font-face { font-family: "Onest"; font-weight: 700; font-display: swap; src: url(fonts/onest-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: "Tektur"; font-weight: 600; font-display: swap; src: url(fonts/tektur-cyrillic-600-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: "Tektur"; font-weight: 600; font-display: swap; src: url(fonts/tektur-cyrillic-ext-600-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
-@font-face { font-family: "Tektur"; font-weight: 600; font-display: swap; src: url(fonts/tektur-latin-600-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-@font-face { font-family: "Tektur"; font-weight: 800; font-display: swap; src: url(fonts/tektur-cyrillic-800-normal.woff2) format("woff2"); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
-@font-face { font-family: "Tektur"; font-weight: 800; font-display: swap; src: url(fonts/tektur-cyrillic-ext-800-normal.woff2) format("woff2"); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
-@font-face { font-family: "Tektur"; font-weight: 800; font-display: swap; src: url(fonts/tektur-latin-800-normal.woff2) format("woff2"); unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
-
-/* ───────── Өнгө: өнгө бүр нэг утгатай ───────── */
+/* ══════════ Шуугиан — шөнийн радио ══════════
+   Өнгө бүр нэг утгатай:
+     --glow  шар чийдэнгийн гэрэл = дохио (бодит хандалт), тааруулагчийн зүү
+     --clip  улаан = хэт чанга (хэвийнээс их өсөлт), VU метрийн улаан хэсэг
+     --ghost бүдэг ягаан = хараахан сонсогдоогүй (таамаг)                         */
 :root {
-  --night: #0f1426;     /* дэвсгэр: шөнийн бэх цэнхэр */
-  --panel: #161d35;     /* хэсгийн дэвсгэр */
-  --rule:  #263052;     /* зураас, тор */
-  --text:  #e8ebf5;
-  --muted: #8a93b4;
-  --now:   #f6b544;     /* шар: "одоо" */
-  --surge: #ff6f61;     /* шүрэн: хэвийнээс их өсөлт */
-  --cast:  #7cd6f7;     /* цэнхэр: таамаг */
+  --ink: #15101c;      /* дэвсгэр: хар нил ягаан шөнө */
+  --console: #1e1728;  /* төхөөрөмжийн их бие */
+  --groove: #2e2540;   /* ховил, зураас */
+  --bone: #efe6d8;     /* текст: зааны ясны өнгө */
+  --dim: #9b90ab;
+  --glow: #ffb454;
+  --clip: #ff4f5e;
+  --ghost: #b7a6ff;
 
-  --display: "Tektur", "Onest", system-ui, sans-serif;
-  --body: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Cormorant Garamond", "Georgia", serif;
+  --dial: "Oswald", "Arial Narrow", system-ui, sans-serif;
 
-  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 72px;
-  --wrap: 1180px;
+  --wrap: 1160px;
   color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
-  margin: 0; background: var(--night); color: var(--text);
-  font: 400 16px/1.55 var(--body);
-  font-feature-settings: "tnum" 1;      /* тоонууд ижил өргөнтэй — жагсаалтад тэгш харагдана */
+  margin: 0; color: var(--bone); background-color: var(--ink);
+  /* Радиогийн шуугиан: хөдөлгөөнгүй, маш бүдэг ширхэг (нэг удаа зурагдана) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .9 0 0 0 0 .8 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  font: 400 15px/1.5 var(--dial);
+  font-feature-settings: "tnum" 1;
 }
 a { color: inherit; }
-:focus-visible { outline: 2px solid var(--now); outline-offset: 3px; border-radius: 4px; }
-.skip { position: absolute; left: -999px; }
-.skip:focus { left: var(--s4); top: var(--s4); background: var(--panel); padding: var(--s2) var(--s3); z-index: 10; }
-
-/* ───────── Толгой ───────── */
-.top {
-  max-width: var(--wrap); margin: 0 auto; padding: var(--s5) var(--s4);
-  display: flex; align-items: center; gap: var(--s6); flex-wrap: wrap;
-}
-.brand { display: flex; align-items: center; gap: var(--s2); text-decoration: none;
-  font: 800 22px/1 var(--display); letter-spacing: .01em; }
-.brand-mark { width: 28px; height: 20px; color: var(--now); }
-.nav { display: flex; gap: var(--s1); }
-.nav a { text-decoration: none; color: var(--muted); padding: var(--s2) var(--s3); border-radius: 8px; font-weight: 500; }
-.nav a:hover { color: var(--text); }
-.nav a[aria-current="page"] { color: var(--text); background: var(--panel); }
-.asof { margin: 0 0 0 auto; color: var(--muted); font-size: 14px; }
-
-.mock-note { max-width: var(--wrap); margin: 0 auto var(--s4); padding: 0 var(--s4);
-  color: var(--now); font-size: 14px; }
-
-main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--s4) var(--s8); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; }
 main:focus, main:focus-visible { outline: none; }
-.foot { max-width: var(--wrap); margin: 0 auto; padding: var(--s6) var(--s4); color: var(--muted);
-  font-size: 13px; border-top: 1px solid var(--rule); }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 16px; background: var(--console); padding: 8px 12px; z-index: 10; }
 
-/* ───────── Hero: шуугианы хэмжигч ───────── */
-.hero { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: var(--s6);
-  padding: var(--s5) 0 var(--s7); border-bottom: 1px solid var(--rule); }
-.hero-q { margin: 0 0 var(--s3); color: var(--muted); font-size: 17px; font-weight: 500; }
-.hero-title { margin: 0; font: 800 clamp(34px, 5.4vw, 64px)/1.02 var(--display); letter-spacing: -.01em;
+/* ── Толгой ── */
+.top { max-width: var(--wrap); margin: 0 auto; padding: 22px 16px 10px;
+  display: flex; align-items: center; gap: 36px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none;
+  font: italic 500 30px/1 var(--serif); }
+.brand-mark { width: 30px; height: 30px; color: var(--dim); }
+.nav { display: flex; gap: 22px; }
+.nav a { text-decoration: none; color: var(--dim); font-size: 15px; letter-spacing: .02em; padding: 6px 0;
+  border-bottom: 2px solid transparent; }
+.nav a:hover { color: var(--bone); }
+.nav a[aria-current="page"] { color: var(--bone); border-bottom-color: var(--glow); }
+.asof { margin: 0 0 0 auto; color: var(--dim); font-size: 13px; letter-spacing: .02em; }
+.mock-note { max-width: var(--wrap); margin: 0 auto; padding: 0 16px; color: var(--ghost); font-size: 13px; }
+
+main { max-width: var(--wrap); margin: 0 auto; padding: 0 16px 80px; }
+.foot { max-width: var(--wrap); margin: 0 auto; padding: 28px 16px 40px; color: var(--dim); font-size: 13px;
+  border-top: 1px solid var(--groove); }
+
+/* ══ Тааруулагч (dial) ══ */
+.dial { position: relative; margin: 34px 0 0; padding: 0 0 14px; }
+.dial-scale { position: relative; height: 92px; border-bottom: 1px solid var(--groove);
+  background:
+    repeating-linear-gradient(90deg, var(--groove) 0 1px, transparent 1px 1%) bottom / 100% 10px no-repeat,
+    repeating-linear-gradient(90deg, #4a3e5e 0 1px, transparent 1px 10%) bottom / 100% 20px no-repeat; }
+.dial-nums { display: flex; justify-content: space-between; color: var(--dim); font-size: 11px; margin-top: 6px; }
+.station { position: absolute; bottom: 0; width: 22px; margin-left: -11px; height: 100%;
+  border: 0; background: none; padding: 0; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; }
+.station i { display: block; width: 3px; border-radius: 2px 2px 0 0; background: var(--dim); opacity: .55;
+  transition: opacity .2s, background-color .2s; }
+.station:hover i { opacity: 1; }
+.station[aria-pressed="true"] i { background: var(--glow); opacity: 1; }
+.station.hot i { background: var(--clip); }
+.needle { position: absolute; top: -10px; bottom: -6px; left: 0; width: 2px; background: var(--glow);
+  box-shadow: 0 0 14px 2px rgba(255, 180, 84, .45); pointer-events: none;
+  transition: transform .55s cubic-bezier(.3, .7, .2, 1); will-change: transform; }
+.needle::before { content: ""; position: absolute; top: -6px; left: -5px; border: 6px solid transparent;
+  border-top-color: var(--glow); }
+.dial-hint { color: var(--dim); font-size: 12px; margin: 10px 0 0; }
+
+/* ══ Одоо эфирт ══ */
+.onair { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 18px 48px; padding: 26px 0 56px;
+  border-bottom: 1px solid var(--groove); }
+.onair-kicker { grid-column: 1 / -1; margin: 0; color: var(--glow); font-size: 14px; letter-spacing: .04em; }
+.onair-kicker.plain { color: var(--dim); }
+.onair-kicker.plain::before { display: none; }
+.onair-kicker::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--clip); margin-right: 8px; vertical-align: 1px; }
+.onair-title { margin: 0; font: 500 clamp(40px, 6.6vw, 86px)/.98 var(--serif); letter-spacing: -.01em;
   overflow-wrap: anywhere; }
-.hero-title a { text-decoration: none; }
-.hero-title a:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
-.hero-facts { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin: var(--s4) 0 var(--s4); font-size: 15px; }
-.hero-facts b { font: 600 20px/1 var(--display); }
-.f-surge b { color: var(--surge); }
-.f-cast b { color: var(--cast); }
-.hero-chart { height: 300px; margin-top: var(--s2); }
+.onair-title a { text-decoration: none; }
+.onair-title a:hover { font-style: italic; }
+.onair-cat { margin: 12px 0 0; color: var(--dim); font: italic 500 22px var(--serif); }
+.tuning .onair-title, .tuning .onair-cat { animation: static .38s steps(4) both; }
+@keyframes static { 0% { opacity: .1; } 35% { opacity: .7; } 55% { opacity: .25; } 100% { opacity: 1; } }
 
-.legend { display: flex; flex-wrap: wrap; gap: var(--s4); margin: var(--s3) 0 0; padding: 0; list-style: none;
-  font-size: 13px; color: var(--muted); }
-.legend li::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px;
-  vertical-align: middle; border-radius: 2px; background: currentColor; }
-.lg-hist { color: var(--text); } .lg-hist span, .lg-now span, .lg-cast span { color: var(--muted); }
-.lg-now { color: var(--now); } .lg-cast { color: var(--cast); }
+.readout { display: grid; gap: 18px; align-content: start; }
+.readout div { border-left: 1px solid var(--groove); padding-left: 16px; }
+.readout dt { color: var(--dim); font-size: 12px; letter-spacing: .03em; }
+.readout dd { margin: 2px 0 0; font: 500 32px/1.1 var(--dial); }
+.readout .r-clip { color: var(--clip); } .readout .r-ghost { color: var(--ghost); }
+.vu { display: flex; gap: 3px; margin-top: 8px; height: 10px; }
+.vu i { flex: 1; background: var(--groove); }
+.vu i.on { background: var(--glow); } .vu i.on.red { background: var(--clip); }
 
-/* Хажуугийн жагсаалт */
-.side h2, .sec h2 { font: 600 18px/1.3 var(--display); margin: 0 0 var(--s3); }
-.side ol { list-style: none; margin: 0; padding: 0; counter-reset: r 1; }
-.side li { counter-increment: r; display: grid; grid-template-columns: 26px 1fr auto; gap: var(--s3);
-  align-items: baseline; padding: var(--s3) 0; border-top: 1px solid var(--rule); }
-.side li::before { content: counter(r); color: var(--muted); font: 600 15px var(--display); }
-.side a { text-decoration: none; font-weight: 500; }
-.side a:hover { text-decoration: underline; }
-.side .cat { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
-.x { font: 600 15px var(--display); color: var(--surge); white-space: nowrap; }
-.x.calm { color: var(--muted); }
+.wave-wrap { grid-column: 1 / -1; }
+.wave { height: 220px; }
+.wave-legend { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 10px 0 0; padding: 0; list-style: none;
+  color: var(--dim); font-size: 12px; }
+.wave-legend li::before { content: ""; display: inline-block; width: 9px; height: 12px; margin-right: 7px; vertical-align: -1px; }
+.wl-sig::before { background: var(--glow); }
+.wl-ghost::before { border: 1px dashed var(--ghost); background: rgba(183, 166, 255, .14); }
+.wl-now::before { width: 2px !important; background: var(--bone); }
 
-/* ───────── Хэсгүүд ───────── */
-.sec { padding: var(--s7) 0 0; }
-.sec-lead { color: var(--muted); margin: 0 0 var(--s5); max-width: 62ch; }
+/* ══ Mixer: 10 суваг ══ */
+.sec { padding: 56px 0 0; }
+.sec-h { margin: 0; font: 500 40px/1.1 var(--serif); }
+.sec-lead { margin: 8px 0 28px; color: var(--dim); max-width: 64ch; font-size: 15px; }
+.mixer { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); border: 1px solid var(--groove);
+  background: rgba(30, 23, 40, .7); }
+.strip { border-right: 1px solid var(--groove); padding: 16px 10px 14px; display: flex; flex-direction: column; gap: 12px;
+  min-width: 0; }
+.strip:last-child { border-right: 0; }
+.strip-meter { height: 150px; display: flex; flex-direction: column-reverse; gap: 3px; width: 18px; margin: 0 auto; }
+.strip-meter i { flex: 1; background: var(--groove); }
+.strip-meter i.on { background: var(--glow); } .strip-meter i.on.red { background: var(--clip); }
+.strip-val { text-align: center; font-size: 18px; font-weight: 500; }
+.strip-val.red { color: var(--clip); }
+.strip h3 { margin: 0; text-align: center; font: 400 13px/1.25 var(--dial); color: var(--dim); min-height: 2.5em; }
+.strip h3 span { display: block; font-size: 18px; margin-bottom: 2px; }
+.strip ul { list-style: none; margin: 0; padding: 10px 0 0; border-top: 1px solid var(--groove); font-size: 12.5px; line-height: 1.35; }
+.strip li + li { margin-top: 7px; }
+.strip li a { text-decoration: none; color: var(--bone); display: block; overflow-wrap: anywhere; }
+.strip li a:hover { color: var(--glow); }
 
-/* Ангиллын жижиг графикууд */
-.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s5) var(--s6); }
-.cat-block h3 { font: 600 16px/1.3 var(--body); margin: 0 0 var(--s2); display: flex; gap: var(--s2); }
-.cat-block ul { list-style: none; margin: 0; padding: 0; }
-.cat-block li { display: grid; grid-template-columns: 1fr 96px; gap: var(--s3); align-items: center;
-  padding: 6px 0; border-top: 1px solid var(--rule); font-size: 14px; }
-.cat-block li a { text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cat-block li a:hover { text-decoration: underline; }
-.spark { height: 28px; }
+/* ══ Бүх станц: дууны жагсаалт ══ */
+.tracks { list-style: none; margin: 0; padding: 0; }
+.track { display: grid; grid-template-columns: 54px minmax(0, 1fr) 132px minmax(0, 1.25fr); gap: 20px; align-items: center;
+  padding: 14px 0; border-top: 1px solid var(--groove); }
+.track .freq { color: var(--dim); font-size: 13px; }
+.track h3 { margin: 0; font: 500 25px/1.1 var(--serif); }
+.track h3 a { text-decoration: none; } .track h3 a:hover { font-style: italic; color: var(--glow); }
+.track .cat { margin: 3px 0 0; color: var(--dim); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.track .lvl { font-size: 13px; }
+.track .lvl b { font: 500 20px var(--dial); }
+.track .lvl b.red { color: var(--clip); }
+.track .lvl .vu { height: 7px; margin-top: 5px; }
+.track .mini { height: 54px; }
 
-/* ───────── Шуугианы жагсаалт ───────── */
-.rows { list-style: none; margin: 0; padding: 0; }
-.row { display: grid; grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1.6fr); gap: var(--s5);
-  align-items: center; padding: var(--s4) 0; border-top: 1px solid var(--rule); }
-.row .rk { font: 800 22px var(--display); color: var(--muted); }
-.row h3 { margin: 0; font-size: 17px; font-weight: 700; }
-.row h3 a { text-decoration: none; } .row h3 a:hover { text-decoration: underline; }
-.row .meta { margin: 4px 0 0; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px var(--s3); }
-.row .meta .x { font-size: 13px; }
-.row-chart { height: 64px; }
+/* ══ Нэг станц ══ */
+.back { color: var(--dim); text-decoration: none; font-size: 14px; display: inline-block; margin-top: 30px; }
+.back:hover { color: var(--bone); }
+.topic-wave { height: 300px; margin: 28px 0 0; }
+.fc { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: 15px; }
+.fc caption { text-align: left; color: var(--dim); font-size: 13px; padding-bottom: 8px; }
+.fc th, .fc td { padding: 9px 12px; text-align: right; border-top: 1px solid var(--groove); }
+.fc th:first-child, .fc td:first-child { text-align: left; }
+.fc th { color: var(--dim); font-weight: 400; font-size: 13px; }
+.fc td.y { color: var(--ghost); font-weight: 500; }
 
-/* ───────── Сэдвийн хуудас ───────── */
-.back { color: var(--muted); text-decoration: none; font-size: 14px; }
-.topic-chart { height: 380px; margin: var(--s5) 0; }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s5); margin: var(--s5) 0 0; }
-.stats div { border-top: 1px solid var(--rule); padding-top: var(--s3); }
-.stats dt { color: var(--muted); font-size: 13px; }
-.stats dd { margin: 4px 0 0; font: 600 24px var(--display); }
-.fc-table { width: 100%; border-collapse: collapse; margin-top: var(--s5); font-size: 15px; }
-.fc-table th, .fc-table td { text-align: right; padding: var(--s2) var(--s3); border-top: 1px solid var(--rule); }
-.fc-table th:first-child, .fc-table td:first-child { text-align: left; }
-.fc-table th { color: var(--muted); font-weight: 500; font-size: 13px; }
-.fc-table td.y { color: var(--cast); font-weight: 700; }
+/* ══ Загвар ══ */
+.mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 48px; }
+.mgrid h3 { margin: 0 0 12px; font: 500 26px/1.15 var(--serif); }
+.mchart { height: 250px; }
+.note { color: var(--dim); font-size: 13.5px; max-width: 62ch; }
 
-/* ───────── Загварын хуудас ───────── */
-.mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s6); }
-.mchart { height: 260px; }
-.note { color: var(--muted); font-size: 14px; max-width: 62ch; }
-
-/* ───────── График (SVG) ───────── */
+/* ══ SVG ══ */
 svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
-.ch .grid line { stroke: var(--rule); stroke-width: 1; }
-.ch .axis text { fill: var(--muted); font: 400 11px var(--body); }
-.ch .hist { fill: none; stroke: var(--text); stroke-width: 1.6; stroke-linejoin: round; }
-.ch .area { fill: var(--text); opacity: .06; }
-.ch .future { fill: url(#hatch); }
-.ch .band { fill: var(--cast); opacity: .18; }
-.ch .cast { fill: none; stroke: var(--cast); stroke-width: 1.8; stroke-dasharray: 5 4; }
-.ch .castdot { fill: var(--cast); }
-.ch .nowline { stroke: var(--now); stroke-width: 1.5; }
-.ch .nowlabel { fill: var(--now); font: 600 11px var(--body); }
-.ch .nowdot { fill: var(--now); }
-.ch .bar { fill: var(--muted); } .ch .bar.mine { fill: var(--cast); }
-.ch .tr { fill: none; stroke: var(--muted); stroke-width: 1.6; }
-.ch .va { fill: none; stroke: var(--cast); stroke-width: 1.8; }
-.ch .best { stroke: var(--now); stroke-dasharray: 3 3; }
-.ch .lbl { fill: var(--text); font: 400 12px var(--body); }
-.ch .lbl.m { fill: var(--muted); }
+.ch .mid { stroke: var(--groove); }
+.ch .sig { fill: var(--glow); }
+.ch .sig.red { fill: var(--clip); }
+.ch .ghost { fill: rgba(183, 166, 255, .14); stroke: var(--ghost); stroke-width: 1; stroke-dasharray: 3 2; }
+.ch .ghostcore { fill: var(--ghost); opacity: .75; }
+.ch .now { stroke: var(--bone); stroke-width: 1.2; }
+.ch .tick { fill: var(--dim); font: 400 11px var(--dial); }
+.ch .nowtxt { fill: var(--bone); font: 500 11px var(--dial); }
+.ch .grid { stroke: var(--groove); }
+.ch .bar { fill: var(--dim); opacity: .55; } .ch .bar.mine { fill: var(--glow); opacity: 1; }
+.ch .tr { fill: none; stroke: var(--dim); stroke-width: 1.6; }
+.ch .va { fill: none; stroke: var(--glow); stroke-width: 2; }
+.ch .best { stroke: var(--clip); stroke-dasharray: 3 3; }
+.ch .lbl { fill: var(--bone); font: 400 12px var(--dial); } .ch .lbl.m { fill: var(--dim); }
 
-/* ───────── Хөдөлгөөн: ганцхан мөч ─────────
-   Hero-гийн шугам нэг удаа "бичигдэж", "одоо" цэг зөөлөн лугшина.
-   Зөвхөн transform/opacity болон нэг удаагийн stroke ашиглана — CPU бараг ачаалахгүй. */
-.hero .ch .hist { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.4s ease-out .1s forwards; }
-.hero .ch .cast, .hero .ch .band, .hero .ch .castdot { opacity: 0; animation: fade .5s ease-out 1.4s forwards; }
-.hero .ch .band { animation-name: fade-band; }
-.ch .pulse { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-out infinite; fill: var(--now); }
-@keyframes draw { to { stroke-dashoffset: 0; } }
-@keyframes fade { to { opacity: 1; } }
-@keyframes fade-band { to { opacity: .18; } }
-@keyframes pulse { 0% { transform: scale(1); opacity: .55; } 70%, 100% { transform: scale(3.2); opacity: 0; } }
+/* Ганцхан мөч: эфир асахад долгион зүүнээс баруун тийш "сонсогдож" гарна (transform/opacity) */
+.onair .ch .sig { transform-box: fill-box; transform-origin: center; animation: rise .5s ease-out both;
+  animation-delay: calc(var(--i) * 14ms); }
+.onair .ch .ghost, .onair .ch .ghostcore { animation: fadein .6s ease-out both; animation-delay: .6s; }
+@keyframes rise { from { transform: scaleY(0); opacity: 0; } }
+@keyframes fadein { from { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero .ch .hist { animation: none; stroke-dashoffset: 0; }
-  .hero .ch .cast, .hero .ch .castdot { animation: none; opacity: 1; }
-  .hero .ch .band { animation: none; opacity: .18; }
-  .ch .pulse { animation: none; opacity: 0; }
+  .needle { transition: none; }
+  .onair .ch .sig, .onair .ch .ghost, .onair .ch .ghostcore, .tuning .onair-title, .tuning .onair-cat { animation: none; }
 }
 
-/* Ачаалж байна / алдаа */
-.state { color: var(--muted); padding: var(--s7) 0; }
+.state { color: var(--dim); padding: 60px 0; }
 
-/* ───────── Утас ───────── */
-@media (max-width: 860px) {
-  .hero { grid-template-columns: 1fr; gap: var(--s6); }
-  .hero-chart { height: 230px; }
-  .row { grid-template-columns: 30px minmax(0, 1fr); }
-  .row-chart { grid-column: 1 / -1; height: 56px; }
+/* ══ Утас, таблет ══ */
+@media (max-width: 980px) {
+  .mixer { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .strip:nth-child(5) { border-right: 0; }
+  .strip:nth-child(-n+5) { border-bottom: 1px solid var(--groove); }
+}
+@media (max-width: 760px) {
+  .top { gap: 10px 24px; padding-top: 16px; }
+  .asof { width: 100%; margin: 0; }
+  .onair { grid-template-columns: 1fr; padding-bottom: 40px; }
+  .readout { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .readout div { padding-left: 10px; }
+  .readout dd { font-size: 22px; }
+  .wave { height: 170px; }
+  .dial-scale { height: 70px; }
+  .mixer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .strip { border-bottom: 1px solid var(--groove); }
+  .strip:nth-child(odd) { border-right: 1px solid var(--groove); }
+  .strip:nth-child(even) { border-right: 0; }
+  .strip-meter { height: 90px; }
+  .track { grid-template-columns: 40px minmax(0, 1fr) 96px; gap: 12px; }
+  .track .mini { grid-column: 1 / -1; height: 44px; }
+  .track h3 { font-size: 21px; }
   .mgrid { grid-template-columns: 1fr; }
-  .asof { width: 100%; margin: 0; order: 3; }
-  .top { gap: var(--s3) var(--s5); }
-  .topic-chart { height: 280px; }
+  .topic-wave { height: 220px; }
 }

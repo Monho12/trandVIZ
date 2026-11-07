@@ -3,39 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Шуугиан — дэлхий юуг шуугиж байна</title>
-  <meta name="description" content="Wikipedia-ийн хандалтаар дэлхийн анхаарлыг хэмжиж, ирэх 3 өдрийг таамагладаг.">
-  <meta name="theme-color" content="#0f1426">
-  <link rel="preload" href="/static/fonts/tektur-cyrillic-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <title>Шуугиан — дэлхийн шөнийн радио</title>
+  <meta name="description" content="Wikipedia-ийн хандалтаар дэлхийн анхаарлыг сонсож, ирэх 3 өдрийг таамагладаг.">
+  <meta name="theme-color" content="#15101c">
+  <link rel="preload" href="/static/fonts/cormorant-garamond-cyrillic-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/oswald-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/fonts.css">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <a class="skip" href="#main">Үндсэн агуулга руу шилжих</a>
 
   <header class="top">
-    <a class="brand" href="#/" aria-label="Шуугиан — нүүр">
-      <svg class="brand-mark" viewBox="0 0 28 20" aria-hidden="true">
-        <path d="M1 10h4l2-6 3 12 3-15 3 17 3-11 2 3h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <a class="brand" href="#/" aria-label="Шуугиан — эфир">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M7 19a10 10 0 0 1 18 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.5 2.2"/>
+        <line x1="16" y1="21" x2="21" y2="10" stroke="var(--glow)" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="21" r="1.8" fill="var(--glow)"/>
       </svg>
       <span>Шуугиан</span>
     </a>
     <nav class="nav" aria-label="Хуудсууд">
-      <a href="#/" data-route="trend">Тренд</a>
-      <a href="#/shuugian" data-route="shuugian">Шуугиан</a>
+      <a href="#/" data-route="air">Эфир</a>
+      <a href="#/list" data-route="list">Бүх станц</a>
       <a href="#/model" data-route="model">Загвар</a>
     </nav>
     <p class="asof" id="asof"></p>
   </header>
 
-  <div class="mock-note" id="mock-note" hidden>
-    Жишээ өгөгдөл: таамгууд одоохондоо хуурамч. Model Мягмар гарагт холбогдоно.
-  </div>
+  <p class="mock-note" id="mock-note" hidden>
+    Туршилтын дохио: таамгууд одоохондоо хуурамч. Жинхэнэ model Мягмар гарагт холбогдоно.
+  </p>
 
   <main id="main" tabindex="-1"></main>
 
   <footer class="foot">
-    <p>Өгөгдөл: Wikimedia Pageviews API, англи Wikipedia, зөвхөн хүний хандалт.
-      Таамаг: LightGBM, ирэх 3 өдөр. <a href="https://github.com/Monho12/trandVIZ">Код</a></p>
+    <p>Дохионы эх сурвалж: англи Wikipedia-ийн өдөр тутмын хандалт, зөвхөн хүн (Wikimedia Pageviews API).
+      Таамаг: LightGBM, ирэх 3 өдөр. <a href="https://github.com/Monho12/trandVIZ">Эх код</a></p>
   </footer>
 
   <script src="/static/charts.js"></script>

@@ -1,194 +1,230 @@
-// Шуугиан — энгийн hash router + хуудсууд
+// Шуугиан — шөнийн радио. Энгийн hash router + хуудсууд.
 (function () {
   const C = window.Charts;
   const main = document.getElementById("main");
   const CATS = {
-    politics: ["🏛️", "Улс төр"], film_tv: ["🎬", "Кино ба цуврал"], true_crime: ["🕯️", "True crime"],
-    tech_ai: ["🤖", "AI ба технологи"], sports: ["⚽", "Спорт"], music: ["🎵", "Хөгжим"],
-    games_anime: ["🎮", "Тоглоом ба anime"], celebs: ["💅", "Алдартнууд"], society: ["👥", "Нийгэм"],
+    politics: ["🏛️", "Улс төр"], film_tv: ["🎬", "Кино, цуврал"], true_crime: ["🕯️", "True crime"],
+    tech_ai: ["🤖", "AI, технологи"], sports: ["⚽", "Спорт"], music: ["🎵", "Хөгжим"],
+    games_anime: ["🎮", "Тоглоом, anime"], celebs: ["💅", "Алдартнууд"], society: ["👥", "Нийгэм"],
     mongolia: ["🇲🇳", "Монгол"], viral: ["🔥", "Вирал"],
   };
-  const cat = (k) => (CATS[k] || ["", k]).join(" ");
+  const ORDER = ["politics", "film_tv", "true_crime", "tech_ai", "sports", "music", "games_anime", "celebs", "society", "mongolia"];
+  const catName = (k) => (CATS[k] || ["", k])[1];
+  const catFull = (k) => (CATS[k] || ["", k]).join(" ");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
-  const surge = (r) => r >= 1.5
-    ? `<span class="x">×${r} хэвийнээс</span>`
-    : `<span class="x calm">хэвийн</span>`;
+  const freq = (i, n) => (88 + (i + 0.5) * (20 / n)).toFixed(1);   // FM 88–108 хуваарь дээрх байрлал
   const change = (t) => {
     const last = t.history[t.history.length - 1].v, y3 = t.forecast[t.forecast.length - 1].y;
     const p = Math.round((y3 / Math.max(last, 1) - 1) * 100);
     return p < 0 ? `↓ ${-p}%` : `↑ ${p}%`;
   };
+  // VU метр: хэвийнээс хэд дахин чанга байгааг 12 гэрлээр. Сүүлийн 3 нь улаан.
+  const vu = (ratio, n = 12) => {
+    const on = Math.max(1, Math.min(n, Math.round(4 + 2.4 * Math.log2(Math.max(ratio, 0.5)))));
+    return `<span class="vu" aria-hidden="true">${Array.from({ length: n }, (_, i) =>
+      `<i class="${i < on ? "on" : ""}${i >= n - 3 ? " red" : ""}"></i>`).join("")}</span>`;
+  };
 
-  // Дэлгэцийн хэмжээ өөрчлөгдөхөд графикуудыг дахин зурна
-  let redraws = [];
-  let rt;
+  let redraws = [], rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => redraws.forEach((f) => f()), 150); });
   const draw = (fn) => { redraws.push(fn); fn(); };
 
   const cache = {};
-  async function api(path) {
-    if (!cache[path]) cache[path] = fetch(path).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
-    return cache[path];
-  }
+  const api = (p) => (cache[p] ||= fetch(p).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }));
   function meta(d) {
-    document.getElementById("asof").textContent = `Өгөгдөл: ${d.asof} хүртэл`;
+    document.getElementById("asof").textContent = `Дохио: ${d.asof} хүртэл`;
     document.getElementById("mock-note").hidden = !d.mock;
   }
 
-  // ───────── Тренд (нүүр) ─────────
-  async function trend() {
+  // ═════════ Эфир (нүүр) ═════════
+  async function air() {
     const [tr, cs] = await Promise.all([api("/api/trending"), api("/api/categories")]);
     meta(tr);
-    const [top, ...rest] = tr.items;
+    // Тааруулагч дээр станцуудыг цагаан толгойн дарааллаар байрлуулна; зүү хамгийн чанга нь дээр очно
+    const st = [...tr.items].sort((a, b) => a.title.localeCompare(b.title));
+    const loud = tr.items[0];
+    const maxV = Math.max(...st.map((t) => Math.log10(t.views + 1))), minV = Math.min(...st.map((t) => Math.log10(t.views + 1)));
+    const chans = ORDER.map((k) => cs.categories.find((c) => c.key === k)).filter(Boolean);
+
     main.innerHTML = `
-      <section class="hero" aria-labelledby="hero-title">
-        <div>
-          <p class="hero-q">Дэлхий өчигдөр юуг хамгийн их шуугив?</p>
-          <h1 class="hero-title" id="hero-title"><a href="${href(top.article)}">${esc(top.title)}</a></h1>
-          <p class="hero-facts">
-            <span class="f-surge"><b>×${top.ratio}</b> хэвийнээс</span>
-            <span><b>${C.fmt(top.views)}</b> уншилт</span>
-            <span class="f-cast"><b>${change(top)}</b> 3 хоногт</span>
-          </p>
-          <div class="hero-chart" id="hero-chart"></div>
-          <ul class="legend">
-            <li class="lg-hist"><span>сүүлийн 30 хоног</span></li>
-            <li class="lg-now"><span>өчигдөр</span></li>
-            <li class="lg-cast"><span>таамаг ба 80% бүс</span></li>
-          </ul>
+      <section aria-labelledby="dial-h">
+        <h1 id="dial-h" class="skip">Станц сонгох</h1>
+        <div class="dial">
+          <div class="dial-scale" id="dial" role="group" aria-label="Станцууд: сум товчоор солино">
+            ${st.map((t, i) => `<button class="station${t.ratio >= 3 ? " hot" : ""}" style="left:${((i + 0.5) / st.length) * 100}%"
+                data-i="${i}" aria-pressed="false" tabindex="-1" aria-label="${esc(t.title)}, хэвийнээс ×${t.ratio}">
+                <i style="height:${18 + 70 * ((Math.log10(t.views + 1) - minV) / Math.max(maxV - minV, 0.01))}%"></i></button>`).join("")}
+            <span class="needle" id="needle" aria-hidden="true"></span>
+          </div>
+          <div class="dial-nums" aria-hidden="true">${[88, 92, 96, 100, 104, 108].map((f) => `<span>${f}</span>`).join("")}</div>
+          <p class="dial-hint">Станц бүр нэг сэдэв. Өндөр зураас нь их уншигдсан, улаан нь хэвийнээсээ 3+ дахин чанга. Дарж эсвэл ← → товчоор тааруулна.</p>
         </div>
-        <aside class="side" aria-labelledby="side-h">
-          <h2 id="side-h">Дараагийнх нь</h2>
-          <ol>${rest.slice(0, 8).map((t) => `
-            <li><a href="${href(t.article)}">${esc(t.title)}<span class="cat">${cat(t.category)}</span></a>${surge(t.ratio)}</li>`).join("")}
-          </ol>
-        </aside>
       </section>
-      <section class="sec" aria-labelledby="cats-h">
-        <h2 id="cats-h">Ангилал бүрээр</h2>
-        <p class="sec-lead">Ангилал бүрийн хамгийн их уншигдаж буй сэдвүүд. Жижиг график бүрийн баруун хэсэг нь ирэх 3 өдрийн таамаг.</p>
-        <div class="cats">${cs.categories.map((c) => `
-          <div class="cat-block">
-            <h3>${cat(c.key)}</h3>
-            <ul>${c.topics.map((t, i) => `
-              <li><a href="${href(t.article)}">${esc(t.title)}</a><div class="spark" data-k="${c.key}" data-i="${i}"></div></li>`).join("")}
-            </ul>
-          </div>`).join("")}
+      <section class="onair" id="onair" aria-live="polite"></section>
+      <section class="sec" aria-labelledby="mix-h">
+        <h2 id="mix-h" class="sec-h">Арван суваг</h2>
+        <p class="sec-lead">Ангилал бүр нэг суваг. Метр нь тухайн сувгийн хамгийн чанга сэдэв хэвийн хэмжээнээсээ хэд дахин өссөнийг заана.</p>
+        <div class="mixer">${chans.map((c) => {
+          const lead = [...c.topics].sort((a, b) => b.ratio - a.ratio)[0];
+          const on = Math.max(1, Math.min(14, Math.round(5 + 2.6 * Math.log2(Math.max(lead.ratio, 0.5)))));
+          return `<div class="strip">
+            <div class="strip-meter" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => `<i class="${i < on ? "on" : ""}${i >= 11 ? " red" : ""}"></i>`).join("")}</div>
+            <div class="strip-val${lead.ratio >= 3 ? " red" : ""}">×${lead.ratio}</div>
+            <h3><span aria-hidden="true">${CATS[c.key][0]}</span>${catName(c.key)}</h3>
+            <ul>${c.topics.slice(0, 3).map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a></li>`).join("")}</ul>
+          </div>`; }).join("")}
         </div>
       </section>`;
-    draw(() => C.series(document.getElementById("hero-chart"), { ...top, axis: true, pulse: true,
-      label: `${top.title}: сүүлийн 30 хоногийн хандалт ба ирэх 3 өдрийн таамаг` }));
-    const byKey = Object.fromEntries(cs.categories.map((c) => [c.key, c.topics]));
-    draw(() => main.querySelectorAll(".spark").forEach((b) => {
-      const t = byKey[b.dataset.k][+b.dataset.i];
-      C.series(b, { history: t.history, forecast: t.forecast, label: `${t.title} жижиг график` });
-    }));
+
+    const dial = document.getElementById("dial"), needle = document.getElementById("needle");
+    const btns = [...dial.querySelectorAll(".station")];
+    let cur = st.indexOf(loud);
+
+    function placeNeedle() { needle.style.transform = `translateX(${dial.clientWidth * ((cur + 0.5) / st.length) - 1}px)`; }
+    function tune(i, focus) {
+      cur = (i + st.length) % st.length;
+      btns.forEach((b, j) => { b.setAttribute("aria-pressed", j === cur); b.tabIndex = j === cur ? 0 : -1; });
+      if (focus) btns[cur].focus();
+      placeNeedle();
+      const t = st[cur], box = document.getElementById("onair");
+      box.classList.remove("tuning"); void box.offsetWidth; box.classList.add("tuning");
+      box.innerHTML = `
+        <p class="onair-kicker">Одоо ${freq(cur, st.length)} FM эфирт</p>
+        <div>
+          <h2 class="onair-title"><a href="${href(t.article)}">${esc(t.title)}</a></h2>
+          <p class="onair-cat">${catFull(t.category)}</p>
+        </div>
+        <dl class="readout">
+          <div><dt>Хэвийнээс</dt><dd class="${t.ratio >= 1.5 ? "r-clip" : ""}">×${t.ratio}</dd>${vu(t.ratio)}</div>
+          <div><dt>Өчигдөр уншсан</dt><dd>${C.fmt(t.views)}</dd></div>
+          <div><dt>3 хоногийн дараа</dt><dd class="r-ghost">${change(t)}</dd></div>
+        </dl>
+        <div class="wave-wrap">
+          <div class="wave" id="wave"></div>
+          <ul class="wave-legend">
+            <li class="wl-sig">сүүлийн 30 хоногийн уншилт, өдөр бүр нэг багана</li>
+            <li class="wl-ghost">ирэх 3 өдрийн таамаг, 80% бүсээр</li>
+          </ul>
+        </div>`;
+      redraws = redraws.filter((f) => !f.wave);
+      const fn = () => C.wave(document.getElementById("wave"), { ...t, axis: true,
+        label: `${t.title}: сүүлийн 30 хоногийн уншилт ба ирэх 3 өдрийн таамаг` });
+      fn.wave = true; draw(fn);
+    }
+    btns.forEach((b) => b.addEventListener("click", () => tune(+b.dataset.i)));
+    dial.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") { e.preventDefault(); tune(cur + 1, true); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); tune(cur - 1, true); }
+    });
+    redraws.push(placeNeedle);
+    tune(cur);
   }
 
-  // ───────── Шуугиан ─────────
-  async function shuugian() {
+  // ═════════ Бүх станц ═════════
+  async function list() {
     const tr = await api("/api/trending");
     meta(tr);
     main.innerHTML = `
-      <section class="sec" aria-labelledby="sh-h" style="padding-top:8px">
-        <h1 id="sh-h" class="hero-title" style="font-size:clamp(30px,4vw,44px)">Шуугиан</h1>
-        <p class="sec-lead">Өчигдөр хамгийн их уншигдсан сэдвүүд, хэвийн хэмжээнээсээ хэд дахин өссөнөөр нь эрэмбэлэв.
-          Шугамын шар цэг өчигдрийг, баруун талын зураасан бүс ирэх 3 өдрийн таамгийг заана.</p>
-        <ol class="rows">${tr.items.map((t, i) => `
-          <li class="row">
-            <span class="rk">${i + 1}</span>
+      <section class="sec" style="padding-top:28px" aria-labelledby="l-h">
+        <h1 id="l-h" class="sec-h">Бүх станц</h1>
+        <p class="sec-lead">Өчигдөр хамгийн их уншигдсан ${tr.items.length} сэдэв, хэвийн хэмжээнээсээ хэд дахин чанга байгаагаар нь эрэмбэлэв.
+          Шар багана бол бодит уншилт, бүдэг ягаан сүүдэр бол ирэх 3 өдрийн таамаг.</p>
+        <ol class="tracks">${tr.items.map((t, i) => `
+          <li class="track">
+            <span class="freq">${freq(i, tr.items.length)}</span>
             <div>
               <h3><a href="${href(t.article)}">${esc(t.title)}</a></h3>
-              <p class="meta">${surge(t.ratio)}<span>${C.fmt(t.views)} уншилт</span><span>${cat(t.category)}</span><span>3 хоногт ${change(t)}</span></p>
+              <p class="cat"><span>${catFull(t.category)}</span><span>${C.fmt(t.views)} уншилт</span><span>3 хоногт ${change(t)}</span></p>
             </div>
-            <div class="row-chart" data-i="${i}"></div>
+            <div class="lvl"><b class="${t.ratio >= 3 ? "red" : ""}">×${t.ratio}</b> хэвийнээс${vu(t.ratio)}</div>
+            <div class="mini" data-i="${i}"></div>
           </li>`).join("")}
         </ol>
       </section>`;
-    draw(() => main.querySelectorAll(".row-chart").forEach((b) => {
+    draw(() => main.querySelectorAll(".mini").forEach((b) => {
       const t = tr.items[+b.dataset.i];
-      C.series(b, { history: t.history, forecast: t.forecast, label: `${t.title}: 30 хоног ба таамаг` });
+      C.wave(b, { history: t.history, forecast: t.forecast, label: `${t.title}: 30 хоног ба таамаг` });
     }));
   }
 
-  // ───────── Нэг сэдэв ─────────
+  // ═════════ Нэг станц ═════════
   async function topic(article) {
     const t = await api("/api/topic/" + encodeURIComponent(article));
     meta(t);
-    const h = t.history, med = [...h.slice(-30)].map((p) => p.v).sort((a, b) => a - b)[15];
+    const s = t.history.slice(-30).map((p) => p.v).sort((a, b) => a - b), med = s[15];
     main.innerHTML = `
-      <section class="sec" style="padding-top:8px" aria-labelledby="t-h">
-        <a class="back" href="#/">← Тренд руу буцах</a>
-        <p class="hero-q" style="margin-top:24px">${cat(t.category)}</p>
-        <h1 id="t-h" class="hero-title" style="font-size:clamp(30px,4.6vw,52px)">${esc(t.title)}</h1>
-        <div class="topic-chart" id="topic-chart"></div>
-        <dl class="stats">
-          <div><dt>Өчигдөр</dt><dd>${C.fmt(t.views)}</dd></div>
-          <div><dt>30 хоногийн медиан</dt><dd>${C.fmt(med)}</dd></div>
-          <div><dt>Хэвийнээс</dt><dd style="color:var(--surge)">×${t.ratio}</dd></div>
-          <div><dt>3 хоногийн дараа</dt><dd style="color:var(--cast)">${change(t)}</dd></div>
+      <a class="back" href="#/">← Эфир рүү буцах</a>
+      <section class="onair" style="border:0;padding-bottom:0" aria-labelledby="t-h">
+        <p class="onair-kicker plain">${catFull(t.category)}</p>
+        <div>
+          <h1 id="t-h" class="onair-title">${esc(t.title)}</h1>
+        </div>
+        <dl class="readout">
+          <div><dt>Хэвийнээс</dt><dd class="${t.ratio >= 1.5 ? "r-clip" : ""}">×${t.ratio}</dd>${vu(t.ratio)}</div>
+          <div><dt>Өчигдөр уншсан</dt><dd>${C.fmt(t.views)}</dd></div>
+          <div><dt>Ердийн өдөр (30 хоногийн медиан)</dt><dd>${C.fmt(med)}</dd></div>
+          <div><dt>3 хоногийн дараа</dt><dd class="r-ghost">${change(t)}</dd></div>
         </dl>
-        <table class="fc-table">
-          <caption class="note" style="text-align:left;caption-side:top;padding-bottom:8px">Ирэх 3 өдрийн таамаг. 80% бүс нь өмнөх үеийн бодит алдаанаас тооцоологдсон.</caption>
-          <thead><tr><th>Өдөр</th><th>Доод</th><th>Таамаг</th><th>Дээд</th></tr></thead>
-          <tbody>${t.forecast.map((f) => `<tr><td>${f.d}</td><td>${C.fmt(f.lo)}</td><td class="y">${C.fmt(f.y)}</td><td>${C.fmt(f.hi)}</td></tr>`).join("")}</tbody>
-        </table>
-      </section>`;
-    draw(() => C.series(document.getElementById("topic-chart"), { ...t, axis: true, pulse: true,
-      label: `${t.title}: 180 хоногийн хандалт ба 3 өдрийн таамаг` }));
+      </section>
+      <div class="topic-wave" id="tw"></div>
+      <table class="fc">
+        <caption>Ирэх 3 өдрийн таамаг. 80% бүсийг model-ийн өмнөх үеийн бодит алдаанаас тооцоолсон.</caption>
+        <thead><tr><th>Өдөр</th><th>Доод</th><th>Таамаг</th><th>Дээд</th></tr></thead>
+        <tbody>${t.forecast.map((f) => `<tr><td>${f.d}</td><td>${C.fmt(f.lo)}</td><td class="y">${C.fmt(f.y)}</td><td>${C.fmt(f.hi)}</td></tr>`).join("")}</tbody>
+      </table>`;
+    draw(() => C.wave(document.getElementById("tw"), { ...t, axis: true, label: `${t.title}: 180 хоногийн уншилт ба 3 өдрийн таамаг` }));
   }
 
-  // ───────── Загвар ─────────
+  // ═════════ Загвар ═════════
   async function model() {
     const m = await api("/api/model");
     meta(m);
     main.innerHTML = `
-      <section class="sec" style="padding-top:8px" aria-labelledby="m-h">
-        <h1 id="m-h" class="hero-title" style="font-size:clamp(30px,4vw,44px)">Загвар хэр сайн бэ?</h1>
-        <p class="sec-lead">Таамаг бүрийг энгийн аргуудтай харьцуулж шалгасан. Model тэднээс сайн биш бол ашиглах утгагүй.</p>
+      <section class="sec" style="padding-top:28px" aria-labelledby="m-h">
+        <h1 id="m-h" class="sec-h">Загвар хэр сайн сонсдог вэ?</h1>
+        <p class="sec-lead">Таамаг бүрийг хоёр энгийн аргатай харьцуулсан. Model тэднээс сайн биш бол ашиглах утгагүй.</p>
         <div class="mgrid">
           <div>
-            <h2>Алдаа (бага байх тусам сайн)</h2>
+            <h3>Алдаа, бага байх тусам сайн</h3>
             <div class="mchart" id="m-bars"></div>
-            <p class="note">MAE, log хуваарьт. "Өчигдрийнх шиг" нь маргаашийг өнөөдрийнхтэй адил гэж үздэг. "7 хоногийн өмнөх" нь яг долоо хоногийн өмнөх утгыг давтана.</p>
+            <p class="note">MAE, log хуваарьт. "Өчигдрийнх шиг" нь маргаашийг өнөөдөртэй адил гэж үздэг. "7 хоногийн өмнөх" нь яг долоо хоногийн өмнөх утгыг давтана.</p>
           </div>
           <div>
-            <h2>Overfit болсон уу?</h2>
+            <h3>Overfit болсон уу?</h3>
             <div class="mchart" id="m-curve"></div>
-            <p class="note">Саарал нь сургалтын, цэнхэр нь validation алдаа. Validation алдаа буурахаа больсон цэгт (early stop) сургалтыг зогсоосон.</p>
+            <p class="note">Саарал нь сургалтын, шар нь validation алдаа. Validation алдаа буурахаа больсон цэгт сургалтыг зогсоосон (early stopping).</p>
           </div>
           <div style="grid-column:1/-1">
-            <h2>Юу хамгийн их нөлөөлж байна?</h2>
+            <h3>Юу хамгийн их нөлөөлж байна?</h3>
             <div class="mchart" id="m-imp" style="height:300px"></div>
-            <p class="note">Feature importance (gain). lag_1 = өчигдрийн утга, ratio_7 = 7 хоногийн дундажтай харьцуулсан өсөлт.</p>
+            <p class="note">Feature importance (gain). lag_1 нь өчигдрийн утга, ratio_7 нь 7 хоногийн дундажтай харьцуулсан өсөлт.</p>
           </div>
         </div>
       </section>`;
     draw(() => C.bars(document.getElementById("m-bars"), m.metrics, ["model", "naive", "seasonal"],
-      ["LightGBM", "Өчигдрийнх шиг", "7 хоногийн өмнөх"], "Model-ийн алдааг энгийн аргуудтай харьцуулсан график"));
+      ["LightGBM", "Өчигдрийнх шиг", "7 хоногийн өмнөх"], "Model-ийн алдааг энгийн аргуудтай харьцуулсан"));
     draw(() => C.curve(document.getElementById("m-curve"), m.curve, m.best_iter, "Сургалт ба validation алдааны муруй"));
     draw(() => C.hbars(document.getElementById("m-imp"), m.importance, "Feature importance"));
   }
 
-  // ───────── Router ─────────
+  // ═════════ Router ═════════
   async function route() {
     redraws = [];
-    const h = location.hash.replace(/^#\/?/, "");
-    const [page, arg] = h.split("/");
-    const name = page === "shuugian" ? "shuugian" : page === "model" ? "model" : page === "topic" ? "topic" : "trend";
+    const [page, arg] = location.hash.replace(/^#\/?/, "").split("/");
+    const name = ["list", "model", "topic"].includes(page) ? page : "air";
     document.querySelectorAll(".nav a").forEach((a) =>
       a.dataset.route === name ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-    main.innerHTML = `<p class="state">Ачаалж байна…</p>`;
+    main.innerHTML = `<p class="state">Тааруулж байна…</p>`;
     try {
-      if (name === "shuugian") await shuugian();
+      if (name === "list") await list();
       else if (name === "model") await model();
       else if (name === "topic") await topic(decodeURIComponent(arg || ""));
-      else await trend();
+      else await air();
     } catch (e) {
-      main.innerHTML = `<p class="state">Өгөгдөл ачаалж чадсангүй (${esc(e.message)}). Хуудсыг дахин ачаалж үзнэ үү.</p>`;
+      main.innerHTML = `<p class="state">Дохио ирсэнгүй (${esc(e.message)}). Хуудсыг дахин ачаалж үзнэ үү.</p>`;
     }
-    if (name !== "trend") main.focus({ preventScroll: true });
+    if (name !== "air") main.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", route);
