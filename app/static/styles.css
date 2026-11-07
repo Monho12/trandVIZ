@@ -189,3 +189,26 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
   .mgrid { grid-template-columns: 1fr; }
   .focus.topic .chart { height: 240px; }
 }
+
+/* ── Сонирхолтой ── */
+.fgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.fcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px 16px; }
+.fcard.wide { grid-column: 1 / -1; }
+.fcard h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-2); }
+.big { margin: 6px 0 14px; font-size: 19px; line-height: 1.3; color: var(--text-2); }
+.big b { color: var(--text); font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+.fchart { position: relative; height: 200px; }
+.minis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.mini-h { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.mini-s { margin: 4px 0 0; font-size: 13px; color: var(--blue); font-weight: 600; }
+.fchart.mini { height: 110px; }
+.ch .b-soft { fill: #c9d9ee; }
+.ch .l-c1, .ch .l-c2, .ch .l-c3 { fill: none; stroke-width: 2; }
+.ch path.l-c1 { stroke: #2a78d6; } .ch path.l-c2 { stroke: #eb6834; } .ch path.l-c3 { stroke: #1baf7a; }
+.ch text.lname { font: 600 12px var(--font); }
+.ch text.l-c1 { fill: #1f5ea8; } .ch text.l-c2 { fill: #b4461a; } .ch text.l-c3 { fill: #11724f; }
+@media (max-width: 760px) {
+  .fgrid { grid-template-columns: 1fr; }
+  .minis { grid-template-columns: 1fr 1fr; }
+  .big b { font-size: 24px; }
+}

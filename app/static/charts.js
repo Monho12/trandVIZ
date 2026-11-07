@@ -172,5 +172,47 @@
     });
   }
 
-  window.Charts = { columns, groups, curve, hbars, fmt, longDate };
+  /** Энгийн босоо багана: hi = тодруулах багануудын индекс, base = дундаж шугам (жишээ нь 100) */
+  function bars(box, values, { labels = [], hi = [], valLabels = {}, base, minY = 0, label } = {}) {
+    const { svg, w, h } = svgFor(box, label);
+    const pad = { t: 22, b: 22 }, n = values.length, slot = w / n, bw = Math.max(2, slot * 0.68);
+    const max = Math.max(...values), lo = minY, Y = (v) => h - pad.b - ((v - lo) / (max - lo)) * (h - pad.t - pad.b);
+    values.forEach((v, i) => {
+      const x = i * slot + (slot - bw) / 2, y = Y(Math.max(v, lo));
+      el("path", { class: hi.includes(i) ? "b-blue" : "b-soft", d: colPath(x, y, bw, h - pad.b - y) }, svg);
+      if (valLabels[i] != null) el("text", { class: "val", x: x + bw / 2, y: y - 6, "text-anchor": "middle" }, svg).textContent = valLabels[i];
+      if (labels[i]) el("text", { class: "tick", x: x + bw / 2, y: h - 5, "text-anchor": "middle" }, svg).textContent = labels[i];
+    });
+    if (base != null) el("line", { class: "norm", x1: 0, x2: w, y1: Y(base), y2: Y(base) }, svg);
+    el("line", { class: "base", x1: 0, x2: w, y1: h - pad.b, y2: h - pad.b }, svg);
+  }
+
+  /** Хэвтээ багана, утгатай: эхний hiN нь тод цэнхэр */
+  function hbarsV(box, rows, { fmt: f = fmt, hiN = 1, label } = {}) {
+    const { svg, w, h } = svgFor(box, label);
+    const lw = Math.min(170, w * 0.38), max = Math.max(...rows.map((r) => r.v)), rh = h / rows.length;
+    rows.forEach((r, i) => {
+      const y = i * rh, bw = Math.max(2, (r.v / max) * (w - lw - 70)), bh = Math.min(18, rh * 0.62);
+      el("text", { class: i < hiN ? "val" : "tick", x: lw - 10, y: y + rh / 2 + 4, "text-anchor": "end", "font-size": 13 }, svg).textContent = r.name;
+      el("rect", { class: i < hiN ? "b-blue" : "b-soft", x: lw, y: y + (rh - bh) / 2, width: bw, height: bh, rx: 4 }, svg);
+      el("text", { class: i < hiN ? "val" : "val2", x: lw + bw + 8, y: y + rh / 2 + 4 }, svg).textContent = f(r.v);
+    });
+  }
+
+  /** Олон шугам (3 хүртэл), нэрийг шугамын оргил дээр шууд бичнэ */
+  function lines(box, months, series, { label } = {}) {
+    const { svg, w, h } = svgFor(box, label);
+    const pad = { l: 0, r: 0, t: 22, b: 22 }, keys = Object.keys(series), cls = ["l-c1", "l-c2", "l-c3"];
+    const max = Math.max(...keys.flatMap((k) => series[k]));
+    const X = (i) => pad.l + (i / (months.length - 1)) * (w - pad.l - pad.r);
+    const Y = (v) => h - pad.b - (v / max) * (h - pad.t - pad.b);
+    el("line", { class: "base", x1: 0, x2: w, y1: h - pad.b, y2: h - pad.b }, svg);
+    months.forEach((m, i) => { if (m.endsWith("-01")) el("text", { class: "tick", x: X(i), y: h - 5, "text-anchor": "middle" }, svg).textContent = m.slice(0, 4); });
+    keys.forEach((k, j) => {
+      const v = series[k];
+      el("path", { class: cls[j], d: "M" + v.map((y, i) => `${X(i).toFixed(1)},${Y(y).toFixed(1)}`).join(" L") }, svg);
+    });
+  }
+
+  window.Charts = { columns, groups, curve, hbars, bars, hbarsV, lines, fmt, longDate };
 })();

@@ -47,6 +47,12 @@ def topic(article: str):
     return {"asof": _load("topics")["asof"], "mock": True, **t}
 
 
+@app.get("/api/insights")
+def insights():
+    """"Сонирхолтой" хуудасны баримтууд (бодит өгөгдлөөс тооцоолсон)."""
+    return _load("insights")
+
+
 @app.get("/api/model")
 def model():
     """Model-ийн үнэлгээ: baseline-тай харьцуулалт, сургалтын муруй, feature importance."""

@@ -43,21 +43,17 @@
         <span class="focus-cat">${cat(t.category)}</span>
       </div>
       <dl class="tiles">
-        <div class="tile t-blue"><dt>Өчигдөр уншсан</dt><dd>${C.fmt(t.views)}</dd>
-          <p class="hint">Энэ нийтлэлийг өчигдөр нээсэн тоо</p></div>
-        <div class="tile"><dt>Ердийн өдөр</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `өчигдөр ${t.ratio} дахин их` : "өчигдөр ердийнхөөрөө"}</small></dd>
-          <p class="hint">Сүүлийн 2 сарын ердийн нэг өдөр</p></div>
-        <div class="tile t-orange"><dt>3 өдрийн дараа</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small></dd>
-          <p class="hint">Model-ийн таамаг</p></div>
+        <div class="tile t-blue"><dt>Өчигдөр</dt><dd>${C.fmt(t.views)}</dd></div>
+        <div class="tile"><dt>Ердийн өдөр</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `×${t.ratio}` : ""}</small></dd></div>
+        <div class="tile t-orange"><dt>3 өдрийн дараа (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small></dd></div>
       </dl>
-      <p class="chart-h">Өдөр бүр хэдэн хүн уншсан бэ?</p>
-      <p class="chart-sub">Багана бүр нэг өдөр. Өндөр байх тусам тэр өдөр олон хүн уншсан. Сүүлийн ${days} хоног, дараа нь ирэх 3 өдрийн таамаг.</p>
+      <p class="chart-h">Өдөр бүрийн уншилт</p>
       <div class="chart" id="chart"></div>
       <ul class="key">
-        <li><i class="k-blue"></i>Бодитоор уншсан</li>
+        <li><i class="k-blue"></i>Бодит</li>
         <li><i class="k-orange"></i>Таамаг</li>
-        <li><i class="k-norm"></i>Ердийн өдрийн түвшин</li>
-        <li><i class="k-range"></i>Бодит утга 10-аас 8 удаа энэ зураасан дотор гарна</li>
+        <li><i class="k-norm"></i>Ердийн өдөр</li>
+        <li><i class="k-range"></i>Таамгийн хүрээ</li>
       </ul>`;
   }
   const drawFocus = (t) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.views / Math.max(t.ratio, 0.01),
@@ -71,14 +67,13 @@
     const chans = ORDER.map((k) => cs.categories.find((c) => c.key === k)).filter(Boolean);
     main.innerHTML = `
       <h1 class="page-h">Өчигдөр дэлхий юуг хамгийн их уншив?</h1>
-      <p class="lead">Wikipedia-ийн уншилтаар хэвийн хэмжээнээсээ хамгийн их өссөн сэдвүүд. ▲ ×3 гэвэл ердийн өдрөөс 3 дахин их уншигдсан гэсэн үг. Сэдэв сонгоход график солигдоно.</p>
+      <p class="lead">▲ ×3 = ердийн өдрөөс 3 дахин их уншигдсан</p>
       <ul class="picker" aria-label="Сэдэв сонгох">${top.map((t, i) => `
         <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${surge(t.ratio, true)}</button></li>`).join("")}
       </ul>
       <section class="focus" id="focus" aria-live="polite"></section>
       <section class="sec" aria-labelledby="cat-h">
         <h2 id="cat-h">Ангилал бүрээр</h2>
-        <p class="lead">Ангилал бүрийн хамгийн их уншигдсан сэдвүүд. Улаан ▲ ×2 нь өчигдөр ердийнхөөсөө 2 дахин их уншигдсан, саарал "хэвийн" нь ердийн хэмжээндээ гэсэн үг.</p>
         <div class="cats">${chans.map((c) => `
           <div class="cat">
             <h3>${cat(c.key)}</h3>
@@ -106,8 +101,7 @@
     meta(tr);
     main.innerHTML = `
       <h1 class="page-h">Бүх сэдэв</h1>
-      <p class="lead">Өчигдөр хамгийн их уншигдсан ${tr.items.length} сэдэв, хэвийн хэмжээнээсээ хэд дахин өссөнөөр нь эрэмбэлэв.
-        Цэнхэр нь сүүлийн 30 хоногийн бодит уншилт, улбар шар нь ирэх 3 өдрийн таамаг.</p>
+      <p class="lead">Цэнхэр = бодит, улбар шар = таамаг</p>
       <ol class="rows">${tr.items.map((t, i) => `
         <li class="row">
           <span class="rk">${i + 1}</span>
@@ -146,30 +140,27 @@
     meta(m);
     main.innerHTML = `
       <h1 class="page-h">Загвар хэр сайн таамагладаг вэ?</h1>
-      <p class="lead">Таамаг бүрийг хоёр энгийн аргатай харьцуулсан. Model тэднээс сайн биш бол ашиглах утгагүй.</p>
+      <p class="lead">Энгийн аргуудаас илүү зөв үү?</p>
       <div class="mgrid">
         <div class="mcard">
           <h3>Хэр их алддаг вэ?</h3>
-          <p class="chart-sub">Багана богино байх тусам таамаг илүү зөв.</p>
+          <p class="chart-sub">Богино = илүү зөв</p>
           <div class="mchart" id="m-bars"></div>
           <ul class="key">
             <li><i class="k-blue"></i>LightGBM</li>
             <li><i style="background:var(--gray-bar)"></i>Өчигдрийнх шиг</li>
             <li><i style="background:var(--gray-bar);opacity:.6"></i>7 хоногийн өмнөх шиг</li>
           </ul>
-          <p class="note">Цэнхэр нь манай model. Саарал хоёр нь харьцуулах энгийн аргууд: "өчигдрийнх шиг" нь маргааш өнөөдөртэй яг адилхан гэж таамагладаг, "7 хоногийн өмнөх шиг" нь долоо хоногийн өмнөхийг давтдаг. Цэнхэр багана хамгийн богино бол model тэднээс илүү зөв гэсэн үг. (Хэмжүүр: MAE, log хуваарьт.)</p>
         </div>
         <div class="mcard">
-          <h3>Model цээжилсэн үү, сурсан уу? (overfit)</h3>
-          <p class="chart-sub">Хоёр шугам ойрхон байвал сайн.</p>
+          <h3>Overfit болсон уу?</h3>
+          <p class="chart-sub">Хоёр шугам ойрхон = сайн</p>
           <div class="mchart" id="m-curve"></div>
-          <p class="note">Зүүнээс баруун тийш сургалт явна, доошлох тусам алдаа бага. Саарал шугам нь model-ийн сурсан өгөгдөл дээрх алдаа, цэнхэр нь model хэзээ ч хараагүй өгөгдөл дээрх алдаа (validation). Цэнхэр шугам буурахаа больсон цэгт (улбар шар тасархай) сургалтыг зогсоосон буюу early stopping.</p>
         </div>
         <div class="mcard" style="grid-column:1/-1">
           <h3>Таамаглахад юу хамгийн их тусалдаг вэ?</h3>
-          <p class="chart-sub">Урт багана нь model хамгийн их ашигладаг мэдээлэл.</p>
+          <p class="chart-sub">Урт = илүү чухал</p>
           <div class="mchart" id="m-imp" style="height:290px"></div>
-          <p class="note">Feature importance (gain). Хувиуд нийлээд 100% болно.</p>
         </div>
       </div>`;
     draw(() => C.groups(document.getElementById("m-bars"), m.metrics, ["model", "naive", "seasonal"], [], "Model-ийн алдааг энгийн аргуудтай харьцуулсан"));
@@ -180,17 +171,78 @@
     draw(() => C.hbars(document.getElementById("m-imp"), m.importance.map((r) => ({ ...r, f: FEAT[r.f] || r.f })), "Feature importance"));
   }
 
+  // ═════════ Сонирхолтой ═════════
+  async function facts() {
+    const d = await api("/api/insights");
+    document.getElementById("mock-note").hidden = true;
+    const dec3 = Math.round(d.decay[3]);
+    const topCat = d.categories[0];
+    const pick = [["tech_ai", "Ажлын өдөр"], ["sports", "Ням гараг"], ["true_crime", "Амралтын өдөр"], ["film_tv", "Ням гараг"]];
+    const mn = d.mongolia[0];
+    main.innerHTML = `
+      <h1 class="page-h">Сонирхолтой</h1>
+      <p class="lead">Wikipedia-ийн 5 жилийн өгөгдлөөс</p>
+      <div class="fgrid">
+        <section class="fcard">
+          <h3>Шуугиан хэр хурдан мартагддаг вэ?</h3>
+          <p class="big"><b>${dec3}%</b> нь л 3 хоногийн дараа үлддэг</p>
+          <div class="fchart" id="f-decay"></div>
+        </section>
+        <section class="fcard">
+          <h3>Дэлхий юуг хамгийн их уншдаг вэ?</h3>
+          <p class="big"><b>${CATS[topCat.key][1]}</b> сүүлийн 30 хоногт</p>
+          <div class="fchart" id="f-cats" style="height:250px"></div>
+        </section>
+        <section class="fcard wide">
+          <h3>Аль гарагт юу уншдаг вэ?</h3>
+          <p class="big">Ажлын өдөр <b>AI</b>, амралтын өдөр <b>спорт, true crime</b></p>
+          <div class="minis">${pick.map(([k, when]) => `
+            <div><p class="mini-h">${cat(k)}</p><div class="fchart mini" data-k="${k}"></div><p class="mini-s">${when}</p></div>`).join("")}
+          </div>
+        </section>
+        <section class="fcard">
+          <h3>Баяр жил бүр давтагддаг</h3>
+          <p class="big"><b>Хамгийн таамаглахад амар</b> сэдэв</p>
+          <div class="fchart" id="f-hol"></div>
+          <ul class="key"><li><i style="background:#2a78d6"></i>Зул сар</li><li><i style="background:#eb6834"></i>Halloween</li><li><i style="background:#1baf7a"></i>Валентин</li></ul>
+        </section>
+        <section class="fcard">
+          <h3>Дэлхий Монголын юуг уншдаг вэ?</h3>
+          <p class="big"><b>${Math.round(mn.share)}%</b> нь ${mn.title === "Genghis Khan" ? "Чингис хаан" : esc(mn.title)}</p>
+          <div class="fchart" id="f-mn" style="height:220px"></div>
+        </section>
+      </div>`;
+    const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
+    draw(() => C.bars(document.getElementById("f-decay"), d.decay, {
+      labels: d.decay.map((_, i) => (i === 0 ? "оргил" : [3, 7, 14].includes(i) ? `${i} хоног` : "")),
+      hi: [0, 3], valLabels: { 0: "100%", 3: `${dec3}%`, 7: `${Math.round(d.decay[7])}%` }, label: "Оргилын дараах өдрүүдэд анхаарал хэдэн хувь үлддэг вэ" }));
+    draw(() => C.hbarsV(document.getElementById("f-cats"), d.categories.map((c) => ({ name: catOnly(c.key), v: c.views })),
+      { fmt: C.fmt, hiN: 1, label: "Ангилал бүрийн сүүлийн 30 хоногийн уншилт" }));
+    draw(() => main.querySelectorAll(".mini").forEach((b) => {
+      const v = d.weekday[b.dataset.k], mx = v.indexOf(Math.max(...v));
+      C.bars(b, v, { labels: DAYS, hi: [mx], base: 100, minY: 70, label: `${catOnly(b.dataset.k)}: гарагаар` });
+    }));
+    draw(() => C.lines(document.getElementById("f-hol"), d.holidays.months, d.holidays.series,
+      { label: "Баярын нийтлэлүүдийн сар бүрийн уншилт" }));
+    draw(() => C.hbarsV(document.getElementById("f-mn"), d.mongolia.map((r) => ({ name: MN[r.title] || r.title, v: r.share })),
+      { fmt: (v) => Math.round(v) + "%", hiN: 1, label: "Монголын сэдвүүдийн эзлэх хувь" }));
+  }
+  const catOnly = (k) => (CATS[k] || ["", k])[1];
+  const MN = { "Genghis Khan": "Чингис хаан", Mongolia: "Монгол Улс", "Mongol Empire": "Монголын эзэнт гүрэн",
+    "Kublai Khan": "Хубилай хаан", "Golden Horde": "Алтан Орд", Ulaanbaatar: "Улаанбаатар", Mongols: "Монголчууд", "Ögedei Khan": "Өгөдэй хаан" };
+
   // ═════════ Router ═════════
   async function route() {
     redraws = [];
     document.getElementById("tip").hidden = true;
     const [page, arg] = location.hash.replace(/^#\/?/, "").split("/");
-    const name = ["list", "model", "topic"].includes(page) ? page : "home";
+    const name = ["list", "model", "topic", "facts"].includes(page) ? page : "home";
     document.querySelectorAll(".nav a").forEach((a) =>
       a.dataset.route === name ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
     main.innerHTML = `<p class="state">Ачаалж байна…</p>`;
     try {
       if (name === "list") await list();
+      else if (name === "facts") await facts();
       else if (name === "model") await model();
       else if (name === "topic") await topic(decodeURIComponent(arg || ""));
       else await home();
