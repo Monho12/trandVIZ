@@ -43,19 +43,24 @@
         <span class="focus-cat">${cat(t.category)}</span>
       </div>
       <dl class="tiles">
-        <div class="tile t-blue"><dt>Өчигдөр уншсан</dt><dd>${C.fmt(t.views)}</dd></div>
-        <div class="tile"><dt>Ердийн өдөр</dt><dd>${C.fmt(normal)}<small>өчигдөр ×${t.ratio}</small></dd></div>
-        <div class="tile t-orange"><dt>3 өдрийн дараа (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small></dd></div>
+        <div class="tile t-blue"><dt>Өчигдөр уншсан</dt><dd>${C.fmt(t.views)}</dd>
+          <p class="hint">Энэ нийтлэлийг өчигдөр нээсэн тоо</p></div>
+        <div class="tile"><dt>Ердийн өдөр</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `өчигдөр ${t.ratio} дахин их` : "өчигдөр ердийнхөөрөө"}</small></dd>
+          <p class="hint">Сүүлийн 2 сарын ердийн нэг өдөр</p></div>
+        <div class="tile t-orange"><dt>3 өдрийн дараа</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small></dd>
+          <p class="hint">Model-ийн таамаг</p></div>
       </dl>
-      <p class="chart-h">Өдөр бүрийн уншилт: сүүлийн ${days} хоног ба ирэх 3 өдөр</p>
+      <p class="chart-h">Өдөр бүр хэдэн хүн уншсан бэ?</p>
+      <p class="chart-sub">Багана бүр нэг өдөр. Өндөр байх тусам тэр өдөр олон хүн уншсан. Сүүлийн ${days} хоног, дараа нь ирэх 3 өдрийн таамаг.</p>
       <div class="chart" id="chart"></div>
       <ul class="key">
-        <li><i class="k-blue"></i>Бодит уншилт</li>
+        <li><i class="k-blue"></i>Бодитоор уншсан</li>
         <li><i class="k-orange"></i>Таамаг</li>
-        <li><i class="k-range"></i>80% магадлалтай хүрээ</li>
+        <li><i class="k-norm"></i>Ердийн өдрийн түвшин</li>
+        <li><i class="k-range"></i>Бодит утга 10-аас 8 удаа энэ зураасан дотор гарна</li>
       </ul>`;
   }
-  const drawFocus = (t) => () => C.columns(document.getElementById("chart"), { ...t, axis: true,
+  const drawFocus = (t) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.views / Math.max(t.ratio, 0.01),
     label: `${t.title}: өдөр бүрийн уншилт ба ирэх 3 өдрийн таамаг` });
 
   // ═════════ Нүүр ═════════
@@ -73,7 +78,7 @@
       <section class="focus" id="focus" aria-live="polite"></section>
       <section class="sec" aria-labelledby="cat-h">
         <h2 id="cat-h">Ангилал бүрээр</h2>
-        <p class="lead">Ангилал бүрийн хамгийн их уншигдсан сэдвүүд.</p>
+        <p class="lead">Ангилал бүрийн хамгийн их уншигдсан сэдвүүд. Улаан ▲ ×2 нь өчигдөр ердийнхөөсөө 2 дахин их уншигдсан, саарал "хэвийн" нь ердийн хэмжээндээ гэсэн үг.</p>
         <div class="cats">${chans.map((c) => `
           <div class="cat">
             <h3>${cat(c.key)}</h3>
@@ -144,29 +149,35 @@
       <p class="lead">Таамаг бүрийг хоёр энгийн аргатай харьцуулсан. Model тэднээс сайн биш бол ашиглах утгагүй.</p>
       <div class="mgrid">
         <div class="mcard">
-          <h3>Алдаа: бага байх тусам сайн</h3>
+          <h3>Хэр их алддаг вэ?</h3>
+          <p class="chart-sub">Багана богино байх тусам таамаг илүү зөв.</p>
           <div class="mchart" id="m-bars"></div>
           <ul class="key">
             <li><i class="k-blue"></i>LightGBM</li>
             <li><i style="background:var(--gray-bar)"></i>Өчигдрийнх шиг</li>
             <li><i style="background:var(--gray-bar);opacity:.6"></i>7 хоногийн өмнөх шиг</li>
           </ul>
-          <p class="note">MAE, log хуваарьт. "Өчигдрийнх шиг" нь маргаашийг өнөөдөртэй адил гэж үздэг энгийн арга.</p>
+          <p class="note">Цэнхэр нь манай model. Саарал хоёр нь харьцуулах энгийн аргууд: "өчигдрийнх шиг" нь маргааш өнөөдөртэй яг адилхан гэж таамагладаг, "7 хоногийн өмнөх шиг" нь долоо хоногийн өмнөхийг давтдаг. Цэнхэр багана хамгийн богино бол model тэднээс илүү зөв гэсэн үг. (Хэмжүүр: MAE, log хуваарьт.)</p>
         </div>
         <div class="mcard">
-          <h3>Overfit болсон уу?</h3>
+          <h3>Model цээжилсэн үү, сурсан уу? (overfit)</h3>
+          <p class="chart-sub">Хоёр шугам ойрхон байвал сайн.</p>
           <div class="mchart" id="m-curve"></div>
-          <p class="note">Validation алдаа буурахаа больсон цэгт сургалтыг зогсоосон (early stopping). Хоёр шугам ойрхон байвал overfit бага.</p>
+          <p class="note">Зүүнээс баруун тийш сургалт явна, доошлох тусам алдаа бага. Саарал шугам нь model-ийн сурсан өгөгдөл дээрх алдаа, цэнхэр нь model хэзээ ч хараагүй өгөгдөл дээрх алдаа (validation). Цэнхэр шугам буурахаа больсон цэгт (улбар шар тасархай) сургалтыг зогсоосон буюу early stopping.</p>
         </div>
         <div class="mcard" style="grid-column:1/-1">
-          <h3>Таамагт юу хамгийн их нөлөөлдөг вэ?</h3>
+          <h3>Таамаглахад юу хамгийн их тусалдаг вэ?</h3>
+          <p class="chart-sub">Урт багана нь model хамгийн их ашигладаг мэдээлэл.</p>
           <div class="mchart" id="m-imp" style="height:290px"></div>
-          <p class="note">Feature importance (gain). lag_1 нь өчигдрийн утга, ratio_7 нь 7 хоногийн дундажтай харьцуулсан өсөлт.</p>
+          <p class="note">Feature importance (gain). Хувиуд нийлээд 100% болно.</p>
         </div>
       </div>`;
     draw(() => C.groups(document.getElementById("m-bars"), m.metrics, ["model", "naive", "seasonal"], [], "Model-ийн алдааг энгийн аргуудтай харьцуулсан"));
     draw(() => C.curve(document.getElementById("m-curve"), m.curve, m.best_iter, "Сургалт ба validation алдааны муруй"));
-    draw(() => C.hbars(document.getElementById("m-imp"), m.importance, "Feature importance"));
+    const FEAT = { lag_1: "Өчигдрийн уншилт", ratio_7: "7 хоногийн дундажтай харьцаа", roll_mean_7: "7 хоногийн дундаж",
+      lag_7: "7 хоногийн өмнөх уншилт", growth_3: "Сүүлийн 3 хоногийн өсөлт", dow: "Гараг", roll_std_14: "14 хоногийн хэлбэлзэл",
+      category: "Ангилал", lag_14: "14 хоногийн өмнөх уншилт", days_since_peak: "Оргилоос хойш хоног" };
+    draw(() => C.hbars(document.getElementById("m-imp"), m.importance.map((r) => ({ ...r, f: FEAT[r.f] || r.f })), "Feature importance"));
   }
 
   // ═════════ Router ═════════

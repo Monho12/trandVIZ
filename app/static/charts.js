@@ -49,7 +49,7 @@
    * Цэнхэр = бодит уншилт, улбар шар = таамаг; нимгэн шугам = таамгийн 80% бүс.
    */
   function columns(box, opts) {
-    const { history, forecast = [], axis = false, label } = opts;
+    const { history, forecast = [], axis = false, label, normal } = opts;
     const { svg, w, h } = svgFor(box, label);
     const pad = axis ? { l: 58, r: 6, t: 26, b: 24 } : { l: 0, r: 0, t: 2, b: 2 };
     const H = history.length, F = forecast.length, gapSlots = F ? 0.8 : 0;
@@ -89,9 +89,14 @@
         el("text", { class: "val2", x: sx - 6, y: pad.t - 6, "text-anchor": "end" }, svg).textContent = "← бодит";
         el("text", { class: "val2", x: sx + 6, y: pad.t - 6 }, svg).textContent = "таамаг →";
       }
+      // Ердийн өдрийн түвшин: "×N дахин" гэдгийг нүдээр харуулна
+      if (normal) {
+        el("line", { class: "norm", x1: pad.l, x2: X(H - 1) + bw, y1: Y(normal), y2: Y(normal) }, svg);
+        el("text", { class: "val2", x: pad.l + 4, y: Y(normal) - 6 }, svg).textContent = `ердийн өдөр ≈ ${fmt(normal)}`;
+      }
       // Сонгомол шошго: өчигдрийн утга
       const lx = X(H - 1) + bw / 2, lv = history[H - 1].v;
-      el("text", { class: "val", x: lx, y: Y(lv) - 6, "text-anchor": F ? "end" : "middle" }, svg).textContent = fmt(lv);
+      el("text", { class: "val", x: lx, y: Y(lv) - 6, "text-anchor": F ? "end" : "middle" }, svg).textContent = `өчигдөр ${fmt(lv)}`;
       // Огноо
       const every = Math.max(1, Math.round(H / 6));
       for (let i = 0; i < H - every / 2; i += every)
@@ -158,7 +163,7 @@
   /** Feature importance: хэвтээ багана */
   function hbars(box, rows, label) {
     const { svg, w, h } = svgFor(box, label);
-    const lw = 128, max = Math.max(...rows.map((r) => r.gain)), rh = h / rows.length;
+    const lw = Math.min(200, w * 0.4), max = Math.max(...rows.map((r) => r.gain)), rh = h / rows.length;
     rows.forEach((r, i) => {
       const y = i * rh, bw = (r.gain / max) * (w - lw - 46), bh = Math.min(16, rh * 0.6);
       el("text", { class: "tick", x: lw - 10, y: y + rh / 2 + 4, "text-anchor": "end", "font-size": 12 }, svg).textContent = r.f;
