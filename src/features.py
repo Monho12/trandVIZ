@@ -42,6 +42,17 @@ def make_features(df: pd.DataFrame) -> pd.DataFrame:
     d["ratio_7"] = d["y_0"] - d["roll_mean_7"]          # өнөөдөр 7 хоногийн дунджаас хэр их вэ
     d["from_max_28"] = d["y_0"] - d["roll_max_28"]      # 28 хоногийн оргилоосоо хэр доор вэ
 
+    # Оргилоос хойш хэдэн хоног өнгөрсөн бэ (сүүлийн 28 хоногт). Вирал сэдэв унтрахыг таамаглахад тусална
+    pos = g.rolling(28, min_periods=28).apply(lambda x: len(x) - 1 - int(np.argmax(x)), raw=True)
+    d["days_since_peak"] = pos.reset_index(level=0, drop=True)
+
+    # Сэдвийн урт хугацааны "ердийн" түвшин: сүүлийн 365 хоногийн медиан (зөвхөн өнгөрсөн)
+    d["level_365"] = g.rolling(365, min_periods=28).median().reset_index(level=0, drop=True)
+    d["vs_level"] = d["y_0"] - d["level_365"]           # өнөөдөр ердийн түвшнээсээ хэр дээр вэ
+
+    # Ангилал: LightGBM categorical feature (нийтлэлийн НЭР биш)
+    d["category"] = d["category"].astype("category")
+
     # Календарь (t өдрийнх; horizon бүрт тусдаа model тул зорилтот өдрийн гараг үүнээс тодорхой)
     d["dow"] = d["date"].dt.dayofweek
     d["is_weekend"] = (d["dow"] >= 5).astype("int8")
@@ -58,5 +69,23 @@ def make_features(df: pd.DataFrame) -> pd.DataFrame:
 
 FEATURES_BASE = (["y_0"] + [f"lag_{k}" for k in LAGS]
                  + [f"roll_{s}_{w}" for w in WINDOWS for s in ("mean", "std")] + ["roll_max_28"]
-                 + ["growth_1", "growth_3", "ratio_7", "from_max_28",
-                    "dow", "is_weekend", "month", "doy_sin", "doy_cos"])
+                 + ["growth_1", "growth_3", "ratio_7", "from_max_28", "days_since_peak", "level_365", "vs_level",
+                    "category", "dow", "is_weekend", "month", "doy_sin", "doy_cos"])
+
+# Feature-үүдийн бүлэг (ablation шалгалтад)
+GROUPS = {
+    "lag": [f"lag_{k}" for k in LAGS],
+    "rolling": [f"roll_{s}_{w}" for w in WINDOWS for s in ("mean", "std")] + ["roll_max_28"],
+    "өсөлт": ["growth_1", "growth_3", "ratio_7", "from_max_28"],
+    "оргил": ["days_since_peak"],
+    "түвшин": ["level_365", "vs_level"],
+    "ангилал": ["category"],
+    "календарь": ["dow", "is_weekend", "month", "doy_sin", "doy_cos"],
+}
+
+# Цаг хугацааны хуваалт (санамсаргүй холихгүй!)
+TRAIN_END, VALID_END = pd.Timestamp("2025-06-30"), pd.Timestamp("2026-03-31")
+
+
+def split_of(dates: pd.Series) -> pd.Series:
+    return pd.Series(np.where(dates <= TRAIN_END, "train", np.where(dates <= VALID_END, "valid", "test")), index=dates.index)

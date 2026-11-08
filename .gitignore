@@ -14,3 +14,4 @@ data/raw/
 
 # clean.parquet-ийг src/clean.py 2 секундэд дахин үүсгэдэг тул git-д хадгалахгүй
 data/processed/clean.parquet
+data/processed/features.parquet

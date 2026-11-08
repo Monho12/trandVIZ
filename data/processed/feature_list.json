@@ -1,0 +1,86 @@
+{
+  "features": [
+    "ratio_7",
+    "vs_level",
+    "category",
+    "dow",
+    "growth_1",
+    "roll_mean_7",
+    "roll_std_3",
+    "roll_std_7",
+    "growth_3",
+    "roll_std_28",
+    "roll_std_14",
+    "days_since_peak",
+    "doy_sin",
+    "doy_cos",
+    "level_365",
+    "from_max_28",
+    "roll_max_28",
+    "month",
+    "is_weekend"
+  ],
+  "categorical": [
+    "category"
+  ],
+  "target": "y_h{h} - y_0",
+  "horizons": [
+    1,
+    2,
+    3
+  ],
+  "dropped_corr": [
+    "y_0",
+    "roll_mean_3",
+    "lag_1",
+    "lag_7",
+    "lag_2",
+    "lag_14",
+    "lag_3",
+    "roll_mean_14",
+    "roll_mean_28"
+  ],
+  "quick_valid_mae_h1": {
+    "naive": 0.1119,
+    "all": 0.0973,
+    "selected": 0.0974
+  },
+  "ablation": [
+    {
+      "бүлэг": "өсөлт",
+      "хассан feature": 4,
+      "MAE": 0.0994,
+      "муудсан": 0.0021
+    },
+    {
+      "бүлэг": "календарь",
+      "хассан feature": 5,
+      "MAE": 0.0991,
+      "муудсан": 0.0017
+    },
+    {
+      "бүлэг": "ангилал",
+      "хассан feature": 1,
+      "MAE": 0.0986,
+      "муудсан": 0.0012
+    },
+    {
+      "бүлэг": "rolling",
+      "хассан feature": 6,
+      "MAE": 0.0979,
+      "муудсан": 0.0005
+    },
+    {
+      "бүлэг": "оргил",
+      "хассан feature": 1,
+      "MAE": 0.0975,
+      "муудсан": 0.0002
+    },
+    {
+      "бүлэг": "түвшин",
+      "хассан feature": 2,
+      "MAE": 0.0975,
+      "муудсан": 0.0001
+    }
+  ]
+}
