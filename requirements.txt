@@ -20,3 +20,6 @@ uvicorn>=0.29
 jupyterlab>=4.1
 ipykernel>=6.29
 nbformat>=5.9
+
+# Тест
+pytest>=8.0
