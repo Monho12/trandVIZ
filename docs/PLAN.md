@@ -22,6 +22,16 @@
   Миний орчноос launchpad.mn руу нэвтрэх боломжгүй тул Майкийн явуулсан screenshot-оос тааруулна.
   (Лхагва 04:00-д хоёр товлол байгаа: "дизайныг өөрчлөхгүй" гэсэн хуучин нь хүчингүй, энэ файл давуу.)
 
+## Вэбийн ажилд ашиглах skill-үүд (Майк зөвшөөрсөн, 2026-11-09)
+
+1. **dataviz** — бүх график (өнгө, шошго, tooltip, CVD шалгалт)
+2. **apple-design** + **frontend-design** — launchpad.mn маягийн загварыг хэрэгжүүлэх
+3. **impeccable** + **web-design-guidelines** — эцсийн UI/UX, хүртээмжийн шалгалт
+
+Гадны 2 skill-ийг cloud орчинд суулгасан. Орчин шинэчлэгдсэн бол дахин суулгана:
+`npx -y skills add vercel-labs/agent-skills@web-design-guidelines -g -y` ба
+`npx -y skills add emilkowalski/skills@apple-design -g -y`.
+
 ## Шийдвэр: зөвхөн Wikipedia (2026-11-08)
 
 - Олон эх сурвалжийн (Reddit, X, Google Trends) санааг энэ төсөлд **оруулахгүй**: API төлбөр/зөвшөөрөл,
