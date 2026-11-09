@@ -129,7 +129,11 @@
       { fmt: (v) => Math.round(v) + "%", hiN: 1, label: "Монголын сэдвүүдийн эзлэх хувь" }));
 
     // 5. Загвар
-    draw(() => C.groups($("m-bars"), mo.metrics, ["model", "naive", "seasonal"], [], "LightGBM-ийн алдааг энгийн аргуудтай харьцуулсан"));
+    // log хуваарийн MAE-г хувь болгоно: exp(MAE) − 1 ≈ таамаг бодитоос дунджаар хэдэн хувь зөрдөг
+    const pctErr = (m) => (Math.exp(m) - 1) * 100;
+    const DAYN = ["Маргааш", "2 дахь өдөр", "3 дахь өдөр"];
+    draw(() => C.compare($("m-bars"), mo.metrics.map((r) => ({ name: DAYN[r.h - 1], model: pctErr(r.model), naive: pctErr(r.naive) })),
+      "Таамгийн дундаж алдаа хувиар: LightGBM ба өчигдрийнх шиг гэсэн энгийн арга"));
     draw(() => C.curve($("m-curve"), mo.curve, mo.best_iter, "Сургалт ба validation алдааны муруй"));
     draw(() => C.flow($("m-flow"), { label: "Wikipedia-гийн уншилт 19 feature болж, гурван LightGBM загвар маргааш, 2 дахь, 3 дахь өдрийг тусдаа таамаглана" }));
     draw(() => C.hbars($("m-imp"), mo.importance.slice(0, 7).map((r) => ({ ...r, f: FEAT[r.f] || r.f })), "Feature importance"));

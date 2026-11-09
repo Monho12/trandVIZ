@@ -191,6 +191,28 @@
     });
   }
 
+  /**
+   * Загвар ба энгийн аргын алдааг харьцуулах: мөр бүр нэг өдөр, хоёр хэвтээ багана.
+   * Багана бүрийн хажууд нэр + хувь шууд бичигдэнэ (тайлбар хайх шаардлагагүй).
+   */
+  function compare(box, rows, label) {
+    const { svg, w, h } = svgFor(box, label);
+    const lw = Math.min(110, w * 0.26), right = 150, rh = h / rows.length;
+    const max = Math.max(...rows.flatMap((r) => [r.model, r.naive]));
+    const bw = (v) => Math.max(4, (v / max) * (w - lw - right));
+    const bh = Math.min(22, rh * 0.28);
+    rows.forEach((r, i) => {
+      const y0 = i * rh + rh / 2;
+      el("text", { class: "val", x: 0, y: y0 + 5, "font-size": 14 }, svg).textContent = r.name;
+      [["model", "b-blue", "LightGBM"], ["naive", "b-gray", "Өчигдрийнх шиг"]].forEach(([k, cls, nm], j) => {
+        const y = y0 - bh - 3 + j * (bh + 6);
+        el("rect", { class: cls, x: lw, y, width: bw(r[k]), height: bh, rx: 4 }, svg);
+        el("text", { class: j ? "val2" : "val", x: lw + bw(r[k]) + 8, y: y + bh / 2 + 4, "font-size": 12 }, svg)
+          .textContent = `±${Math.round(r[k])}%  ${nm}`;
+      });
+    });
+  }
+
   /** Энгийн босоо багана: hi = тодруулах багануудын индекс, base = дундаж шугам (жишээ нь 100) */
   function bars(box, values, { labels = [], hi = [], valLabels = {}, base, minY = 0, label } = {}) {
     const { svg, w, h } = svgFor(box, label);
@@ -334,5 +356,5 @@
     box_(xs[3], cy, "fl-out", "Таамаг", narrow ? "" : "+80% хүрээ");
   }
 
-  window.Charts = { flow, columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate };
+  window.Charts = { flow, compare, columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate };
 })();
