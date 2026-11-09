@@ -14,6 +14,7 @@
 | Бя 11/07 | `01_data_collection`: 301 сэдэв, 2021-01-01 → |
 | Ня 11/08 | `02_cleaning_eda`: alias, бот/outlier, анхаарал, EDA |
 | Да 11/09 | `03_features`, baseline (naive, seasonal), grill → ADR 0001–0008, 18 feature (`category` хассан) |
+| Да 11/09 | Causal trim (ADR 0007, PR #12): хасагдсан өдөр 7,047 → 1,247, valid/test-д 0. clean 589,772 мөр. Тест 8 |
 
 ## Бүх өдөрт хамаарах дүрэм
 
@@ -28,11 +29,8 @@
 
 **Зорилго:** гурван алгоритмыг сургаж, valid-аар сонгоод, test-ийг нэг удаа үнэлж, вэбэд экспорт хийх.
 
-1. **Causal trim (ADR 0007), хамгийн түрүүнд хийнэ.** `src/clean.py`-ийн `trim_inactive`-д ирээдүйн `tail(365).median()`-ийн оронд
-   t өдөр хүртэлх (trailing) 365 хоногийн медианыг ашиглана. `ACTIVE_ABS = 100` хэвээр. Trim нь t+1-ээс хойшхи өгөгдлийг ашиглахгүй гэдгийг шалгах тест нэмнэ.
-   Дараа нь clean → features → baselines-ийг (`python -m src.clean && python -m src.features && python -m src.baselines`) дахин үүсгэж, `trim_report.csv`-ийг шинэчилнэ.
-   Хасагдсан өдрийн тоог бүлэг × хуваалтаар (ADR 0007-ийн хүснэгт) дахин гаргана. **Цаг хүрэхгүй бол:** хуучин trim-ийг сургалтад үлдээж,
-   хасагдсан valid/test мөрүүдийг үнэлгээнд буцааж оруулна.
+1. **✅ Causal trim хийгдсэн (ADR 0007, PR #12). Дахин хийхгүй.** Үр дүнг ADR 0007-ийн "Үр дүн" хэсгээс үзнэ.
+   `features.parquet` байхгүй бол `python -m src.clean && python -m src.features && python -m src.baselines`-аар үүсгэнэ.
    Бэлтгэл: хэрэгтэй бол `pip install --break-system-packages xgboost catboost`. Үргэлжлүүлэхээс өмнө `pytest -q` ногоон байх ёстой.
 2. **Сургалт** (`src/train.py` + `notebooks/04_model.ipynb`, монгол тайлбартай, богино).
    LightGBM, XGBoost, CatBoost-ыг h1, h2, h3 тус бүрт тусад нь сургана. 18 feature, objective L1.
