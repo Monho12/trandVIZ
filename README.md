@@ -50,7 +50,7 @@ uvicorn app.main:app --reload
 | Ня 11/08 | Цэвэрлэх + EDA | `02_cleaning_eda.ipynb` |
 | Да 11/09 | Feature engineering + selection | `03_features.ipynb` |
 | Мя 11/10 | 3 алгоритм + Optuna + overfit + test үнэлгээ | `04_model.ipynb` |
-| Лх 11/11 | Snapshot → HF deploy → слайд | `app/`, `src/snapshot.py` |
+| Лх 11/11 | Model-ийг сайтын ард → local Docker → HF Space → слайд | `app/` |
 | Пү 11/12 | Нөөц өдөр, хамгаалалт | — |
 
 ## Өгөгдлийн эх сурвалж
