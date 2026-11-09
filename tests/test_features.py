@@ -69,3 +69,23 @@ def test_category_not_a_model_input():
     assert "category" not in fl["features"]
     assert "category" not in fl.get("categorical", [])
     assert len(fl["features"]) == 18
+
+
+def test_trim_inactive_uses_only_past():
+    """ADR 0007: t өдөр хүртэлх өдрүүдийг хасах эсэх нь t-ээс хойших өгөгдлөөс хамаарахгүй.
+    Нам гүм эхлэлтэй (өдөрт 20 уншилт) сэдвийн t-ээс хойших уншилтыг сая болгоход
+    t хүртэлх аль өдөр хасагдах нь өөрчлөгдөх ёсгүй."""
+    from src.clean import trim_inactive
+    dates = pd.date_range("2024-01-01", periods=60)
+    t = dates[29]
+    views = np.r_[np.zeros(5), np.full(55, 20)].astype("int64")       # эхний 5 өдөр 0, дараа нь 20/өдөр
+    base = pd.DataFrame({"date": dates, "article": "A", "category": "x", "views": views})
+    later = base.copy()
+    later.loc[later["date"] > t, "views"] = 1_000_000                  # t-ээс хойш вирал болно
+
+    def kept_until_t(df):
+        kept, _ = trim_inactive(df)
+        return set(kept.loc[kept["date"] <= t, "date"])
+
+    assert kept_until_t(base) == kept_until_t(later)
+    assert kept_until_t(base) == set(dates[5:30])                       # зөвхөн 0 уншилттай эхлэл хасагдана

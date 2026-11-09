@@ -10,8 +10,14 @@ Feature engineering — суурь хувилбар (Даваа гарагт 03 
   y_h1..h3  = t+1, t+2, t+3 өдрийн утга (TARGET, feature биш)
 
 Бүх тооцоог нийтлэл тус бүрээр (groupby) хийнэ -> нэг сэдвийн утга нөгөө рүү "нэвчихгүй".
+
+Ажиллуулах:  python -m src.features  ->  data/processed/features.parquet
+(feature_list.json-ийн 18 feature-ийг ашиглана; жагсаалтыг 03 notebook сонгодог)
 """
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -89,3 +95,25 @@ TRAIN_END, VALID_END = pd.Timestamp("2025-06-30"), pd.Timestamp("2026-03-31")
 
 def split_of(dates: pd.Series) -> pd.Series:
     return pd.Series(np.where(dates <= TRAIN_END, "train", np.where(dates <= VALID_END, "valid", "test")), index=dates.index)
+
+
+P = Path(__file__).resolve().parents[1] / "data" / "processed"
+
+
+def build() -> pd.DataFrame:
+    """clean.parquet -> features.parquet. Түүх хүрэлцэхгүй (эхний 28+ өдөр) ба target-гүй мөрийг хасна."""
+    cl = pd.read_parquet(P / "clean.parquet", columns=["date", "article", "category", "y"])
+    final = json.loads((P / "feature_list.json").read_text(encoding="utf-8"))["features"]
+    f = make_features(cl)
+    f["split"] = split_of(f["date"])
+    num = [c for c in FEATURES_BASE if c != "category"]
+    f = f.dropna(subset=num + [f"y_h{h}" for h in HORIZONS])
+    out = f[["date", "article", "split", "y_0"] + [f"y_h{h}" for h in HORIZONS] + final]
+    out.to_parquet(P / "features.parquet", index=False, compression="zstd")
+    return out
+
+
+if __name__ == "__main__":
+    d = build()
+    n_feat = len(json.loads((P / "feature_list.json").read_text(encoding="utf-8"))["features"])
+    print(f"features.parquet: {len(d):,} мөр, {n_feat} feature;", d["split"].value_counts().to_dict())

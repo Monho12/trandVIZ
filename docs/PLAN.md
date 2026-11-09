@@ -30,7 +30,7 @@
 
 1. **Causal trim (ADR 0007), хамгийн түрүүнд хийнэ.** `src/clean.py`-ийн `trim_inactive`-д ирээдүйн `tail(365).median()`-ийн оронд
    t өдөр хүртэлх (trailing) 365 хоногийн медианыг ашиглана. `ACTIVE_ABS = 100` хэвээр. Trim нь t+1-ээс хойшхи өгөгдлийг ашиглахгүй гэдгийг шалгах тест нэмнэ.
-   Дараа нь clean → features → baselines-ийг (`python -m src.baselines`) дахин үүсгэж, `trim_report.csv`-ийг шинэчилнэ.
+   Дараа нь clean → features → baselines-ийг (`python -m src.clean && python -m src.features && python -m src.baselines`) дахин үүсгэж, `trim_report.csv`-ийг шинэчилнэ.
    Хасагдсан өдрийн тоог бүлэг × хуваалтаар (ADR 0007-ийн хүснэгт) дахин гаргана. **Цаг хүрэхгүй бол:** хуучин trim-ийг сургалтад үлдээж,
    хасагдсан valid/test мөрүүдийг үнэлгээнд буцааж оруулна.
    Бэлтгэл: хэрэгтэй бол `pip install --break-system-packages xgboost catboost`. Үргэлжлүүлэхээс өмнө `pytest -q` ногоон байх ёстой.
