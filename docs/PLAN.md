@@ -6,8 +6,8 @@
 |---|---|---|
 | Ня 11/08 | `02_cleaning_eda`: alias нэгтгэх, бот/outlier илрүүлэх, attention target, EDA | 02-ыг шалгаж засах, Майкийн санал; `src/features.py` суурь |
 | Да 11/09 | `03_features`: lag/rolling/growth/calendar, selection (корреляц, importance, ablation) | Feature-ээ эцэслэх, baseline-ууд (naive, 7 хоногийн өмнөх) |
-| Мя 11/10 | `04_model`: LightGBM ×3 horizon + Optuna, early stopping, overfit шалгалт | Test үнэлгээ, 80% интервал, `app/model/` экспорт, ангиллаар алдаа |
-| Лх 11/11 | Вэбийг жинхэнэ model-тэй холбох (дизайн v2 бэлэн) | Hugging Face deploy, слайд, `docs/hamgaalalt.md` |
+| Мя 11/10 | `04_model`: **LightGBM, XGBoost, CatBoost** ×3 horizon + Optuna, early stopping, overfit шалгалт; valid дээр хамгийн сайныг сонгох | Test үнэлгээ (3 алгоритм), 80% интервал, сонгосон model-ийг `app/model/` экспорт, ангиллаар алдаа |
+| Лх 11/11 | Вэбийг жинхэнэ model-тэй холбох (дизайн v2 бэлэн) + **3 алгоритмын харьцуулалтын график** | Hugging Face deploy, слайд, `docs/hamgaalalt.md` |
 | Пү 11/12 | Бүгдийг эхнээс шалгах, README, хамгаалалтын checklist | — |
 
 ## Вэбийн дизайны шийдвэрүүд (Майк баталсан, 2026-11-09 орой шинэчилсэн)
@@ -45,3 +45,11 @@
 - Wikimedia Pageviews API, `agent=user`, 2021-01-01 → өнөөдөр.
 - 151 сонгосон сэдэв (10 ангилал) + 150 вирал сэдэв = 301 сэдэв, ~586 мянган мөр.
 - Нэр солигдсон: `data/aliases.csv`. Хассан: `data/exclude.csv`.
+
+## Шийдвэр: 3 алгоритм харьцуулах (Майк, 2026-11-09)
+
+- LightGBM, XGBoost, CatBoost гурвыг ижил feature (19), ижил target (y_h − y_0), ижил хуваалтаар сургана.
+- Алгоритм бүрт Optuna (TPE + MedianPruner, ~25 trial, сургалтыг 2023-07-01-ээс хойшх train дээр хурдасгаж), early stopping.
+- **Сонголт зөвхөн validation MAE-гаар** (test-ийг сонголтод ашиглахгүй — leakage). Test-ийг гурвуулан дээр нэг удаа тайлагнана.
+- Вэбийн "Загвар" хэсэгт: өдөр бүрээр 3 алгоритм + "өчигдрийнх шиг" аргын алдааг хувиар харуулж, сонгосныг тодруулна.
+- Вэб зөвхөн сонгосон алгоритмын model-ийг ачаална (`app/model/meta.json`-д `algo` талбар).
