@@ -1,7 +1,7 @@
 # Шуугиан — Дэлхий юуг шуугиж байна?
 
 Wikipedia-ийн өдөр тутмын хандалтаар дэлхийн анхаарлыг хэмжиж, **ирэх 3 өдрийн**
-сонирхлыг LightGBM-ээр таамагладаг Data Mining төсөл.
+сонирхлыг gradient boosting-оор (LightGBM / XGBoost / CatBoost-оос valid-аар сонгосон) таамагладаг Data Mining төсөл.
 
 ## Хурдан эхлэх (laptop / гэрийн PC аль алин дээр)
 
@@ -42,13 +42,15 @@ uvicorn app.main:app --reload
 
 ## Төлөвлөгөө
 
+Дэлгэрэнгүй: [`docs/PLAN.md`](docs/PLAN.md) (өдөр бүрийн заавар), шийдвэрүүд: [`docs/adr/`](docs/adr/), нэр томьёо: [`CONTEXT.md`](CONTEXT.md).
+
 | Өдөр | Алхам | Notebook |
 |---|---|---|
 | Бя 11/07 | Өгөгдөл татах | `01_data_collection.ipynb` |
 | Ня 11/08 | Цэвэрлэх + EDA | `02_cleaning_eda.ipynb` |
 | Да 11/09 | Feature engineering + selection | `03_features.ipynb` |
-| Мя 11/10 | LightGBM + Optuna + overfit шалгалт | `04_model.ipynb` |
-| Лх 11/11 | Вэб + deploy + слайд | `app/` |
+| Мя 11/10 | 3 алгоритм + Optuna + overfit + test үнэлгээ | `04_model.ipynb` |
+| Лх 11/11 | Snapshot → HF deploy → слайд | `app/`, `src/snapshot.py` |
 | Пү 11/12 | Нөөц өдөр, хамгаалалт | — |
 
 ## Өгөгдлийн эх сурвалж

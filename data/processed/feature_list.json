@@ -2,7 +2,6 @@
   "features": [
     "ratio_7",
     "vs_level",
-    "category",
     "dow",
     "growth_1",
     "roll_mean_7",
@@ -20,9 +19,7 @@
     "month",
     "is_weekend"
   ],
-  "categorical": [
-    "category"
-  ],
+  "categorical": [],
   "target": "y_h{h} - y_0",
   "horizons": [
     1,
@@ -82,5 +79,8 @@
       "MAE": 0.0975,
       "муудсан": 0.0001
     }
-  ]
+  ],
+  "excluded": {
+    "category": "ADR 0005: 'viral' утга нь ирээдүйг мэдэж сонгосон жагсаалтыг илтгэдэг тул leakage. Вэбэд л харуулна, model-д оруулахгүй."
+  }
 }
