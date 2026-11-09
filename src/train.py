@@ -6,7 +6,7 @@
   - Сургалт: train хуваалтын 2023-07-01-ээс хойшх мөр, (в) ОРНО (ADR 0009). Хилийн purge features.py-д хийгдсэн.
   - Early stopping ба сонголт: valid, (в)-гүй (ADR 0005). Test-ийг энд ОГТ уншихгүй.
 
-Ажиллуулах:  python -m src.train  ->  app/model/{h1,h2,h3}.<ext> + meta.json, data/processed/train_report.json
+Ажиллуулах:  python -m src.train  ->  app/model/{h1,h2,h3}.<ext> + meta.json
 """
 from __future__ import annotations
 

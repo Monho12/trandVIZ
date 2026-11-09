@@ -1,9 +1,11 @@
 """src/train.py: сургалт/сонголтын мөрүүд, ялагч сонголт, app/model-ийн экспорт.  Ажиллуулах:  pytest -q"""
+import json
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import train  # noqa: E402
@@ -44,10 +46,6 @@ def test_winner_has_lowest_mean_valid_mae_over_horizons():
     ], columns=["algo", "h", "valid_mae"])
     assert train.select_winner(table) == "xgboost"
 
-
-import json  # noqa: E402
-
-import pytest  # noqa: E402
 
 
 @pytest.mark.parametrize("algo", train.ALGOS)
