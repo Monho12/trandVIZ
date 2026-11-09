@@ -18,7 +18,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 P = ROOT / "data" / "processed"
 
-ACTIVE_SHARE = 0.02    # сүүлийн 1 жилийн медианы 2%-иас дээш болсон өдрөөс "идэвхтэй" гэж үзнэ
+ACTIVE_SHARE = 0.02    # t хүртэлх 1 жилийн (trailing) медианы 2%-иас дээш болсон өдрөөс "идэвхтэй" гэж үзнэ
 ACTIVE_ABS = 100       # ... ЭСВЭЛ өдөрт 100+ уншилттай болсон өдрөөс (жинхэнэ бага сонирхлыг хасахгүйн тулд)
 SPIKE_X = 10           # медианаас 10+ дахин их ...
 NEIGHBOR_X = 2         # ... бөгөөд өмнөх, дараагийн өдөр нь медианы 2 дахинаас бага бол тусгаарлагдсан огцом өсөлт
@@ -43,13 +43,17 @@ def fill_days(df: pd.DataFrame, end: pd.Timestamp) -> pd.DataFrame:
 
 
 def trim_inactive(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Нийтлэл жинхэнэ утгаараа "амьд" болохоос өмнөх өдрүүдийг хасна."""
+    """
+    Нийтлэл жинхэнэ утгаараа "амьд" болохоос өмнөх өдрүүдийг хасна.
+    Causal (ADR 0007): t өдөр "идэвхтэй" эсэхийг зөвхөн t хүртэлх өгөгдлөөр шийднэ —
+    7 хоногийн дундаж нь t хүртэлх (trailing) 365 хоногийн медианы ACTIVE_SHARE-д хүрсэн, эсвэл ACTIVE_ABS+.
+    """
     keep, report = [], []
     for a, g in df.groupby("article", sort=False):
         g = g.sort_values("date")
-        level = g["views"].tail(365).median()
+        level = g["views"].rolling(365, min_periods=1).median().clip(lower=1)
         roll = g["views"].rolling(7, min_periods=1).mean()
-        ok = (roll >= ACTIVE_SHARE * max(level, 1)) | (roll >= ACTIVE_ABS)
+        ok = (roll >= ACTIVE_SHARE * level) | (roll >= ACTIVE_ABS)
         start = g.loc[ok.idxmax(), "date"] if ok.any() else g["date"].iloc[-1]
         cut = (g["date"] < start).sum()
         report.append({"article": a, "start": start, "removed_days": int(cut)})
