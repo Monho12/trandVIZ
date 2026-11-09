@@ -33,6 +33,7 @@
   };
   const api = (p) => fetch(p).then((r) => { if (!r.ok) throw new Error(p + " " + r.status); return r.json(); });
 
+  let selectTopic = () => {};
   async function main() {
     await document.fonts.ready;                       // шошгын өргөнийг зөв хэмжихийн тулд фонтыг хүлээнэ
     const [tr, cs, mp, ins, mo] = await Promise.all(
@@ -44,7 +45,14 @@
     document.querySelectorAll("[data-mock]").forEach((e) => (e.hidden = !tr.mock));
 
     // 1. Hero: өчигдрийн анхаарлын газрын зураг
-    draw(() => C.treemap($("tmap"), mp.items, {}));
+    // Нүдэн дээр дарвал тэр сэдэв таамгийн жагсаалтад байвал сонгож, тийш гүйлгэнэ
+    const pickFromMap = (article) => {
+      const i = tr.items.findIndex((t) => t.article === article);
+      if (i < 0) return;
+      selectTopic(i);
+      document.getElementById("tamag").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    };
+    draw(() => C.treemap($("tmap"), mp.items, { onPick: pickFromMap }));
 
     // 2. App-frame: сэдвийн жагсаалт + сонгосон сэдэв
     const items = tr.items;
@@ -86,6 +94,7 @@
     });
     $("o-select").addEventListener("change", (e) => select(+e.target.value));
     select(0);
+    selectTopic = select;
 
     // 3. Ангилал: нийт уншилтын багана + шилдэг 4 ангиллын карт
     const totals = ins.categories;

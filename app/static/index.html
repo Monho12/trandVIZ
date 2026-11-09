@@ -47,11 +47,11 @@
 <link rel="modulepreload" href="assets/moments/marquee-row/moment.js">
 <link rel="modulepreload" href="assets/moments/counter-rolls/moment.js">
 <!-- Хуудасны CSS: зөвхөн визуал доторх зүйлс (цонх, график) -->
-<link rel="stylesheet" href="viz.css?v=5">
+<link rel="stylesheet" href="viz.css?v=6">
 </head>
 <body>
 <!-- type: software
-     deal: hero centred, nav nav-centre (nav-cards дилдсэн ч зураг байхгүй тул), close close-word, footer footer-dark,
+     deal: hero = анхны нүүр (treemap; Майкийн шийдвэр, centred hero-г орлуулсан), nav nav-centre (nav-cards дилдсэн ч зураг байхгүй тул), close close-word, footer footer-dark,
            rhythm dark-band, buttons pill, mark initial, palette: Майкийн өнгө (цагаан, бараан бэх, цэнхэр #2a78d6;
            өгөгдөлд улаан #e63946), type onest + JetBrains Mono (эхний гурван хослолд кирилл байхгүй),
            effect fluted-glass (hero-гийн цонхны ард; gradient-mesh бараан булантай тул дахин дилдсэн), grounds: lit ground sky
@@ -77,21 +77,21 @@
 </header>
 
 <main id="top">
-  <!-- 1. HERO (centred): өчигдрийн анхаарлын газрын зураг цонхон дотор -->
-  <section class="hero hero--centred" data-enter aria-labelledby="hero-h">
+  <!-- 1. HERO: анхны нүүр хуудас (Майк хадгалахыг хүссэн): асуулт гарчиг, тайлбар, анхаарлын газрын зураг -->
+  <section class="hero hero--map" data-enter aria-labelledby="hero-h">
     <div class="wrap"><div class="hero-text">
-      <div class="hero__c">
-        <a class="pill" href="#zagvar"><span data-asof>Өгөгдөл 11/06 хүртэл</span><span class="muted">Загварыг үзэх</span></a>
-        <h1 id="hero-h">Дэлхийн анхаарлын 3 өдрийн таамаг</h1>
-        <p class="hero__lead">Англи Wikipedia-гийн 301 сэдвийн өдөр тутмын уншилтаас LightGBM загвар маргааш, нөгөөдөр, 3 дахь өдөр хэр их уншигдахыг тооцоолно.</p>
-        <div class="btn-row"><a class="btn btn--primary" href="#tamag">Таамгийг үзэх</a><a class="btn btn--secondary" href="https://github.com/Monho12/trandVIZ">Эх кодыг үзэх</a></div>
+      <div class="map-head">
+        <h1 id="hero-h">Өчигдөр дэлхий юуг уншив?</h1>
+        <p class="map-sub"><span data-asof>Өгөгдөл 11/06 хүртэл</span> · англи Wikipedia, 301 сэдэв · <a class="link" href="#tamag">3 өдрийн таамгийг үзэх</a></p>
       </div>
-      <div class="hero__window" data-fx="fluted-glass" data-fx-seed="12" data-fx-params='{"speed":0.03}' role="img" aria-label="Өчигдрийн анхаарлын газрын зураг: том нүд олон уншилттай, улаан нь ердийнхөөсөө их уншигдсан сэдэв">
-        <div class="ly-piece win" aria-hidden="true">
-          <div class="win__bar"><span class="win__dots"><i></i><i></i><i></i></span><span><b>Өчигдөр дэлхий юуг уншив</b> · <span data-asof-short>11/06</span></span><span class="sp"></span><span class="win__key"><i class="k-lo"></i>ердийнхөөс бага <i class="k-hi"></i>их</span></div>
-          <div class="tmap" id="tmap"></div>
-        </div>
+      <div class="map-key">
+        <span><b>Том</b> = олон хүн уншсан</span>
+        <span class="scale"><b>Өнгө</b> = ердийнхөөс
+          <i style="background:#2a78d6"></i><em>бага</em>
+          <i style="background:#eef1f5;outline:1px solid #d5dae3;outline-offset:-1px"></i><em>ердийн</em>
+          <i style="background:#f4a3a9"></i><i style="background:#b5222e"></i><em>их шуугиж байна</em></span>
       </div>
+      <div class="tmap tmap--hero" id="tmap" role="img" aria-label="Өчигдрийн анхаарлын газрын зураг: том нүд олон уншилттай, улаан нь ердийнхөөсөө их уншигдсан сэдэв"></div>
     </div></div>
   </section>
 
@@ -303,7 +303,7 @@
 <script type="module" src="assets/system.js"></script>
 <script type="module" src="assets/motion/motion.js"></script>
 <script type="module" src="assets/layout/layout.js"></script>
-<script src="charts.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="charts.js?v=3"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

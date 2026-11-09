@@ -12,12 +12,14 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 HERE = Path(__file__).resolve().parent
 MOCK = HERE / "mock"
 
 app = FastAPI(title="Шуугиан API")
+app.add_middleware(GZipMiddleware, minimum_size=1000)   # CSS/JS-ийг шахаж илгээнэ (хурдан ачаална)
 
 
 @lru_cache(maxsize=8)

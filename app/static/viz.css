@@ -192,3 +192,18 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
 .ch .fl-line { fill: none; stroke: #5d6068; stroke-width: 1.5; }
 .ch text.fl-t { fill: #fff; stroke: none; font: 500 14px var(--font-text); }
 .ch text.fl-s { fill: #9a9b9e; stroke: none; font: 400 12px var(--font-text); }
+
+/* ── Hero: анхны нүүр (асуулт гарчиг + тайлбар + бүтэн treemap) ── */
+.hero--map { height: 100svh; padding: calc(var(--nav) + var(--s-7)) 0 var(--s-7); }
+.hero--map > .wrap { height: 100%; }
+.hero--map .hero-text { display: flex; flex-direction: column; gap: var(--s-4); }
+.hero--map h1 { margin: 0; font-size: clamp(36px, 3.2vw + 12px, 60px); }
+.map-sub { margin: var(--s-2) 0 0; color: #4b4e55; font-size: var(--t-body); }
+.map-key { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: 14px; color: #43464d; }
+.map-key b { color: var(--ink); font-weight: 500; }
+.map-key .scale { display: inline-flex; align-items: center; gap: 6px; }
+.map-key .scale i { width: 16px; height: 12px; border-radius: 3px; display: inline-block; }
+.map-key .scale em { font-style: normal; margin-right: 6px; }
+.tmap--hero { flex: 1 1 0; min-height: 260px; height: auto; margin: 0; border-radius: var(--r-lg); overflow: hidden; }
+.tmap--hero .tm { cursor: pointer; }
+@media (max-width: 639px) { .map-key { flex-direction: column; gap: 4px; font-size: 13px; } .map-key .scale { flex-wrap: wrap; } .map-key b, .map-key em { white-space: nowrap; } .hero--map { padding-top: calc(var(--nav) + var(--s-5)); } }

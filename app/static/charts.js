@@ -265,7 +265,7 @@
   const heat = (r) => HEAT.find((h) => r < h[0]);
 
   // Treemap SVG-ээр: нүд бүр нэг тэгш өнцөгт (товч биш, зураг). Багтахгүй шошгыг зурахгүй.
-  function treemap(box, items, { label } = {}) {
+  function treemap(box, items, { label, onPick } = {}) {
     const { svg, w, h } = svgFor(box, label);
     svg.setAttribute("aria-hidden", "true");
     const n = w < 600 ? 14 : items.length;   // утсан дээр цөөн, том нүд
@@ -297,6 +297,7 @@
       }
       g.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Ердийнхөөс ×${r.ratio}</span>`));
       g.addEventListener("pointerleave", hideTip);
+      if (onPick) g.addEventListener("click", () => { hideTip(); onPick(r.article); });
     });
   }
 
