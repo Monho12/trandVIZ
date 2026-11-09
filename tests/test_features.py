@@ -59,3 +59,13 @@ def test_seasonal_baseline_uses_only_past():
     for h in (1, 2, 3):
         s = seasonal_pred(feats, cl, h)
         assert (s.to_numpy() == feats["y_0"].to_numpy() + h - 7).all()   # y нь өдрийн дугаар тул t+h-7
+
+
+def test_category_not_a_model_input():
+    """ADR 0005: `category` ("viral" утга) нь ирээдүйг мэдэж сонгосон жагсаалтыг илтгэдэг -> leakage.
+    03 notebook-ийг дахин ажиллуулахад чимээгүй буцаж орж ирэхээс сэргийлнэ."""
+    import json
+    fl = json.loads((Path(__file__).resolve().parents[1] / "data" / "processed" / "feature_list.json").read_text(encoding="utf-8"))
+    assert "category" not in fl["features"]
+    assert "category" not in fl.get("categorical", [])
+    assert len(fl["features"]) == 18
