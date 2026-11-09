@@ -89,3 +89,20 @@ def test_trim_inactive_uses_only_past():
 
     assert kept_until_t(base) == kept_until_t(later)
     assert kept_until_t(base) == set(dates[5:30])                       # зөвхөн 0 уншилттай эхлэл хасагдана
+
+
+def test_split_boundary_purge_drops_rows_whose_target_crosses_split_end():
+    """Хуваалтын хил дээрх purge: t+h (h ≤ 3) нь мөрийнхөө хуваалтын төгсгөлөөс хэтэрвэл тэр мөрийг хасна.
+    Үгүй бол 2025-06-28..30-ны train мөрийн target нь valid-ийн өдөр (жишээ нь 2025-07-01-ний вирал эхлэл) болж
+    train руу нэвчинэ. Valid → test хил дээр мөн адил. Test-ийн төгсгөлд хил байхгүй (target-гүй мөр аль хэдийн хасагддаг)."""
+    from src.features import TRAIN_END, VALID_END, purge_split_boundary, split_of
+    dates = pd.date_range(TRAIN_END - pd.Timedelta(days=5), VALID_END + pd.Timedelta(days=5))
+    f = pd.DataFrame({"date": dates, "article": "A"})
+    f["split"] = split_of(f["date"])
+    kept = set(purge_split_boundary(f)["date"])
+    gone = {TRAIN_END - pd.Timedelta(days=k) for k in (0, 1, 2)} | {VALID_END - pd.Timedelta(days=k) for k in (0, 1, 2)}
+    assert gone.isdisjoint(kept)                                          # хил дээрх 3 өдөр бүр хасагдсан
+    assert TRAIN_END - pd.Timedelta(days=3) in kept                       # t+3 = TRAIN_END -> train дотор, үлдэнэ
+    assert VALID_END - pd.Timedelta(days=3) in kept
+    assert TRAIN_END + pd.Timedelta(days=1) in kept                       # valid-ийн эхний өдөр хэвээр
+    assert len(kept) == len(dates) - 6

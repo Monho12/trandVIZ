@@ -2,18 +2,18 @@
   "valid": {
     "h1": {
       "naive": 0.1119,
-      "seasonal": 0.2108,
-      "rows": 81818
+      "seasonal": 0.2109,
+      "rows": 80915
     },
     "h2": {
-      "naive": 0.1589,
-      "seasonal": 0.2109,
-      "rows": 81818
+      "naive": 0.1586,
+      "seasonal": 0.2107,
+      "rows": 80915
     },
     "h3": {
-      "naive": 0.1824,
-      "seasonal": 0.2109,
-      "rows": 81818
+      "naive": 0.1822,
+      "seasonal": 0.2107,
+      "rows": 80915
     }
   },
   "test": {

@@ -97,6 +97,14 @@ def split_of(dates: pd.Series) -> pd.Series:
     return pd.Series(np.where(dates <= TRAIN_END, "train", np.where(dates <= VALID_END, "valid", "test")), index=dates.index)
 
 
+def purge_split_boundary(f: pd.DataFrame) -> pd.DataFrame:
+    """Хуваалтын хил дээрх purge: t+h (h = 1..max(HORIZONS)) нь мөрийнхөө хуваалтаас гарч байвал тэр мөрийг хасна.
+    Жишээ: 2025-06-29-ний train мөрийн y_h2 = 2025-07-01 (valid) -> train руу valid-ийн мэдээлэл нэвчинэ.
+    Ингэснээр train/valid ба valid/test хил бүр дээр max(HORIZONS) = 3 өдөр хасагдана."""
+    last = f["date"] + pd.Timedelta(days=max(HORIZONS))
+    return f[split_of(last).to_numpy() == f["split"].to_numpy()]
+
+
 P = Path(__file__).resolve().parents[1] / "data" / "processed"
 
 
@@ -108,6 +116,7 @@ def build() -> pd.DataFrame:
     f["split"] = split_of(f["date"])
     num = [c for c in FEATURES_BASE if c != "category"]
     f = f.dropna(subset=num + [f"y_h{h}" for h in HORIZONS])
+    f = purge_split_boundary(f)
     out = f[["date", "article", "split", "y_0"] + [f"y_h{h}" for h in HORIZONS] + final]
     out.to_parquet(P / "features.parquet", index=False, compression="zstd")
     return out
