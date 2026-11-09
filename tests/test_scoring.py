@@ -44,21 +44,21 @@ def test_fire_threshold_never_below_25pct():
 def test_arrow_boundaries_with_tuned_T():
     # ADR 0004 хүснэгт, T = 40%: ≥ T 🔥; +10%…T ↗; ±10% ≈; −10…−20% ↘; ≤ −20% ↓
     p = pd.Series([0.40, 0.3999, 0.10, 0.0999, -0.0999, -0.10, -0.1999, -0.20, -0.9, np.nan])
-    got = scoring.arrow(p, T=0.40, measurable=pd.Series(True, index=p.index))
+    got = scoring.arrow(p, tuned_T=0.40, measurable=pd.Series(True, index=p.index))
     assert got.tolist() == ["🔥", "↗", "↗", "≈", "≈", "↘", "↘", "↓", "↓", None]
 
 
-def test_small_topic_never_gets_fire():
+def test_unmeasurable_topic_never_gets_fire():
     # Хэмжигдэхгүй сэдэв +500% таамагтай ч 🔥 авахгүй, харин ↗ (өөрийн pct-ээ харуулна)
     p = pd.Series([5.0, 5.0])
-    got = scoring.arrow(p, T=0.25, measurable=pd.Series([False, True]))
+    got = scoring.arrow(p, tuned_T=0.25, measurable=pd.Series([False, True]))
     assert got.tolist() == ["↗", "🔥"]
 
 
 def test_arrow_applies_T_floor_itself():
     # Тааруулсан T = 10% дамжуулсан ч +20% нь 🔥 биш (T = max(10%, 25%) = 25%)
     p = pd.Series([0.20, 0.25])
-    got = scoring.arrow(p, T=0.10, measurable=pd.Series(True, index=p.index))
+    got = scoring.arrow(p, tuned_T=0.10, measurable=pd.Series(True, index=p.index))
     assert got.tolist() == ["↗", "🔥"]
 
 
@@ -92,7 +92,7 @@ def _day(date, pcts, measurable):
 
 
 def test_top10_sorted_measurable_only_per_day():
-    # Өдөр 1: 12 хэмжигдэх (pct = 0.00 … 0.11) + 1 жижиг сэдэв +900% -> жижиг нь орохгүй
+    # Өдөр 1: 12 хэмжигдэх (pct = 0.00 … 0.11) + 1 хэмжигдэхгүй сэдэв +900% -> тэр нь орохгүй
     d1 = _day("2026-04-01", [i / 100 for i in range(12)] + [9.0], [True] * 12 + [False])
     d2 = _day("2026-04-02", [-i / 100 for i in range(11)], [True] * 11)
     top = scoring.top10(pd.concat([d2, d1], ignore_index=True), "pred_pct")
@@ -106,7 +106,7 @@ def test_quiet_day_still_10_topics_and_zero_fire():
     day = _day("2026-04-01", [0.01 * (i % 3) for i in range(30)], [True] * 30)
     top = scoring.top10(day, "pred_pct")
     assert len(top) == 10
-    assert (scoring.arrow(top["pred_pct"], T=0.25, measurable=top["measurable"]) != scoring.FIRE).all()
+    assert (scoring.arrow(top["pred_pct"], tuned_T=0.25, measurable=top["measurable"]) != scoring.FIRE).all()
 
 
 def test_top10_refuses_day_with_fewer_than_10_measurable():

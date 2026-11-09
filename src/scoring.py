@@ -11,6 +11,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from src.features import TRAIN_END
+
 # Үнэн trend (ADR 0001), зөвхөн үнэлгээнд
 TREND_UP, TREND_DOWN = 0.25, -0.20
 UP, DOWN, STABLE = "↑ өсөж байна", "↓ унаж байна", "тогтвортой"
@@ -25,7 +27,7 @@ TOP_N = 10
 
 # Сэдвийн бүлэг (ADR 0005), viral_articles.csv-ийн peak_month-аар
 GROUP_CURATED, GROUP_OLD_VIRAL, GROUP_NEW_VIRAL = "а", "б", "в"
-LAST_OLD_VIRAL_MONTH = pd.Period("2025-06", freq="M")   # train-ийн сүүлийн сар (TRAIN_END = 2025-06-30)
+LAST_OLD_VIRAL_MONTH = TRAIN_END.to_period("M")   # train-ийн сүүлийн сар = 2025-06
 BUSAD = "Бусад"
 
 # Харуулах (ADR 0003)
@@ -57,12 +59,12 @@ def fire_threshold(tuned: float) -> float:
     return max(float(tuned), T_FLOOR)
 
 
-def arrow(predicted_pct: pd.Series, T: float, measurable: pd.Series) -> pd.Series:
+def arrow(pred_pct: pd.Series, tuned_T: float, measurable: pd.Series) -> pd.Series:
     """Таамагласан pct(h3)-ийн сум (ADR 0004):
     ≥ T 🔥 (зөвхөн хэмжигдэх сэдэв);  +10% … T ↗;  ±10% ≈;  −20% … −10% ↘;  ≤ −20% ↓.
-    Хэмжигдэхгүй сэдэв T-ээс давсан ч ↗ авна. T-д fire_threshold() дотроо хэрэглэгдэнэ."""
-    T = fire_threshold(T)
-    p = pd.Series(predicted_pct)
+    Хэмжигдэхгүй сэдэв T-ээс давсан ч ↗ авна. T = fire_threshold(tuned_T) энд дотроо тооцогдоно."""
+    T = fire_threshold(tuned_T)
+    p = pd.Series(pred_pct)
     m = pd.Series(measurable, index=p.index).fillna(False).astype(bool)
     conds = [((p >= T) & m).to_numpy(), (p >= 0.10).to_numpy(), (p > -0.10).to_numpy(), (p > -0.20).to_numpy()]
     out = pd.Series(np.select(conds, [FIRE, RISE, FLAT, DIP], default=FALL), index=p.index, dtype=object)
