@@ -16,6 +16,19 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+### Claude Code cloud sessions: REST only
+
+In Claude Code cloud sessions GitHub GraphQL is blocked, so `gh issue create/view/list/edit` fail with `HTTP 403: GitHub GraphQL is not available`. Use `gh api` (REST) instead; the repo is `Monho12/trandVIZ`:
+
+- **Create an issue** (with labels): write the body to a file, then `gh api repos/Monho12/trandVIZ/issues -f title="..." -F body=@body.md -f 'labels[]=ready-for-agent' --jq '{number, id, html_url}'`. Keep the returned `id` (database id) for sub-issues and blocking.
+- **Read an issue**: `gh api repos/Monho12/trandVIZ/issues/<n> --jq '{number, title, body, labels: [.labels[].name]}'` and `gh api repos/Monho12/trandVIZ/issues/<n>/comments --jq '.[].body'`.
+- **List issues**: `gh api 'repos/Monho12/trandVIZ/issues?state=open&labels=<label>&per_page=100' --jq '.[] | select(.pull_request | not) | {number, title, labels: [.labels[].name]}'`.
+- **Sub-issue**: `gh api --method POST repos/Monho12/trandVIZ/issues/<parent>/sub_issues -F sub_issue_id=<child-db-id>`.
+- **Blocking**: `gh api --method POST repos/Monho12/trandVIZ/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`. If that call fails, fall back to the `Blocked by: #<n>` line at the top of the child body.
+- **Comment**: `gh api repos/Monho12/trandVIZ/issues/<n>/comments -F body=@comment.md`.
+- **Labels**: add with `gh api repos/Monho12/trandVIZ/issues/<n>/labels -f 'labels[]=<label>'`; remove with `gh api --method DELETE repos/Monho12/trandVIZ/issues/<n>/labels/<label>`.
+- **Close**: comment first, then `gh api --method PATCH repos/Monho12/trandVIZ/issues/<n> -f state=closed`.
+
 File issues only into the user's own repo. Never file into `mattpocock/skills` (the repo these skills come from) unless the user owns it. In a fork, `gh` can default to the upstream parent, so before the first `gh issue create` of a session, check the target with `gh repo view --json nameWithOwner` and confirm it with the user if it is not their repo.
 
 ## Pull requests as a triage surface
