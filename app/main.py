@@ -12,7 +12,6 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 HERE = Path(__file__).resolve().parent
@@ -65,9 +64,6 @@ def model():
     return _load("model")
 
 
-app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
-
-
-@app.get("/")
-def index():
-    return FileResponse(HERE / "static" / "index.html")
+# Вэб хуудас: index.html ба түүний файлууд (assets/, fonts/, app.js ...) язгуур замаас.
+# API замууд дээр бүртгэгдсэн тул түрүүлж таарна; бусад бүх зам static файл руу.
+app.mount("/", StaticFiles(directory=HERE / "static", html=True), name="site")

@@ -1,0 +1,194 @@
+/* Шуугиан — хуудасны CSS: зөвхөн визуал доторх зүйлс (цонх, жагсаалт, график).
+   Бусад бүх зүйл (grid, товч, гарчиг, хэсэг) нь kit-ийн system.css-ээс. */
+
+/* Графикийн өнгөний токенууд: цайвар дэвсгэр дээр */
+:root {
+  --blue: #2a78d6; --blue-2: #1f5ea8; --red: #e63946; --red-2: #b5222e;
+  --c-ink: #111318; --c-ink2: #43464d; --c-muted: #686a6e; --c-line: #e6e7ea; --c-base: #c9cbd1;
+  --c-halo: #ffffff; --c-soft: #c9d9ee; --c-gray: #b7bac2; --c-hl: rgb(17 19 24 / .05);
+}
+/* Бараан хэсэг (загвар) дээрх график */
+.ground-inverse {
+  --c-ink: #ffffff; --c-ink2: #c9cbd0; --c-muted: #9a9b9e; --c-line: #2c2f35; --c-base: #474a52;
+  --c-halo: #1e2025; --c-soft: #34507a; --c-gray: #5d6068; --c-hl: rgb(255 255 255 / .06);
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── Hero: цонх доторх treemap ── */
+.hero__window .win { background: #fff; color: #111318; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 0 0 1px rgb(17 19 24 / .08), 0 30px 70px -30px rgb(17 19 24 / .35); }
+.win__bar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 14px; border-bottom: 1px solid #ececef;
+  font-size: 13px; color: #5d6268; white-space: nowrap; }
+.win__bar b { color: #111318; font-weight: 500; } .win__bar .sp { flex: 1; }
+.win__dots { display: flex; gap: 6px; } .win__dots i { width: 10px; height: 10px; border-radius: 50%; background: #dcdfe2; }
+.win__key { display: inline-flex; align-items: center; gap: 6px; }
+.win__key i { width: 12px; height: 10px; border-radius: 3px; display: inline-block; }
+.win__key .k-lo { background: var(--blue); } .win__key .k-hi { background: var(--red); margin-left: 6px; }
+.tmap { position: relative; height: 380px; margin: 6px; }
+.tm-cell { position: absolute; box-sizing: border-box; border: 2px solid #fff; border-radius: 8px; padding: 8px 10px;
+  text-decoration: none; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+.hero__window .tm-cell { justify-content: flex-start; }
+.tm-t { font-size: 12.5px; font-weight: 500; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tm-t.tm-big { font-size: 17px; }
+.tm-v { font-size: 13px; opacity: .85; font-weight: 500; }
+@media (max-width: 639px) { .win__key { display: none; } .tmap { height: 300px; } .tm-t.tm-big { font-size: 15px; } }
+
+/* ── App-frame (sections-library: app-frame) ── */
+.lead-p { margin: 0; font-size: var(--t-body); line-height: 1.6; color: #4b4e55; }
+.hero--centred .hero__lead { color: #4b4e55; }
+.app.ui { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: minmax(0, 1fr); min-height: 0; margin-top: var(--s-7); background: var(--u-bg); border: 1px solid var(--u-border); border-radius: var(--u-r); box-shadow: var(--u-shadow); }
+.app > .app__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.app > .app__pane + .app__pane { border-left: 1px solid var(--u-line); }
+.app > .app__pane > .ui-panel { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+@media (min-width: 1024px) and (max-width: 1279px) { .app.ui { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); } }
+@media (max-width: 1023px) {
+  .app.ui { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .app > .app__pane--list { max-height: 252px; }
+  .app > .app__pane--list::after { display: none; }
+  .app > .app__pane + .app__pane { border-left: 0; border-top: 1px solid var(--u-line); }
+}
+@media (max-width: 639px) {
+  .app.ui { grid-template-rows: minmax(0, 1fr); }
+  .app > .app__pane--list { display: none; }
+  .app > .app__pane + .app__pane { border-top: 0; }
+}
+.list-cols { display: grid; grid-template-columns: minmax(0, 1fr) 84px 76px; gap: 8px; padding: 8px 16px; font-size: 13px; }
+.topics { list-style: none; margin: 0; padding: 0 8px 8px; }
+.topic { display: grid; grid-template-columns: minmax(0, 1fr) 84px 76px; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 8px; border: 0; border-radius: 8px; background: transparent; text-align: left; cursor: pointer;
+  font: 400 14px/1.3 var(--font-text); color: var(--u-ink, #111318); min-height: 44px; }
+.topic[hidden], li[hidden] { display: none; }
+.topic:hover { background: var(--c-hl); }
+.topic[aria-pressed="true"] { background: rgb(42 120 214 / .10); box-shadow: inset 3px 0 0 var(--blue); }
+.topic__t { display: grid; min-width: 0; }
+.topic__t b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topic__t span { color: var(--c-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topic__v { font-variant-numeric: tabular-nums; color: var(--c-ink2); font-size: 13px; }
+.chip { justify-self: start; font-size: 13px; font-weight: 500; padding: 2px 8px; border-radius: 99px; background: #f1f1f2; color: #43464d; white-space: nowrap; }
+.chip--up { background: #fde6e8; color: #a51d28; }
+
+.open { padding: 20px 24px 16px; display: flex; flex-direction: column; height: 100%; }
+.open__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.open__cat { margin: 0; font-size: 13px; color: var(--c-muted); }
+.open__title { margin: 2px 0 0; font: var(--display-weight) 28px/1.15 var(--font-display); letter-spacing: -0.02em; }
+.open__pick select { display: block; font: 400 16px var(--font-text); height: 44px; padding: 0 12px; border: 1px solid var(--u-border); border-radius: 8px; background: #fff; color: #111318; max-width: 100%; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0 8px; }
+.tile { margin: 0; border-radius: 10px; padding: 10px 14px; background: #f6f6f7; box-shadow: inset 3px 0 0 var(--blue); }
+.tile--cast { box-shadow: inset 3px 0 0 var(--red); }
+.tile dt { color: var(--c-muted); font-size: 13px; }
+.tile dd { margin: 2px 0 0; font-size: 24px; font-weight: 500; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.tile dd small { font-size: 13px; color: var(--c-ink2); font-weight: 500; margin-left: 6px; }
+.chart { position: relative; flex: 1 1 auto; min-height: 220px; }
+@media (max-width: 639px) {
+  .open { padding: 16px; }
+  .open__head { flex-direction: column; gap: 8px; }
+  .open__pick, .open__pick select { display: block; width: 100%; }
+  .open__title, .open__cat { display: none; }
+  .tiles .tile:nth-child(2) { display: none; }
+  .tiles { gap: 8px; grid-template-columns: 1fr 1fr; } .tile { padding: 8px 10px; }
+  .tile dt { font-size: 13px; } .tile dd { font-size: 17px; } .tile dd small { display: block; margin: 0; }
+}
+
+.key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--c-ink2); }
+.key li { display: flex; align-items: center; gap: 7px; }
+.key i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.key .k-blue { background: var(--blue); }
+.key .k-orange { background: repeating-linear-gradient(45deg, var(--red) 0 2px, #f6b0b5 2px 4px); outline: 1px solid var(--red); outline-offset: -1px; }
+.key .k-range { width: 2px; height: 14px; border-radius: 1px; background: var(--red-2); }
+.key .k-norm { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed #5b6170; }
+
+/* ── Bento ба загварын картын панел ── */
+#angilal .panel, #zagvar .panel { --p-h: 300px; }
+#angilal .card--row > p { min-height: 3.2em; }
+.viz { position: absolute; inset: 20px 24px 16px; }
+.viz--mini { inset: 20px 20px 12px; }
+.panel--viz { background: var(--p-inv-surface); }
+#angilal .panel { background: #f6f6f7; }
+#zagvar .panel { background: #1e2025; box-shadow: inset 0 0 0 1px #2c2f35; }
+/* өгөгдлийн график тул панел хавтгай: kit-ийн гэрэлтүүлэг (::before) хэрэггүй */
+#angilal .panel::before, #zagvar .panel::before { display: none; }
+#angilal .grid, #zagvar .grid { align-items: start; }
+.group, .mq { min-width: 0; }
+#angilal .mq.mo-mq { margin-inline: calc(50% - 50vw); }
+.mq { contain: inline-size; overflow: hidden; max-width: none; margin: 0 0 var(--s-6); font: var(--display-weight) 22px/1.2 var(--font-display); color: var(--muted); }
+@media (max-width: 1023px) { #angilal .panel, #zagvar .panel { --p-h: 260px; } }
+@media (max-width: 639px) { #angilal .panel, #zagvar .panel { --p-h: 160px; } .mq { font-size: 18px; } #angilal [data-catcard="3"] { display: none; } }
+
+/* ── Тоонууд (counter-rolls) ── */
+.statement { max-width: 22ch; }
+.nums { margin-top: var(--s-10); }
+.nums > div { padding-top: var(--s-5) !important; gap: var(--s-3); }
+.nums .t-stat { font-size: var(--t-h2); }
+.nums > div { border-top: 1px solid var(--line); padding-top: var(--s-4); }
+
+/* ── Tabs-tour-ийн хүрээ ── */
+.tabs { margin: var(--s-6) 0 var(--s-5); }
+.tabp p { margin: 0 0 var(--s-3); max-width: 46ch; }
+.tabp .t-lead { color: var(--ink); }
+.frame--viz { background: #f6f6f7; }
+.frame.frame--viz > .viz--frame { position: absolute; inset: 32px; display: flex; flex-direction: column; }
+.viz--frame[hidden] { display: none; }
+.viz-fill { position: relative; flex: 1 1 auto; }
+.key--frame { margin-top: 12px; }
+.minis { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 24px; height: 100%; }
+.mini-b { display: flex; flex-direction: column; min-height: 0; }
+.mini-b p { margin: 0 0 4px; font-size: 14px; font-weight: 500; }
+.mini-b .mini-s { margin: 4px 0 0; font-size: 13px; color: var(--blue-2); font-weight: 500; }
+.mini-b .viz-fill { min-height: 0; }
+@media (max-width: 639px) { .frame.frame--viz > .viz--frame { inset: 16px; } .minis { gap: 12px; } }
+
+/* ── SVG график (charts.js) ── */
+svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
+.ch .grid { stroke: var(--c-line); }
+.ch .base { stroke: var(--c-base); }
+.ch .tick { fill: var(--c-muted); font: 400 11px var(--font-text); }
+.ch .val { fill: var(--c-ink); font: 500 12px var(--font-text); }
+.ch .val2 { fill: var(--c-ink2); font: 500 11px var(--font-text); }
+.ch .b-blue { fill: var(--blue); }
+.ch .b-orange { fill: var(--red); }
+.ch .b-gray { fill: var(--c-gray); }
+.ch .b-soft { fill: var(--c-soft); }
+.ch .b-grad { fill: url(#g-blue); }
+.ch .b-grad-soft { fill: url(#g-blue-soft); }
+.ch .b-hatch { fill: url(#p-cast); stroke: var(--red); stroke-width: 1; }
+.ch .peak { fill: var(--c-muted); }
+.ch .range { stroke: var(--red-2); stroke-width: 2; stroke-linecap: round; }
+.ch .split { stroke: var(--c-muted); stroke-dasharray: 3 4; }
+.ch .norm { stroke: #5b6170; stroke-width: 1.5; stroke-dasharray: 6 4; }
+.ch text.tm-label { stroke: none; font-family: var(--font-text); }
+.ch text { paint-order: stroke; stroke: var(--c-halo); stroke-width: 4px; stroke-linejoin: round; }
+.ch .hl { fill: var(--c-hl); }
+.ch .l-gray { fill: none; stroke: var(--c-gray); stroke-width: 2; }
+.ch .l-blue { fill: none; stroke: var(--blue); stroke-width: 2; }
+.ch .stop { stroke: var(--red); stroke-dasharray: 4 4; }
+.ch .l-c1, .ch .l-c2, .ch .l-c3 { fill: none; stroke-width: 2; }
+.ch path.l-c1 { stroke: #2a78d6; } .ch path.l-c2 { stroke: #e63946; } .ch path.l-c3 { stroke: #1D3557; }
+.ch text.lname { font: 500 12px var(--font-text); }
+.ch text.l-c1 { fill: #1f5ea8; } .ch text.l-c2 { fill: #b5222e; } .ch text.l-c3 { fill: #1D3557; }
+.ch .sp-area { fill: rgb(42 120 214 / .12); }
+.ch .sp-line { fill: none; stroke: var(--blue); stroke-width: 1.5; }
+.ch .sp-dot { fill: var(--blue); }
+.ground-inverse .ch path.l-c3 { stroke: #8fb4e8; }
+
+/* Tooltip */
+.tip { position: fixed; z-index: 20; pointer-events: none; background: #fff; color: #111318; border: 1px solid #e6e7ea;
+  border-radius: 8px; padding: 7px 10px; font: 400 13px/1.4 var(--font-text); box-shadow: 0 6px 18px rgb(17 19 24 / .12); }
+.tip b { display: block; font-weight: 500; }
+.tip span { color: #43464d; }
+
+/* Панел доторх тайлбар (legend) */
+.key--panel { position: absolute; top: 16px; left: 24px; right: 24px; margin: 0; z-index: 1; }
+.viz--keyed { top: 52px; }
+.key .k-g1 { background: var(--c-gray); } .key .k-g2 { background: var(--c-gray); opacity: .6; }
+.key .k-stop { width: 0; height: 14px; border-radius: 0; border-left: 2px dashed var(--red); }
+/* Хаалтын нэр .wrap-ийг дүүргэнэ */
+#contact .close__word { line-height: 1.08; padding-top: .04em; }
+@media (min-width: 640px) { #contact .close__word { font-size: clamp(64px, 22.4vw, 328px); } }
+
+/* Загварын урсгал (SVG) */
+.ch .fl-box { fill: #2b2e35; stroke: #3a3e46; }
+.ch .fl-core { fill: #2370cc; }
+.ch .fl-out { fill: #3a1d22; stroke: var(--red); }
+.ch .fl-line { fill: none; stroke: #5d6068; stroke-width: 1.5; }
+.ch text.fl-t { fill: #fff; stroke: none; font: 500 14px var(--font-text); }
+.ch text.fl-s { fill: #9a9b9e; stroke: none; font: 400 12px var(--font-text); }

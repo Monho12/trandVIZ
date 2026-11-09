@@ -264,26 +264,40 @@
     [2.5, "#fbd5d8", "#5c1219"], [5, "#f4a3a9", "#4a0e14"], [15, "#e63946", "#fff"], [Infinity, "#b5222e", "#fff"]];
   const heat = (r) => HEAT.find((h) => r < h[0]);
 
-  function treemap(box, items, { onPick, emoji = {}, label } = {}) {
-    box.innerHTML = "";
-    const w = box.clientWidth, h = box.clientHeight;
-    const n = w < 600 ? 14 : items.length;   // утсан дээр цөөн, том хайрцаг
+  // Treemap SVG-ээр: нүд бүр нэг тэгш өнцөгт (товч биш, зураг). Багтахгүй шошгыг зурахгүй.
+  function treemap(box, items, { label } = {}) {
+    const { svg, w, h } = svgFor(box, label);
+    svg.setAttribute("aria-hidden", "true");
+    const n = w < 600 ? 14 : items.length;   // утсан дээр цөөн, том нүд
     const rects = squarify(items.map((d) => ({ ...d, v: d.views })).sort((a, b) => b.v - a.v).slice(0, n), 0, 0, w, h);
-    rects.forEach((r, i) => {
+    const G = 2;                                // нүд хоорондын зай
+    rects.forEach((r) => {
       const [, bg, fg] = heat(r.ratio);
-      const a = document.createElement("a");
-      a.className = "tm-cell";
-      a.href = "#/topic/" + encodeURIComponent(r.article);
-      a.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${bg};color:${fg};--i:${i}`;
-      a.setAttribute("aria-label", `${r.title}: ${fmt(r.views)} уншилт, ердийнхөөс ×${r.ratio}`);
-      const big = r.w > 120 && r.h > 70, mid = r.w > 56 && r.h > 34;
-      if (mid) a.innerHTML = `<span class="tm-t${big ? " tm-big" : ""}">${emoji[r.category] || ""} ${r.title}</span>` +
-        (big ? `<span class="tm-v">${fmt(r.views)}, ×${r.ratio}</span>` : "");
-      a.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Ердийнхөөс ×${r.ratio}</span>`));
-      a.addEventListener("pointerleave", hideTip);
-      box.appendChild(a);
+      const g = el("g", { class: "tm" }, svg);
+      el("rect", { x: r.x + G / 2, y: r.y + G / 2, width: Math.max(0, r.w - G), height: Math.max(0, r.h - G), rx: 6, fill: bg }, g);
+      const big = r.w > 120 && r.h > 70, fs = big ? 17 : 12.5, pad = 10, maxW = r.w - G - 2 * pad;
+      // Үгээр 2 мөр хүртэл хуваана; багтахгүй бол шошгогүй
+      const words = r.title.split(" "), lines = [""];
+      const t = el("text", { x: r.x + pad, y: r.y + pad + fs, fill: fg, "font-size": fs, "font-weight": 500, class: "tm-label" }, g);
+      for (const wd of words) {
+        const test = (lines[lines.length - 1] + " " + wd).trim();
+        t.textContent = test;
+        if (t.getComputedTextLength() <= maxW) lines[lines.length - 1] = test;
+        else if (lines.length < 2 && lines[lines.length - 1]) lines.push(wd);
+        else { lines.length = 0; break; }
+      }
+      t.textContent = "";
+      const need = lines.length * fs * 1.2 + (big ? 20 : 0) + pad;
+      if (!lines.length || r.h - G < need || lines.some((l) => !l)) { t.remove(); }
+      else {
+        lines.forEach((l, i) => { el("tspan", { x: r.x + pad, dy: i ? fs * 1.2 : 0 }, t).textContent = l; });
+        if ([...t.querySelectorAll("tspan")].some((sp) => sp.getComputedTextLength() > maxW)) t.remove();
+        else if (big) el("text", { x: r.x + pad, y: r.y + pad + fs + lines.length * fs * 1.2 + 2, fill: fg, "font-size": 13, opacity: 0.85, class: "tm-label" }, g)
+          .textContent = `${fmt(r.views)}, ×${r.ratio}`;
+      }
+      g.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Ердийнхөөс ×${r.ratio}</span>`));
+      g.addEventListener("pointerleave", hideTip);
     });
-    box.setAttribute("role", "list"); box.setAttribute("aria-label", label || "");
   }
 
   /** Жижиг sparkline: сүүлийн 30 хоног, өчигдрийн цэг тод */
@@ -298,5 +312,26 @@
     el("circle", { class: "sp-dot", cx: X(n - 1), cy: Y(history[n - 1].v), r: 2.5 }, svg);
   }
 
-  window.Charts = { columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate };
+  // Загварын урсгал: Wikipedia -> 19 feature -> 3 LightGBM -> таамаг (энгийн SVG, хөдөлгөөнгүй)
+  function flow(box, { label } = {}) {
+    const { svg, w, h } = svgFor(box, label);
+    const narrow = w < 460;
+    const bw = narrow ? (w - 24) / 4 : Math.min(150, (w - 60) / 4), bh = 56, cy = h / 2;
+    const xs = [0, 1, 2, 3].map((i) => i * (w - bw) / 3);
+    const ys = [cy - bh * 1.35, cy, cy + bh * 1.35];
+    const box_ = (x, y, cls, t, sub) => {
+      el("rect", { x, y: y - bh / 2, width: bw, height: bh, rx: 10, class: cls }, svg);
+      el("text", { x: x + bw / 2, y: y - (sub ? 3 : -5), "text-anchor": "middle", class: "fl-t" }, svg).textContent = t;
+      if (sub) el("text", { x: x + bw / 2, y: y + 15, "text-anchor": "middle", class: "fl-s" }, svg).textContent = sub;
+    };
+    const link = (x1, y1, x2, y2) => el("path", { class: "fl-line", d: `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}` }, svg);
+    link(xs[0] + bw, cy, xs[1], cy);
+    ys.forEach((y) => { link(xs[1] + bw, cy, xs[2], y); link(xs[2] + bw, y, xs[3], cy); });
+    box_(xs[0], cy, "fl-box", "Wikipedia", narrow ? "" : "301 сэдэв");
+    box_(xs[1], cy, "fl-core", narrow ? "19" : "19 feature", narrow ? "" : "lag, өсөлт…");
+    ["Маргааш", "2 дахь", "3 дахь"].forEach((t, i) => box_(xs[2], ys[i], "fl-box", narrow ? `${i + 1}` : t, narrow ? "" : "LightGBM"));
+    box_(xs[3], cy, "fl-out", "Таамаг", narrow ? "" : "+80% хүрээ");
+  }
+
+  window.Charts = { flow, columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate };
 })();
