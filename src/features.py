@@ -115,4 +115,5 @@ def build() -> pd.DataFrame:
 
 if __name__ == "__main__":
     d = build()
-    print(f"features.parquet: {len(d):,} мөр, {d.shape[1] - 7} feature;", d["split"].value_counts().to_dict())
+    n_feat = len(json.loads((P / "feature_list.json").read_text(encoding="utf-8"))["features"])
+    print(f"features.parquet: {len(d):,} мөр, {n_feat} feature;", d["split"].value_counts().to_dict())
