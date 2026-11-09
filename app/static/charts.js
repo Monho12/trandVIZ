@@ -191,28 +191,6 @@
     });
   }
 
-  /**
-   * Загвар ба энгийн аргын алдааг харьцуулах: мөр бүр нэг өдөр, хоёр хэвтээ багана.
-   * Багана бүрийн хажууд нэр + хувь шууд бичигдэнэ (тайлбар хайх шаардлагагүй).
-   */
-  function compare(box, rows, label) {
-    const { svg, w, h } = svgFor(box, label);
-    const lw = Math.min(110, w * 0.26), right = 150, rh = h / rows.length;
-    const max = Math.max(...rows.flatMap((r) => [r.model, r.naive]));
-    const bw = (v) => Math.max(4, (v / max) * (w - lw - right));
-    const bh = Math.min(22, rh * 0.28);
-    rows.forEach((r, i) => {
-      const y0 = i * rh + rh / 2;
-      el("text", { class: "val", x: 0, y: y0 + 5, "font-size": 14 }, svg).textContent = r.name;
-      [["model", "b-blue", "LightGBM"], ["naive", "b-gray", "Өчигдрийнх шиг"]].forEach(([k, cls, nm], j) => {
-        const y = y0 - bh - 3 + j * (bh + 6);
-        el("rect", { class: cls, x: lw, y, width: bw(r[k]), height: bh, rx: 4 }, svg);
-        el("text", { class: j ? "val2" : "val", x: lw + bw(r[k]) + 8, y: y + bh / 2 + 4, "font-size": 12 }, svg)
-          .textContent = `±${Math.round(r[k])}%  ${nm}`;
-      });
-    });
-  }
-
   /** Энгийн босоо багана: hi = тодруулах багануудын индекс, base = дундаж шугам (жишээ нь 100) */
   function bars(box, values, { labels = [], hi = [], valLabels = {}, base, minY = 0, label } = {}) {
     const { svg, w, h } = svgFor(box, label);
@@ -286,41 +264,26 @@
     [2.5, "#fbd5d8", "#5c1219"], [5, "#f4a3a9", "#4a0e14"], [15, "#e63946", "#fff"], [Infinity, "#b5222e", "#fff"]];
   const heat = (r) => HEAT.find((h) => r < h[0]);
 
-  // Treemap SVG-ээр: нүд бүр нэг тэгш өнцөгт (товч биш, зураг). Багтахгүй шошгыг зурахгүй.
-  function treemap(box, items, { label, onPick } = {}) {
-    const { svg, w, h } = svgFor(box, label);
-    svg.setAttribute("aria-hidden", "true");
-    const n = w < 600 ? 14 : items.length;   // утсан дээр цөөн, том нүд
+  function treemap(box, items, { onPick, emoji = {}, label } = {}) {
+    box.innerHTML = "";
+    const w = box.clientWidth, h = box.clientHeight;
+    const n = w < 600 ? 14 : items.length;   // утсан дээр цөөн, том хайрцаг
     const rects = squarify(items.map((d) => ({ ...d, v: d.views })).sort((a, b) => b.v - a.v).slice(0, n), 0, 0, w, h);
-    const G = 2;                                // нүд хоорондын зай
-    rects.forEach((r) => {
+    rects.forEach((r, i) => {
       const [, bg, fg] = heat(r.ratio);
-      const g = el("g", { class: "tm" }, svg);
-      el("rect", { x: r.x + G / 2, y: r.y + G / 2, width: Math.max(0, r.w - G), height: Math.max(0, r.h - G), rx: 6, fill: bg }, g);
-      const big = r.w > 120 && r.h > 70, fs = big ? 17 : 12.5, pad = 10, maxW = r.w - G - 2 * pad;
-      // Үгээр 2 мөр хүртэл хуваана; багтахгүй бол шошгогүй
-      const words = r.title.split(" "), lines = [""];
-      const t = el("text", { x: r.x + pad, y: r.y + pad + fs, fill: fg, "font-size": fs, "font-weight": 500, class: "tm-label" }, g);
-      for (const wd of words) {
-        const test = (lines[lines.length - 1] + " " + wd).trim();
-        t.textContent = test;
-        if (t.getComputedTextLength() <= maxW) lines[lines.length - 1] = test;
-        else if (lines.length < 2 && lines[lines.length - 1]) lines.push(wd);
-        else { lines.length = 0; break; }
-      }
-      t.textContent = "";
-      const need = lines.length * fs * 1.2 + (big ? 20 : 0) + pad;
-      if (!lines.length || r.h - G < need || lines.some((l) => !l)) { t.remove(); }
-      else {
-        lines.forEach((l, i) => { el("tspan", { x: r.x + pad, dy: i ? fs * 1.2 : 0 }, t).textContent = l; });
-        if ([...t.querySelectorAll("tspan")].some((sp) => sp.getComputedTextLength() > maxW)) t.remove();
-        else if (big) el("text", { x: r.x + pad, y: r.y + pad + fs + lines.length * fs * 1.2 + 2, fill: fg, "font-size": 13, opacity: 0.85, class: "tm-label" }, g)
-          .textContent = `${fmt(r.views)}, ×${r.ratio}`;
-      }
-      g.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Ердийнхөөс ×${r.ratio}</span>`));
-      g.addEventListener("pointerleave", hideTip);
-      if (onPick) g.addEventListener("click", () => { hideTip(); onPick(r.article); });
+      const a = document.createElement("a");
+      a.className = "tm-cell";
+      a.href = "#/topic/" + encodeURIComponent(r.article);
+      a.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${bg};color:${fg};--i:${i}`;
+      a.setAttribute("aria-label", `${r.title}: ${fmt(r.views)} уншилт, ердийнхөөс ×${r.ratio}`);
+      const big = r.w > 120 && r.h > 70, mid = r.w > 56 && r.h > 34;
+      if (mid) a.innerHTML = `<span class="tm-t${big ? " tm-big" : ""}">${emoji[r.category] || ""} ${r.title}</span>` +
+        (big ? `<span class="tm-v">${fmt(r.views)}, ×${r.ratio}</span>` : "");
+      a.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Ердийнхөөс ×${r.ratio}</span>`));
+      a.addEventListener("pointerleave", hideTip);
+      box.appendChild(a);
     });
+    box.setAttribute("role", "list"); box.setAttribute("aria-label", label || "");
   }
 
   /** Жижиг sparkline: сүүлийн 30 хоног, өчигдрийн цэг тод */
@@ -335,26 +298,5 @@
     el("circle", { class: "sp-dot", cx: X(n - 1), cy: Y(history[n - 1].v), r: 2.5 }, svg);
   }
 
-  // Загварын урсгал: Wikipedia -> 19 feature -> 3 LightGBM -> таамаг (энгийн SVG, хөдөлгөөнгүй)
-  function flow(box, { label } = {}) {
-    const { svg, w, h } = svgFor(box, label);
-    const narrow = w < 460;
-    const bw = narrow ? (w - 24) / 4 : Math.min(150, (w - 60) / 4), bh = 56, cy = h / 2;
-    const xs = [0, 1, 2, 3].map((i) => i * (w - bw) / 3);
-    const ys = [cy - bh * 1.35, cy, cy + bh * 1.35];
-    const box_ = (x, y, cls, t, sub) => {
-      el("rect", { x, y: y - bh / 2, width: bw, height: bh, rx: 10, class: cls }, svg);
-      el("text", { x: x + bw / 2, y: y - (sub ? 3 : -5), "text-anchor": "middle", class: "fl-t" }, svg).textContent = t;
-      if (sub) el("text", { x: x + bw / 2, y: y + 15, "text-anchor": "middle", class: "fl-s" }, svg).textContent = sub;
-    };
-    const link = (x1, y1, x2, y2) => el("path", { class: "fl-line", d: `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}` }, svg);
-    link(xs[0] + bw, cy, xs[1], cy);
-    ys.forEach((y) => { link(xs[1] + bw, cy, xs[2], y); link(xs[2] + bw, y, xs[3], cy); });
-    box_(xs[0], cy, "fl-box", "Wikipedia", narrow ? "" : "301 сэдэв");
-    box_(xs[1], cy, "fl-core", narrow ? "19" : "19 feature", narrow ? "" : "lag, өсөлт…");
-    ["Маргааш", "2 дахь", "3 дахь"].forEach((t, i) => box_(xs[2], ys[i], "fl-box", narrow ? `${i + 1}` : t, narrow ? "" : "LightGBM"));
-    box_(xs[3], cy, "fl-out", "Таамаг", narrow ? "" : "+80% хүрээ");
-  }
-
-  window.Charts = { flow, compare, columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate };
+  window.Charts = { columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate };
 })();
