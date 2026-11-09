@@ -1,0 +1,36 @@
+{
+  "valid": {
+    "h1": {
+      "naive": 0.1119,
+      "seasonal": 0.2098,
+      "rows": 81666
+    },
+    "h2": {
+      "naive": 0.1587,
+      "seasonal": 0.2099,
+      "rows": 81666
+    },
+    "h3": {
+      "naive": 0.1821,
+      "seasonal": 0.2099,
+      "rows": 81666
+    }
+  },
+  "test": {
+    "h1": {
+      "naive": 0.1149,
+      "seasonal": 0.2098,
+      "rows": 65317
+    },
+    "h2": {
+      "naive": 0.1599,
+      "seasonal": 0.2098,
+      "rows": 65317
+    },
+    "h3": {
+      "naive": 0.1825,
+      "seasonal": 0.2099,
+      "rows": 65317
+    }
+  }
+}

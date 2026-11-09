@@ -47,3 +47,15 @@ def test_no_feature_correlates_perfectly_with_future_only():
     f = toy()
     a = f[f["article"] == "A"].set_index("date")
     assert a.loc["2024-01-30", "roll_mean_3"] == np.mean([27, 28, 29])
+
+
+def test_seasonal_baseline_uses_only_past():
+    """seasonal baseline: ŷ(t+h) = y(t+h-7) — t-ээс хойших утга хэзээ ч ашиглагдахгүй."""
+    import pandas as pd
+    from src.baselines import seasonal_pred
+    dates = pd.date_range("2024-01-01", periods=30)
+    cl = pd.DataFrame({"article": "A", "date": dates, "y": range(30)})
+    feats = cl.rename(columns={"y": "y_0"}).iloc[10:20].reset_index(drop=True)
+    for h in (1, 2, 3):
+        s = seasonal_pred(feats, cl, h)
+        assert (s.to_numpy() == feats["y_0"].to_numpy() + h - 7).all()   # y нь өдрийн дугаар тул t+h-7
