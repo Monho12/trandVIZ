@@ -154,19 +154,23 @@
   async function model() {
     const m = await api("/api/model");
     meta(m);
+    const win = m.names[m.winner], others = m.keys.filter((k) => k !== m.winner && k !== "naive");
+    const order = [m.winner, ...others, "naive"];
+    const sk = (h) => `${C.fmt(m.skill[h].point)}%`;
     main.innerHTML = `
       <h1 class="page-h">Загвар хэр сайн таамагладаг вэ?</h1>
       <p class="lead">Энгийн аргуудаас илүү зөв үү?</p>
       <div class="mgrid">
         <div class="mcard">
           <h3>Хэр их алддаг вэ?</h3>
-          <p class="chart-sub">Богино = илүү зөв</p>
+          <p class="chart-sub">Дунджаар хэдэн хувиар зөрдөг вэ. Богино = илүү зөв</p>
           <div class="mchart" id="m-bars"></div>
           <ul class="key">
-            <li><i class="k-blue"></i>LightGBM</li>
-            <li><i style="background:var(--gray-bar)"></i>Өчигдрийнх шиг</li>
-            <li><i style="background:var(--gray-bar);opacity:.6"></i>7 хоногийн өмнөх шиг</li>
+            <li><i class="k-blue"></i>${esc(win)} (сонгосон)</li>
+            <li><i style="background:var(--gray-bar)"></i>${others.map((k) => esc(m.names[k])).join(", ")}</li>
+            <li><i style="background:var(--gray-bar);opacity:.6"></i>${esc(m.names.naive)}</li>
           </ul>
+          <p class="chart-sub">Өчигдрийнхөөс ${sk("h1")}, ${sk("h2")}, ${sk("h3")} бага алдаатай (1, 2, 3 өдөр; шалгалтын үе, сонгосон 151 сэдэв)</p>
         </div>
         <div class="mcard">
           <h3>Overfit болсон уу?</h3>
@@ -179,11 +183,14 @@
           <div class="mchart" id="m-imp" style="height:290px"></div>
         </div>
       </div>`;
-    draw(() => C.groups(document.getElementById("m-bars"), m.metrics, ["model", "naive", "seasonal"], [], "Model-ийн алдааг энгийн аргуудтай харьцуулсан"));
+    const pctFmt = (v) => `${v.toFixed(1)}%`;
+    draw(() => C.groups(document.getElementById("m-bars"), m.metrics, order,
+      { hi: m.winner, light: ["naive"], names: m.names, fmt: pctFmt }, "Гурван алгоритм ба энгийн аргын алдааг хувиар харьцуулсан"));
     draw(() => C.curve(document.getElementById("m-curve"), m.curve, m.best_iter, "Сургалт ба validation алдааны муруй"));
-    const FEAT = { lag_1: "Өчигдрийн уншилт", ratio_7: "7 хоногийн дундажтай харьцаа", roll_mean_7: "7 хоногийн дундаж",
-      lag_7: "7 хоногийн өмнөх уншилт", growth_3: "Сүүлийн 3 хоногийн өсөлт", dow: "Гараг", roll_std_14: "14 хоногийн хэлбэлзэл",
-      category: "Ангилал", lag_14: "14 хоногийн өмнөх уншилт", days_since_peak: "Оргилоос хойш хоног" };
+    const FEAT = { ratio_7: "7 хоногийн дунджаас", roll_std_3: "3 хоногийн хэлбэлзэл", growth_1: "Өчигдрөөс өсөлт",
+      vs_level: "Ердийн түвшнээс", dow: "Гараг", growth_3: "3 хоногийн өсөлт", roll_std_7: "7 хоногийн хэлбэлзэл",
+      doy_cos: "Жилийн улирал", level_365: "Ердийн түвшин (жил)", roll_std_28: "28 хоногийн хэлбэлзэл", roll_mean_7: "7 хоногийн дундаж",
+      lag_1: "Өчигдрийн анхаарал", lag_7: "7 хоногийн өмнөх анхаарал", days_since_peak: "Оргилоос хойш хоног" };
     draw(() => C.hbars(document.getElementById("m-imp"), m.importance.map((r) => ({ ...r, f: FEAT[r.f] || r.f })), "Feature importance"));
   }
 
