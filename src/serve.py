@@ -77,7 +77,10 @@ def predict(model, rows: pd.DataFrame) -> pd.DataFrame:
         # таамаг, 80% интервалын доод/дээд хил (ADR 0003): pct ба уншилт
         for name, delta in (("", d), ("lo", d + q["lo"]), ("hi", d + q["hi"])):
             delta = scoring.floor_delta(y0, delta)
-            r[f"{name or 'pct'}_h{h}"] = scoring.predicted_pct(y0, delta)
+            # x_0 = 0 (asof өдөр 0 уншилт) бол x̂_h / x_0 − 1 = inf/NaN: хувь тодорхойгүй -> NaN.
+            # Ингэснээр сум None, top-10-д орохгүй, JSON-д null (inf нь JSON биш тул сервер унадаг байсан).
+            p = scoring.predicted_pct(y0, delta)
+            r[f"{name or 'pct'}_h{h}"] = np.where(np.isfinite(p), p, np.nan)
             r[f"views{'_' + name if name else ''}_h{h}"] = np.expm1(y0 + delta) * scale
     r["arrow"] = scoring.arrow(r["pct_h3"], meta["fire"]["T"], r["measurable"])
     r["category"] = scoring.display_category(r["category"])
@@ -86,8 +89,10 @@ def predict(model, rows: pd.DataFrame) -> pd.DataFrame:
 
 # ---------------------------------------------------------------- JSON
 
-def _r(p: float) -> float:
-    """5%-д дугуйлсан pct, JSON-д float-ын шуугиангүй (−0.15000000000000002 биш −0.15)."""
+def _r(p: float) -> float | None:
+    """5%-д дугуйлсан pct, JSON-д float-ын шуугиангүй (−0.15000000000000002 биш −0.15). Тодорхойгүй (NaN/inf) -> None."""
+    if p is None or not np.isfinite(p):
+        return None
     return round(scoring.round_pct(p), 2)
 
 
