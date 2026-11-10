@@ -1,11 +1,10 @@
-# Шуугиан — Docker image (#9, ADR 0008, 0010: хамгаалалт дээр local).
+# check=skip=JSONArgsRecommended
+# Шуугиан — Docker image (#9, ADR 0008, 0010: хамгаалалт дээр local, 0011: Render free).
 #   local:  docker build -t shuugian . && docker run --rm -p 7860:7860 shuugian
 #           -> http://127.0.0.1:7860   (offline: -e SHUUGIAN_REFRESH=0)
 FROM python:3.13-slim
 
-# lightgbm-д OpenMP хэрэгтэй
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+# apt алхам алга: libgomp1 зөвхөн lightgbm-д хэрэгтэй байсан, серверт CatBoost л бий (ADR 0011).
 
 # root биш хэрэглэгч (uid 1000); data/live/-д бичих эрхтэй.
 RUN useradd -m -u 1000 user
@@ -27,4 +26,5 @@ COPY --chown=user data/ data/
 
 EXPOSE 7860
 # Нэг process: Server state + өдөр тутмын шинэчлэлтийн thread нэг л байх ёстой (--workers нэмэхгүй)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Shell хэлбэр (JSON биш тул дээрх check=skip): Render.com порт-оо $PORT-оор өгнө, local-д 7860 (ADR 0011). exec: uvicorn PID 1 болж SIGTERM-ийг авна.
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860}
