@@ -17,6 +17,7 @@
 """
 from __future__ import annotations
 
+import ctypes
 import json
 import logging
 import os
@@ -53,15 +54,23 @@ def local_today() -> pd.Timestamp:
 
 
 def load_raw() -> live.RawCache:
-    """data/live/ нь data/processed/-оос шинэ бол түүнийг, үгүй бол image-ийн түүхийг."""
-    base = live.RawCache.load(PROCESSED)
+    """data/live/ нь data/processed/-оос шинэ бол түүнийг, үгүй бол image-ийн түүхийг.
+    Аль нь шинэ вэ гэдгийг total_views-ээр л харьцуулна: хоёр cache-ийг бүтнээр нь зэрэг уншихгүй (ADR 0012)."""
     try:
-        newer = live.RawCache.load(LIVE_DIR)
-        if newer.end > base.end:
-            return newer
+        if live.RawCache.end_on_disk(LIVE_DIR) > live.RawCache.end_on_disk(PROCESSED):
+            return live.RawCache.load(LIVE_DIR)
     except (FileNotFoundError, OSError, ValueError):
         pass
-    return base
+    return live.RawCache.load(PROCESSED)
+
+
+def release_memory() -> None:
+    """Чөлөөлсөн heap-ийг OS-д буцаана (glibc malloc_trim). Snapshot барих үеийн түр хүснэгтүүд (~150 MiB) чөлөөлөгдсөн
+    ч процесст үлддэг, Render 512 MB-д тоологдоно (ADR 0012). glibc биш орчинд (macOS, Windows) юу ч хийхгүй."""
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):
+        pass
 
 
 class Server:
@@ -69,17 +78,21 @@ class Server:
 
     def __init__(self):
         self.model = None
-        self.raw: live.RawCache | None = None
         self.snapshot: serve.Snapshot | None = None
         self.loaded_at = None
         self.refresh = {"enabled": False, "status": None, "message": "", "at": None, "next": None}
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
+    def _build(self, raw: live.RawCache) -> serve.Snapshot:
+        return serve.Snapshot.from_raw(raw, test_end=pd.Timestamp(self.model.meta["test"]["test_end"]))
+
     def start(self, refresh: bool = True) -> None:
+        """Түүхий cache-ийг (raw) санах ойд барихгүй: Snapshot барьсны дараа чөлөөлнө, шинэчлэлт дискнээс дахин уншина
+        (өдөрт нэг удаа, ADR 0012: Render 512 MB)."""
         self.model = train.load()
-        self.raw = load_raw()
-        self.snapshot = serve.Snapshot.from_raw(self.raw)
+        self.snapshot = self._build(load_raw())
+        release_memory()
         self.loaded_at = utc_now()
         self.refresh["enabled"] = refresh
         if refresh:
@@ -93,19 +106,24 @@ class Server:
         fetcher, retried = live.WikiFetcher(), False
         while not self._stop.is_set():
             now = utc_now()
-            res = live.update_cache(self.raw, fetcher, now)
-            if res.cache is not self.raw:
+            raw = load_raw()     # data/live/ (өмнөх амжилттай шинэчлэлт) эсвэл image-ийн data/processed/
+            res = live.update_cache(raw, fetcher, now)
+            if res.cache is not raw:
                 try:
-                    snap = serve.Snapshot.from_raw(res.cache)
+                    snap = self._build(res.cache)
                     res.cache.save(LIVE_DIR)
-                    self.raw, self.snapshot = res.cache, snap
+                    self.snapshot = snap
                 except Exception as e:   # шинэ өгөгдлийг боловсруулж чадсангүй: хуучин snapshot-оор үргэлжлүүлнэ
-                    res = live.UpdateResult(self.raw, live.ERROR, f"боловсруулах: {type(e).__name__}: {e}")
-            when, retried = live.next_attempt(res.status, now, retried)
-            self.refresh.update(status=res.status, message=res.message, at=now.isoformat(timespec="seconds"),
+                    res = live.UpdateResult(raw, live.ERROR, f"боловсруулах: {type(e).__name__}: {e}")
+            status, message = res.status, res.message
+            del raw, res         # түүхий cache-ийг дараагийн оролдлого хүртэл санах ойд бүү барь
+            snap = None          # хадгалж чадаагүй бол шинэ snapshot-ийг ч чөлөөлнө
+            release_memory()
+            when, retried = live.next_attempt(status, now, retried)
+            self.refresh.update(status=status, message=message, at=now.isoformat(timespec="seconds"),
                                 next=when.isoformat(timespec="seconds"))
             log.warning("Wikimedia шинэчлэлт: %s %s (asof %s), дараагийнх %s",
-                        res.status, res.message, self.raw.end.date(), when)
+                        status, message, self.snapshot.asof.date(), when)
             self._stop.wait(max((when - utc_now()).total_seconds(), 1))
 
 
@@ -161,14 +179,9 @@ def insights():
     return _insights()
 
 
-_PIPE: dict = {}
-
-
 def _pipeline(meta: dict, snap: serve.Snapshot) -> dict:
-    """"Яаж хийсэн бэ?"-ийн тоо: snapshot солигдох хүртэл (өдөрт нэг) cache."""
-    if _PIPE.get("snap") is not snap:
-        _PIPE.update(snap=snap, value=evaluate.pipeline(meta, snap.clean, snap.asof))
-    return _PIPE["value"]
+    """"Яаж хийсэн бэ?"-ийн тоо. Бүтэн түүхээс хамаарах хэсгийг Snapshot барихдаа нэг удаа тооцсон (snap.history)."""
+    return evaluate.pipeline(meta, snap.history, snap.asof)
 
 
 @app.get("/api/model")
@@ -188,7 +201,7 @@ def model():
             "loaded_at": state.loaded_at.isoformat(timespec="seconds"),
             "snapshot_built_at": snap.built_at.isoformat(timespec="seconds"),
             "horizons": meta["horizons"], "n_features": len(meta["features"]),
-            "fire_T": meta["fire"]["T"], "topics": int(snap.clean["article"].nunique()),
+            "fire_T": meta["fire"]["T"], "topics": snap.history["topics"],
             "refresh": dict(state.refresh),
         },
     }
