@@ -1,32 +1,23 @@
 """app/static/listing.js: "Бүх сэдэв" хуудсыг ангиллаар бүлэглэх (ADR 0013).
 Цэвэр функцийг node-оор дуудна (browser-гүй).  pytest -q"""
-import json
 import os
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 os.environ["SHUUGIAN_REFRESH"] = "0"
+import node_js  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[1]
-STATIC = ROOT / "app" / "static"
-NODE = shutil.which("node")
 ORDER = ["politics", "sports"]   # нүүрний дараалал (app.js-ийн ORDER-ийн жишээ)
 OTHER = "Бусад"
 
 
-def listing(fn: str, *args):
-    """Listing.<fn>(*args)-ийн утга (fn нь тогтмол бол түүний утга). Аргументыг stdin-ээр дамжуулна (301 сэдэв багтана)."""
-    if NODE is None:
-        pytest.skip("node алга")
-    code = (f"const L = require({json.dumps(str(STATIC / 'listing.js'))}); "
-            "const a = JSON.parse(require('fs').readFileSync(0, 'utf8')); "
-            f"const v = L[{json.dumps(fn)}]; console.log(JSON.stringify(typeof v === 'function' ? v(...a) : v))")
-    return json.loads(subprocess.run([NODE, "-e", code], input=json.dumps(args), capture_output=True, text=True, check=True).stdout)
+def listing(name: str, *args):
+    """Listing.<name>(*args)-ийн утга (name нь тогтмол бол түүний утга)."""
+    return node_js.call("listing.js", name, *args)
 
 
 def topic(article: str, category: str, views: int) -> dict:
@@ -41,7 +32,14 @@ def test_sections_follow_home_order_with_other_last_and_sort_by_views():
     assert [[t["article"] for t in s["topics"]] for s in got] == [["E", "C"], ["D", "A"], ["B"]]
 
 
-# Нүүрний ангиллын дараалал (app.js-ийн CATS), "Бусад"-гүй
+def test_equal_views_fall_back_to_article_name_like_the_home_cards():
+    """Нүүрний ангиллын карт (src/serve.py) тэнцсэн уншилтыг нэрээр эрэмбэлдэг: хоёр хуудасны эхний мөрүүд зөрөхгүй."""
+    items = [topic("B", "sports", 7), topic("C", "sports", 9), topic("A", "sports", 7)]
+    got = listing("sections", items, ORDER, OTHER)
+    assert [t["article"] for t in got[0]["topics"]] == ["C", "A", "B"]
+
+
+# Сонгосон 10 ангилал нүүрний дарааллаар (ADR 0013), "Бусад"-гүй. app.js ORDER-оо sections()-д мөн ингэж дамжуулна
 HOME_ORDER = ["politics", "film_tv", "true_crime", "tech_ai", "sports", "music", "games_anime", "celebs", "society", "mongolia"]
 
 
@@ -66,3 +64,6 @@ def test_real_topics_make_eleven_sections_with_real_counts_and_about_55_first_ro
     assert sum(min(shown, c) for c in n.values()) == 55         # анхны хуудас ~55 мөр (ADR 0013)
     for s in secs:   # хэсгийн эхний мөр = тухайн ангиллын хамгийн их уншигдсан сэдэв
         assert s["topics"][0]["views"] == max(t["views"] for t in trending if t["category"] == s["key"])
+    # Хэмжигдэх биш сэдэв жагсаалтад үлдэнэ (саарал "цөөн уншилттай" тэмдэгтэй), гэхдээ 🔥 авахгүй (ADR 0004, 0013)
+    low = [t for s in secs for t in s["topics"] if not t["measurable"]]
+    assert low and not any(t["fire"] for t in low)

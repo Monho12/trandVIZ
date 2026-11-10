@@ -144,20 +144,22 @@
           <div class="mini" data-i="${tr.items.indexOf(t)}"></div>
         </li>`;
     const rows = (s, all) => s.topics.slice(0, all ? undefined : L.SHOWN).map(row).join("");
-    const moreText = (s, all) => (all ? W.COLLAPSE : W.showAll(s.topics.length));
+    const moreText = (s, all) => (all ? W.COLLAPSE : W.expand(s.topics.length));
     main.innerHTML = `
       <h1 class="page-h">Бүх сэдэв</h1>
       <p class="lead">${esc(W.listLead(tr.asof, tr.age_days))}</p>
       <ul class="chips" aria-label="Ангилал руу үсрэх">${secs.map((s) => `
         <li><a class="pick" href="#/list/${encodeURIComponent(s.key)}"${s.key === open ? ' aria-current="true"' : ""}>${cat(s.key)}</a></li>`).join("")}
-      </ul>${secs.map((s, i) => `
+      </ul>${secs.map((s, i) => {
+        const all = s.key === open;   // `#/list/<ангилал>`-аар ирсэн хэсэг дэлгэгдсэн
+        return `
       <section class="sec lsec" data-k="${esc(s.key)}" aria-labelledby="ls-${i}">
         <h2 id="ls-${i}">${cat(s.key)} <span class="h-sub">${s.topics.length} сэдэв</span></h2>${
           s.key === OTHER ? `
-        <p class="lead">${tipped(W.OTHER_NOTE[0], W.TIP.other)} ${esc(W.OTHER_NOTE[1])}</p>` : ""}
-        <ul class="rows">${rows(s, s.key === open)}</ul>${s.topics.length > L.SHOWN ? `
-        <button class="more" data-s="${i}" aria-expanded="${s.key === open}">${esc(moreText(s, s.key === open))}</button>` : ""}
-      </section>`).join("")}`;
+        <p class="lead">${tipped(W.OTHER_NOTE.how, W.TIP.other)} ${esc(W.OTHER_NOTE.why)}</p>` : ""}
+        <ul class="rows">${rows(s, all)}</ul>${s.topics.length > L.SHOWN ? `
+        <button class="more" data-s="${i}" aria-expanded="${all}">${esc(moreText(s, all))}</button>` : ""}
+      </section>`; }).join("")}`;
 
     const minis = (root) => root.querySelectorAll(".mini").forEach((b) => {
       const t = tr.items[+b.dataset.i];
@@ -419,9 +421,9 @@
     document.querySelectorAll(".nav a").forEach((a) =>
       a.dataset.route === name ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
     main.innerHTML = `<p class="state">Ачаалж байна…</p>`;
-    let at;   // хуудас дотор гүйлгэх газар (#/list/<ангилал>-ийн хэсэг)
+    let target;   // хуудас дотор гүйлгэх хэсэг (#/list/<ангилал>)
     try {
-      if (name === "list") at = await list(decodeURIComponent(arg || ""));
+      if (name === "list") target = await list(decodeURIComponent(arg || ""));
       else if (name === "facts") await facts();
       else if (name === "model") await model();
       else if (name === "topic") await topic(decodeURIComponent(arg || ""));
@@ -430,7 +432,7 @@
       main.innerHTML = `<p class="state">Өгөгдөл ачаалж чадсангүй (${esc(e.message)}). Хуудсыг дахин ачаалж үзнэ үү.</p>`;
     }
     if (name !== "home") main.focus({ preventScroll: true });
-    if (at) at.scrollIntoView(); else window.scrollTo(0, 0);
+    if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", route);
   route();

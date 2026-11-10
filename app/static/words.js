@@ -36,17 +36,18 @@
   const CAT_REASON = "";
   // Хэмжигдэх сэдвийн босго уншилтаар хөдөлдөг тул тоогүй (ADR 0004)
   const LOW_VIEWS = "Хэт цөөн уншигддаг сэдвийг оруулаагүй.";
-  // "Бүх сэдэв"-ийн хэсгийг дэлгэх товч (сумгүй) ба нүүрний ангиллын картын холбоос (сумтай). n: хэсгийн бодит сэдвийн тоо
-  const showAll = (n) => `Бүгдийг харах (${n})`;
-  const seeAll = (n) => `${showAll(n)} →`;
+  // "Бүх сэдэв"-ийн хэсгийг дэлгэх / хураах товч (сумгүй) ба нүүрний ангиллын картын холбоос (сумтай). n: хэсгийн бодит сэдвийн тоо
+  const expand = (n) => `Бүгдийг харах (${n})`;
   const COLLAPSE = "Хураах";
+  const seeAll = (n) => `${expand(n)} →`;
   // Хэмжигдэх биш сэдвийн саарал тэмдэг (ADR 0013, 5-р зүйл); tooltip нь TIP.lowViews
   const LOW_TAG = "цөөн уншилттай";
-  // "Бусад" хэсгийн гарчгийн доорх 2 мөр (ADR 0013, 7-р зүйл); нарийн тоо нь TIP.other (src/fetch_data.py, test_words шалгана)
-  const OTHER_NOTE = [
-    "Wikipedia-ийн сарын топ жагсаалтад 1–2 сар л гараад алга болсон нийтлэлүүд (2021 оноос, жил бүрээс санамсаргүй сонгосон).",
-    "Сонгосон сэдвүүд ихэвчлэн тогтвортой байдаг тул гэнэт өссөн сэдэв цааш нь үргэлжлэх үү, унтрах уу гэдгийг model сурахын тулд нэмсэн.",
-  ];
+  // "Бусад" хэсгийн гарчгийн доорх 2 мөр (ADR 0013, 7-р зүйл): how = яаж сонгосон (нарийн тоо нь TIP.other, src/fetch_data.py,
+  // test_words шалгана), why = яагаад нэмсэн
+  const OTHER_NOTE = {
+    how: "Wikipedia-ийн сарын топ жагсаалтад 1–2 сар л гараад алга болсон нийтлэлүүд (2021 оноос, жил бүрээс санамсаргүй сонгосон).",
+    why: "Сонгосон сэдвүүд ихэвчлэн тогтвортой байдаг тул гэнэт өссөн сэдэв цааш нь үргэлжлэх үү, унтрах уу гэдгийг model сурахын тулд нэмсэн.",
+  };
 
   // "Бүх сэдэв" хуудасны тайлбар (ADR 0013): ▲-ийн өдөр нь asof = өчигдөр үед л "өчигдөр", эрэмбийн өдөр үргэлж огноо.
   const listLead = (asof, age) => "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. "
@@ -62,7 +63,7 @@
     other: "Сарын шилдэг 200-д 1–2 сар орсон, оргил өдөр нь ердийнхөөсөө 8+ дахин их",
   };
 
-  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, showAll, COLLAPSE,
+  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, expand, COLLAPSE,
     listLead, LOW_TAG, OTHER_NOTE, LOW_VIEWS, TIP };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;

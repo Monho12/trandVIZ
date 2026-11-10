@@ -129,7 +129,7 @@ button.more { padding: 0; border: 0; background: none; cursor: pointer; }
 /* ── Бүх сэдэв ── */
 .rows { list-style: none; margin: 0; padding: 0; }
 .lsec { padding-top: 32px; scroll-margin-top: 12px; }   /* ангиллын хэсэг (ADR 0013) */
-.lsec .lead { margin-bottom: 0; font-size: 14.5px; }
+.lsec .lead { margin-bottom: 0; }
 .lsec .rows { margin-top: 10px; }
 .lsec .more { margin-top: 12px; font-size: 14px; }
 .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: center;
