@@ -124,7 +124,7 @@ def predict(model, rows: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------- JSON
 
 def _r(p: float) -> float | None:
-    """5%-д дугуйлсан pct, JSON-д float-ын шуугиангүй (−0.15000000000000002 биш −0.15). Тодорхойгүй (NaN/inf) -> None."""
+    """5%-ийн алхмаар тэг рүү тайрсан pct (scoring.round_pct), JSON-д float-ын шуугиангүй (−0.15000000000000002 биш −0.15). Тодорхойгүй (NaN/inf) -> None."""
     if p is None or not np.isfinite(p):
         return None
     return round(scoring.round_pct(p), 2)

@@ -134,12 +134,27 @@ def test_momentum_direction_and_pct():
 
 
 @pytest.mark.parametrize("p, text", [
-    (0.74, "+75%"), (0.72, "+70%"), (0.125, "+15%"), (-0.125, "−15%"), (-0.20, "−20%"),
-    (-0.02, "0%"), (0.0, "0%"), (3.0, "+300%"), (3.0001, "↑ 3×-ээс их"), (12.0, "↑ 3×-ээс их"),
+    (0.74, "+70%"), (0.75, "+75%"), (0.098, "+5%"), (0.10, "+10%"), (0.125, "+10%"), (-0.125, "−10%"),
+    (-0.20, "−20%"), (-0.199, "−15%"), (-0.02, "0%"), (0.0, "0%"), (0.15, "+15%"), (3.0, "+300%"),
+    (3.0001, "↑ 3×-ээс их"), (12.0, "↑ 3×-ээс их"),
 ])
-def test_format_pct_rounds_to_5_and_caps_at_3x(p, text):
-    # ADR 0003: 5%-д дугуйлна (хагас нь тэгээс холдоно, тэгш хэмтэй); +300%-иас их бол "↑ 3×-ээс их"
+def test_format_pct_truncates_to_5_toward_zero_and_caps_at_3x(p, text):
+    # ADR 0003: 5%-ийн алхмаар тэг рүү тайрна (тэгш хэмтэй); +300%-иас их бол "↑ 3×-ээс их"
     assert scoring.format_pct(p) == text
+
+
+def test_shown_number_never_contradicts_arrow():
+    """/api/trending-д pct 0.098 нь "0.1" гэж харагдаад "≈ тогтвортой", 0.107 нь "0.1" гэж харагдаад "↗ +10%" байсан:
+    тоог хамгийн ойрын 5% руу дугуйлж, сумыг дугуйлаагүй утгаар шийддэг байв. Одоо харагдах тоо сумын бүсдээ байна."""
+    p = pd.Series(np.round(np.arange(-0.6, 0.6, 0.0005), 6))
+    T = 0.25
+    arrows = scoring.arrow(p, tuned_T=T, measurable=pd.Series(True, index=p.index))
+    shown = p.map(scoring.round_pct)
+    zone = {scoring.FIRE: (T, np.inf), scoring.RISE: (0.10, T), scoring.FLAT: (-0.10 + 1e-12, 0.10),
+            scoring.DIP: (-0.20 + 1e-12, -0.10 + 1e-12), scoring.FALL: (-np.inf, -0.20 + 1e-12)}
+    for a, s in zip(arrows, shown):
+        lo, hi = zone[a]
+        assert lo - 1e-9 <= s < hi, (a, s)
 
 
 def fire_frame(preds_by_day: dict, measurable=None):
