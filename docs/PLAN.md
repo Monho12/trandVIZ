@@ -58,14 +58,14 @@
 
 **Майкд хэлэх:** ялагч алгоритм, (а) дээрх skill score, precision@10-ийг momentum ба үндсэн хувьтай харьцуулсан дүн, ӨСӨХ-ийн чиглэл, T ба өдөрт хэдэн 🔥, overfit + screenshot.
 
-## Лхагва 11/11 — model-ийг сайтын ард ажиллуулах → local Docker → HF Space → слайд
+## Лхагва 11/11 — model-ийг сайтын ард ажиллуулах → local Docker → слайд
 
 **Зорилго:** Майкийн шаардлага: *"the model must be deployed behind the website"* (ADR 0008). Аюулгүй дарааллаар: эхлээд local, дараа нь онлайн.
 
 1. **Wikipedia-ийн өгөгдлийн давхарга** (`src/live.py` гэх мэт). `src/wiki.py`-ийн `USER_AGENT`-ийг `Shuugian/1.0 (https://github.com/Monho12/trandVIZ)` болгоно (и-мэйлгүй).
    Snapshot скрипт **байхгүй**, таамаг урьдчилж тооцохгүй. Одоогийн боловсруулсан өгөгдлийг (`data/processed/`) **Docker image дотор** хамт хийнэ.
    Сервер өдөрт нэг удаа зөвхөн **дутуу байгаа сүүлийн өдрүүдийг** (сүүлийн огнооноос өчигдөр хүртэл) татаж нэмнэ.
-   Эхлэх бүрд 400 хоног татахгүй, учир нь Space-д хэт удаан. Throttle болон cache хэвээр.
+   Эхлэх бүрд 400 хоног татахгүй, учир нь хэт удаан. Throttle болон cache хэвээр.
    Сургалттай **ижил** цэвэрлэгээг (alias, үсрэлт, causal trim) ашиглана.
    D өдөр гараагүй эсвэл `total_views` дутуу бол ~3 цагийн дараа нэг удаа дахин оролдоно. Тэгээд ч болохгүй, эсвэл API унасан бол сүүлийн cache ашиглана.
 2. **Backend** (`app/main.py`). Эхлэхдээ `app/model/`-ийн 3 model + `meta.json`-ийг ачаална. `/api/topic`, `/api/categories`, `/api/trending`, `/api/map`
@@ -76,41 +76,23 @@
 3. **Local шалгалт.** `uvicorn app.main:app` ажиллуулаад Playwright-аар (desktop + утасны өргөн) шалгана: "Жишээ өгөгдөл" анхааруулга алга болсон,
    огноо, asof болон `/api/model` харагдаж байгаа эсэх.
 4. **Docker, local дээр эхлээд.** `Dockerfile` (порт 7860), `docker build` → `docker run -p 7860:7860` → 3-р алхмын шалгалтыг дахин хийнэ.
-5. **HF Space руу deploy** (доорх "Hugging Face тохиргоо"-г Майк хийсний дараа). Онлайнаар нээгдэж, `/api/model` хариу өгч, бодит огноотой таамаг гарч байгааг шалгана.
+5. ~~HF Space руу deploy~~: цуцалсан (ADR 0010). HF-ийн Docker Space төлбөртэй болсон тул хамгаалалт дээр local-оор ажиллуулна.
 6. **Слайд** (монголоор): асуудал, өгөгдөл, cleaning, EDA, feature (18, `category`-г leakage-аас болж хассан), Optuna, 3 алгоритм, overfit,
    үр дүн vs baseline ((а): skill score, precision@10, ӨСӨХ-ийн чиглэл), вэб демо (`/api/model`), сул тал (`docs/hamgaalalt.md`),
    цаашдын ажил (олон эх сурвалж). [Майк шийднэ: слайдын хэлбэр ба тоо.]
 7. **`docs/hamgaalalt.md`**: `[тестийн дараа]` гэсэн хоосон зай үлдсэн эсэхийг шалгана. [Майк шийднэ: нийт хэдэн асуулт бэлдэх.]
 
-### Hugging Face тохиргоо (Майк өөрөө хийнэ, token-ийг repo-д ХЭЗЭЭ Ч оруулахгүй)
-
-1. https://huggingface.co/join хаягаар бүртгэл үүсгэж, и-мэйлээ баталгаажуулна.
-2. https://huggingface.co/new-space руу орж: Owner = өөрийн нэр, Space name = `shuugian`, **SDK = Docker** (Blank), Hardware = CPU basic (үнэгүй), Public гэж сонгоод → Create.
-3. https://huggingface.co/settings/tokens руу орж: **New token** → Fine-grained → нэр `shuugian-deploy` →
-   "Repositories" хэсэгт зөвхөн `<нэр>/shuugian` Space-д **write** эрх өгнө → Create. Token-ийг хуулж, нууц газар (password manager) хадгална.
-4. Өөрийн компьютер дээр repo-гийн хавтсанд:
-   ```bash
-   pip install -U huggingface_hub
-   hf auth login                     # (хуучин хувилбарт: huggingface-cli login)
-   git remote add space https://huggingface.co/spaces/<нэр>/shuugian
-   ```
-   `login` хийхэд token-оо оруулж, "Add token as git credential?" гэхэд **Y**. Token нь `~/.cache/huggingface/`-д хадгалагддаг бөгөөд repo-д орохгүй.
-5. Space нь `README.md`-ийн эхэнд `sdk: docker`, `app_port: 7860` гэсэн YAML толгой шаарддаг (бэлэн, #9).
-   Дараа нь `bash scripts/deploy_space.sh` хийнэ. Энгийн `git push space main` ажиллахгүй: HF нь `app/model/*.cbm` (20+ MB)
-   болон binary файлыг LFS-гүй хүлээж авдаггүй. Скрипт HEAD-ийн LFS-тэй нэг commit-тэй хуулбарыг push хийнэ.
-6. **Хориг:** token-ийг код, `.env`, notebook, commit message, чат зэрэг хаана ч бичихгүй. Санамсаргүй commit хийчихвэл тэр даруй token-ийг revoke хийнэ.
-
-**Майкд хэлэх:** local болон Space-ийн линк, `/api/model`-ийн хариу, слайдын линк.
+**Майкд хэлэх:** local линк, `/api/model`-ийн хариу, слайдын линк.
 
 ## Пүрэв 11/12 — эцсийн шалгалт ба хамгаалалт
 
 1. Бүх notebook-ийг (01–04) эхнээс нь execute хийж алдаагүйг шалгана. `pytest -q` ногоон байх ёстой.
-2. Space болон local дээр сайт ажиллаж, `/api/model` хариу өгч, asof болон таамгийн огноо зөв байгааг шалгана.
+2. Local дээр сайт ажиллаж, `/api/model` хариу өгч, asof болон таамгийн огноо зөв байгааг шалгана.
 3. README-г эцэслэнэ: товч танилцуулга, үр дүнгийн хүснэгт ((а)/(б)/(в)), ажиллуулах заавар, screenshot.
 4. Хуучирсан зүйл, үлдсэн mock, TODO-г цэвэрлэнэ. Commit + push.
 5. **Хамгаалалтын checklist:**
-   - [ ] **Хамгаалалтаас 5 минутын өмнө HF Space-ийг нээж сэрээх** (үнэгүй Space унтдаг, сэрэхэд 30+ секунд)
-   - [ ] Нөөц: local дээр `uvicorn app.main:app` (эсвэл `docker run`) бэлэн байлгах
+   - [ ] Хамгаалалтаас өмнө local дээр `uvicorn app.main:app`-ийг асааж http://127.0.0.1:8000-ийг нээх (интернэтгүй бол `SHUUGIAN_REFRESH=0`)
+   - [ ] Нөөц: `docker run -p 7860:7860 shuugian`
    - [ ] `/api/model`-ийг нээж model амьд ажиллаж байгааг харуулах
    - [ ] Сайтын линк, слайдын линк, notebook дараалал, `docs/hamgaalalt.md` (`[тестийн дараа]` хоосон зай үлдээгүй)
    - [ ] Цээжлэх 3 тоо: өгөгдлийн хэмжээ (301 сэдэв, [Мягмарын дараа] мөр, causal trim-ийн дараах тоо), (а) дээрх skill score, overfit-ийн дүгнэлт
@@ -201,11 +183,11 @@ L1 нь медианыг таамагладаг тул bias засвар хэр�
 - Вирал сэдвийн ангиллыг "Бусад" гэж харуулна (ADR 0005).
 - "Уншилт" биш "анхаарал" гэж бичнэ. Tooltip: "Wikipedia-ийн нийт уншилтад эзлэх хувь".
 
-## Model сайтын ард ажиллах ба deploy (ADR 0008, 0006-г орлоно)
+## Model сайтын ард ажиллах ба deploy (ADR 0008, 0006-г орлоно; байршуулалт ADR 0010)
 
-- Майкийн шаардлага: *"the model must be deployed behind the website."* Байршуулах газар нь Hugging Face Spaces (Docker + FastAPI).
+- Майкийн шаардлага: *"the model must be deployed behind the website."* Байршуулалт: хамгаалалт дээр local (ADR 0010; HF Docker Space төлбөртэй болсон).
 - FastAPI эхлэхдээ model-ийг ачаалж, хүсэлт бүрт inference ажиллуулна. Wikipedia-г өдөрт нэг удаа татаж cache хийнэ, API унавал сүүлийн cache ашиглана.
 - `/api/model` нь ачаалагдсан алгоритмыг харуулна.
 - User-Agent нь `Shuugian/1.0 (https://github.com/Monho12/trandVIZ)`, и-мэйлгүй. D өдөр гараагүй бол ~3 цагийн дараа нэг удаа дахин оролдоно.
 - Вэбэд тодорхой огноо болон asof бичнэ. asof нь 2-оос олон өдрийн өмнөх бол шар анхааруулга гарна.
-- Дараалал: local Docker → Space → онлайнаар шалгах. Token-ийг repo-д оруулахгүй.
+- Дараалал: `uvicorn` → local Docker → Playwright-аар шалгах. Token, нууц үгийг repo-д оруулахгүй.

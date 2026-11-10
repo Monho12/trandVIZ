@@ -1,2 +1,0 @@
-# Shell скрипт Windows дээр ч LF мөрийн төгсгөлтэй байна (CRLF бол bash "$'\r': command not found")
-*.sh text eol=lf
