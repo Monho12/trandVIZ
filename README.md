@@ -55,8 +55,10 @@ Image зөвхөн серверт хэрэгтэй сангуудыг суулг
 Эхлээд HF бүртгэл, Space (`SDK = Docker`), token-ийг **өөрөө** үүсгэнэ: [`docs/PLAN.md`](docs/PLAN.md) → "Hugging Face тохиргоо".
 Token-ийг repo, `.env`, notebook, commit, чат хаана ч бичихгүй.
 
+Windows: `cmd`-д `.venv\Scripts\activate` хийгээд `pip install -U huggingface_hub`, скриптийг **Git Bash**-аас ажиллуулна.
+
 ```bash
-huggingface-cli login          # "Add token as git credential?" гэхэд Y
+hf auth login                  # "Add token as git credential?" гэхэд Y
 git remote add space https://huggingface.co/spaces/<нэр>/shuugian
 bash scripts/deploy_space.sh   # HEAD-ийг Space руу
 ```

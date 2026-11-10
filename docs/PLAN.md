@@ -91,7 +91,7 @@
 4. Өөрийн компьютер дээр repo-гийн хавтсанд:
    ```bash
    pip install -U huggingface_hub
-   huggingface-cli login
+   hf auth login                     # (хуучин хувилбарт: huggingface-cli login)
    git remote add space https://huggingface.co/spaces/<нэр>/shuugian
    ```
    `login` хийхэд token-оо оруулж, "Add token as git credential?" гэхэд **Y**. Token нь `~/.cache/huggingface/`-д хадгалагддаг бөгөөд repo-д орохгүй.

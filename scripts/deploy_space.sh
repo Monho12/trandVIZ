@@ -11,7 +11,7 @@
 # Space руу --force push хийнэ. GitHub-ийн repo, түүх огт өөрчлөгдөхгүй.
 #
 # Урьдчилж (Майк өөрөө, docs/PLAN.md -> "Hugging Face тохиргоо"):
-#   huggingface-cli login            # "Add token as git credential?" -> Y
+#   hf auth login                    # "Add token as git credential?" -> Y
 #   git remote add space https://huggingface.co/spaces/<нэр>/shuugian
 # Token-ийг энэ скрипт, repo, чат хаана ч бичихгүй: git credential helper-ээс авна.
 set -euo pipefail
