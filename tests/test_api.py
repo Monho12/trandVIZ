@@ -89,6 +89,8 @@ def test_model_endpoint_shows_loaded_model_and_data_asof(client):
     assert p["topics"] == 301 and p["n_features"] == 18 and p["purge_days"] == 3 and p["trials"] == 225
     assert p["algo_name"] == "CatBoost" and p["clean_rows"] > 0 and p["naive_h3"]["valid"] < p["naive_h3"]["train"]
     assert m["names"]["naive"] == "Одоогийнхтой адилхан" and set(m["valid"]["mean"]) == {"lightgbm", "xgboost", "catboost", "naive"}
+    # Загвар хуудасны бүлгийн нэрс (#34): сэдвийн тоо бүлэг бүрээр, нийлбэр нь нийт сэдэв
+    assert p["topics_groups"] == {"а": 151, "б": 114, "в": 36} and sum(p["topics_groups"].values()) == p["topics"]
 
 
 def test_map_categories_insights(client):
