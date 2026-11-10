@@ -1,9 +1,18 @@
 """Hugging Face Spaces руу байршуулах (#9, ADR 0008): README толгой, Dockerfile, runtime хамаарал, нууц үг, deploy скрипт.  pytest -q"""
+import ast
+import os
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_PORT = 7860   # HF Docker Space-ийн порт
+DIST_FOR_MODULE = {"xgboost": "xgboost-cpu"}   # import нэр != pip багцын нэр
+HF_TOKEN = re.compile(rb"hf_[A-Za-z0-9]{30,}")   # Hugging Face access token-ий хэлбэр
 
 
 def readme_front_matter() -> dict:
@@ -31,12 +40,7 @@ def test_dockerfile_serves_app_port_and_ships_model_and_starting_cache():
     assert {"data/live", "data/raw", ".git"} <= ignored
 
 
-DIST_FOR_MODULE = {"xgboost": "xgboost-cpu"}   # import нэр != pip багцын нэр
-
-
 def third_party_imports(files) -> set[str]:
-    import ast
-    import sys
     mods = set()
     for f in files:
         for node in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
@@ -57,11 +61,8 @@ def test_image_requirements_cover_every_server_import():
     assert not missing, f"requirements-app.txt-д алга: {sorted(missing)}"
 
 
-HF_TOKEN = re.compile(rb"hf_[A-Za-z0-9]{30,}")   # Hugging Face access token-ий хэлбэр
-
-
 def test_no_hugging_face_token_in_repo_files():
-    import subprocess
+    # bytes хэрэгтэй (binary файл ч шалгана) тул git() helper биш
     files = subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
                            cwd=ROOT, capture_output=True, check=True).stdout.split(b"\0")
     leaks = [f.decode() for f in files if f and (ROOT / f.decode()).is_file()
@@ -70,17 +71,12 @@ def test_no_hugging_face_token_in_repo_files():
 
 
 def git(*args, cwd=ROOT) -> str:
-    import subprocess
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout
 
 
 def test_deploy_script_pushes_head_snapshot_with_binaries_in_lfs(tmp_path):
     """HF нь 10 MB-аас том эсвэл binary файлыг LFS/Xet-гүй push хийхийг хориглодог. app/model/*.cbm нь
     GitHub-ийн түүхэд энгийн blob тул скрипт HEAD-ийн нэг commit-тэй хуулбарыг LFS-тэйгээр push хийнэ."""
-    import os
-    import shutil
-    import subprocess
-    import pytest
     if shutil.which("git-lfs") is None:
         pytest.skip("git-lfs суугаагүй")
     space = tmp_path / "space.git"
