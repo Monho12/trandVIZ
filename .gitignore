@@ -21,3 +21,6 @@ catboost_info/
 
 # Сервер Wikimedia-аас шинэчилсэн cache (ADR 0008)
 data/live/
+
+# Playwright MCP-ийн түр файл
+.playwright-mcp/
