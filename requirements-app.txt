@@ -6,11 +6,9 @@ pyarrow==26.0.1
 requests==2.34.2
 tzdata==2026.6
 
-# src/train.py гурвыг нь import хийдэг (ачаалах нь зөвхөн meta.json-ийн algo).
+# Сервер зөвхөн сонгосон CatBoost-ийг ачаална (meta.json: algo, ADR 0011). lightgbm, xgboost, optuna бол
+# сургалтынх (requirements.txt): src/train.py тэднийг функц дотор нь import хийдэг тул серверт хэрэггүй.
 catboost==1.2.10
-lightgbm==4.7.0
-xgboost-cpu==3.4.1   # import xgboost; CUDA-гүй (~200 MB бага)
-optuna==5.0.0
 
 fastapi==0.162.2
 uvicorn==0.54.0

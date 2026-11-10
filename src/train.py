@@ -7,6 +7,10 @@
   - Early stopping ба сонголт: valid, (в)-гүй (ADR 0005). Test-ийг энд ОГТ уншихгүй.
 
 Ажиллуулах:  python -m src.train  ->  app/model/{h1,h2,h3}.<ext> + meta.json
+
+Сургалтын сангууд (lightgbm, xgboost, catboost, optuna) модулийн дээд талд БИШ, ашиглах функц дотор нь
+import хийгдэнэ: сервер (app/main.py) энэ модулиас зөвхөн load() + тогтмолуудыг авдаг тул meta.json-ийн
+algo-гийн ганц санг л ачаална (ADR 0011, Render-ийн 512 MB). tests/test_deploy.py үүнийг шалгана.
 """
 from __future__ import annotations
 
@@ -15,12 +19,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import catboost as cb
-import lightgbm as lgb
 import numpy as np
-import optuna
 import pandas as pd
-import xgboost as xgb
 
 from src.features import HORIZONS
 from src.scoring import GROUP_NEW_VIRAL, topic_group
@@ -88,6 +88,12 @@ def fit(algo: str, params: dict, X_tr: pd.DataFrame, y_tr, X_va: pd.DataFrame, y
     Optuna руу мэдээлж, MedianPruner шийдвэл optuna.TrialPruned шиднэ."""
     features = list(X_tr.columns)
     stop = min(EARLY_STOP, n_rounds)
+    if algo == "lightgbm":
+        import lightgbm as lgb
+    elif algo == "xgboost":
+        import xgboost as xgb
+    elif algo == "catboost":
+        import catboost as cb
 
     def report(it: int, value: float) -> bool:
         """True = таслах."""
@@ -221,18 +227,21 @@ class LoadedModel:
 
 
 def load(model_dir: Path = MODEL_DIR) -> LoadedModel:
-    """app/model/-оос meta.json + 3 model-ийг ачаална (вэб backend, ADR 0008)."""
+    """app/model/-оос meta.json + 3 model-ийг ачаална (вэб backend, ADR 0008). Зөвхөн meta["algo"]-ийн санг import хийнэ."""
     model_dir = Path(model_dir)
     meta = json.loads((model_dir / "meta.json").read_text(encoding="utf-8"))
     algo, models = meta["algo"], {}
     for h in meta["horizons"]:
         path = str(model_dir / meta["files"][f"h{h}"])
         if algo == "lightgbm":
+            import lightgbm as lgb
             models[h] = lgb.Booster(model_file=path)
         elif algo == "xgboost":
+            import xgboost as xgb
             models[h] = xgb.Booster()
             models[h].load_model(path)
         else:
+            import catboost as cb
             models[h] = cb.CatBoostRegressor()
             models[h].load_model(path)
     return LoadedModel(meta, models)
@@ -276,6 +285,7 @@ def suggest(trial: optuna.Trial, algo: str) -> dict:
 def tune(algo: str, h: int, X_tr, y_tr, X_va, y_va, n_trials: int = N_TRIALS) -> tuple[optuna.Study, Fitted]:
     """TPE + MedianPruner. Зорилго = (в)-гүй valid MAE (early stopping-ийн хамгийн сайн iteration дээр).
     Хамгийн сайн trial-ын model-ийг дахин сургалгүйгээр буцаана."""
+    import optuna
     best: dict = {"mae": np.inf, "fit": None}
 
     def objective(trial: optuna.Trial) -> float:
@@ -310,6 +320,7 @@ def load_groups() -> pd.Series:
 def run(n_trials: int = N_TRIALS, out_dir: Path = MODEL_DIR, log=print) -> dict:
     """3 алгоритм × 3 horizon-ыг Optuna-аар тааруулж, (в)-гүй valid-аар ялагчийг сонгож, out_dir руу экспортлоно.
     Буцаах: studies, fitted, table (algo × h: train/valid MAE), winner, meta."""
+    import optuna
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     features = json.loads((P / "feature_list.json").read_text(encoding="utf-8"))["features"]
     feats = pd.read_parquet(P / "features.parquet")
