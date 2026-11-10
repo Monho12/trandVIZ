@@ -170,12 +170,16 @@ def naive_mae_by_period(clean: pd.DataFrame, h: int, train_from: pd.Timestamp) -
     from src import features
 
     c = clean[["date", "article", "y"]].sort_values(["article", "date"])
-    fut = c.groupby("article")["y"].shift(-h)
-    err = (fut - c["y"]).abs()
-    split, split_h = features.split_of(c["date"]), features.split_of(c["date"] + pd.Timedelta(days=h))
-    ok = err.notna() & (split.to_numpy() == split_h.to_numpy())
-    tr = ok & (split == "train").to_numpy() & (c["date"] >= train_from).to_numpy()
-    va = ok & (split == "valid").to_numpy()
+    y = c["y"].to_numpy(dtype=float)
+    err = np.abs(c.groupby("article")["y"].shift(-h).to_numpy(dtype=float) - y)
+    # features.split_of-той ижил хил, гэхдээ "train"/"valid" мөрийн массивын оронд int8 код: /api/model-ийн
+    # санах ойн оргилыг бууруулна (~590k мөр, Render 512 MB, ADR 0011).
+    d = c["date"].to_numpy()
+    code = lambda x: np.where(x <= features.TRAIN_END, 0, np.where(x <= features.VALID_END, 1, 2)).astype(np.int8)  # noqa: E731
+    split = code(d)
+    ok = ~np.isnan(err) & (split == code(d + np.timedelta64(h, "D")))
+    tr = ok & (split == 0) & (d >= np.datetime64(train_from))
+    va = ok & (split == 1)
     return {"train": round(float(err[tr].mean()), 4), "valid": round(float(err[va].mean()), 4)}
 
 
