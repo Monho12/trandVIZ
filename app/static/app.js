@@ -6,9 +6,9 @@
     politics: ["🏛️", "Улс төр"], film_tv: ["🎬", "Кино, цуврал"], true_crime: ["🕯️", "True crime"],
     tech_ai: ["🤖", "AI, технологи"], sports: ["⚽", "Спорт"], music: ["🎵", "Хөгжим"],
     games_anime: ["🎮", "Тоглоом, anime"], celebs: ["💅", "Алдартнууд"], society: ["👥", "Нийгэм"],
-    mongolia: ["🇲🇳", "Монгол"], viral: ["🔥", "Вирал"],
+    mongolia: ["🇲🇳", "Монгол"], "Бусад": ["🌐", "Бусад"],   // вирал сэдвийн ангилал (ADR 0005)
   };
-  const ORDER = Object.keys(CATS).filter((k) => k !== "viral");
+  const ORDER = Object.keys(CATS).filter((k) => k !== "Бусад");
   const cat = (k) => (CATS[k] || ["", k]).join(" ");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
@@ -17,10 +17,10 @@
     : `<span class="surge calm">хэвийн</span>`;
   const last = (t) => t.history[t.history.length - 1].v;
   const in3 = (t) => t.forecast[t.forecast.length - 1];
-  const pct = (t) => {
-    const p = Math.round((in3(t).y / Math.max(last(t), 1) - 1) * 100);
-    return p < 0 ? `↓ ${-p}% буурна` : `↑ ${p}% өснө`;
-  };
+  // Таамгийн шошго (ADR 0003/0004): backend-ийн pct(h3), сум, 🔥. "Уншилт" биш "анхаарал".
+  const ANH = `<span class="anh" title="Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь">анхаарал</span>`;
+  const pct = (t) => `${ANH} ${esc(t.label)}`;
+  const iv = (t) => `<span class="iv">${esc(t.interval_text)}</span>`;
 
   let redraws = [], rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => redraws.forEach((f) => f()), 150); });
@@ -30,7 +30,9 @@
   const api = (p) => (cache[p] ||= fetch(p).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }));
   function meta(d) {
     document.getElementById("asof").textContent = `Өгөгдөл: ${C.longDate(d.asof)} хүртэл`;
-    document.getElementById("mock-note").hidden = !d.mock;
+    const s = document.getElementById("stale-note");
+    s.hidden = !d.stale;
+    if (d.stale) s.textContent = `Өгөгдөл ${d.age_days} өдрийн өмнөх (${C.md(d.asof)} хүртэл): Wikimedia-аас шинэчилж амжаагүй байна.`;
   }
 
   // Сэдвийн дэлгэрэнгүй хэсэг (нүүр болон сэдвийн хуудсанд хоёуланд)
@@ -45,7 +47,7 @@
       <dl class="tiles">
         <div class="tile t-blue"><dt>Өчигдөр</dt><dd>${C.fmt(t.views)}</dd></div>
         <div class="tile"><dt>Ердийн өдөр</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `×${t.ratio}` : ""}</small></dd></div>
-        <div class="tile t-orange"><dt>3 өдрийн дараа (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small></dd></div>
+        <div class="tile t-orange"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small><small class="iv">${esc(t.interval_text)}</small></dd></div>
       </dl>
       <p class="chart-h">Өдөр бүрийн уншилт</p>
       <div class="chart" id="chart"></div>
@@ -77,7 +79,7 @@
       </div>
       <div class="tmap" id="tmap"></div>
       <h2 class="sub-h">Сэдэв бүрээр</h2>
-      <p class="lead">▲ ×3 = ердийн өдрөөс 3 дахин их уншигдсан</p>
+      <p class="lead">▲ ×3 = ердийн өдрөөс 3 дахин их уншигдсан. Таамаг: ${esc(tr.dates)}</p>
       <ul class="picker" aria-label="Сэдэв сонгох">${top.map((t, i) => `
         <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${surge(t.ratio, true)}</button></li>`).join("")}
       </ul>
@@ -123,7 +125,7 @@
           <span class="rk">${i + 1}</span>
           <div>
             <h3><a href="${href(t.article)}">${esc(t.title)}</a></h3>
-            <p class="meta">${surge(t.ratio)}<span><b>${C.fmt(t.views)}</b> уншилт</span><span>3 өдөрт ${pct(t)}</span><span>${cat(t.category)}</span></p>
+            <p class="meta">${surge(t.ratio)}<span><b>${C.fmt(t.views)}</b> уншилт</span><span>${esc(t.dates)}: ${pct(t)} ${iv(t)}</span><span>${cat(t.category)}</span></p>
           </div>
           <div class="mini" data-i="${i}"></div>
         </li>`).join("")}
@@ -160,6 +162,8 @@
     main.innerHTML = `
       <h1 class="page-h">Загвар хэр сайн таамагладаг вэ?</h1>
       <p class="lead">Энгийн аргуудаас илүү зөв үү?</p>
+      <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b>, сургасан ${C.md(m.live.trained_at.slice(0, 10))},
+        өгөгдөл ${C.md(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
       <div class="mgrid">
         <div class="mcard">
           <h3>Хэр их алддаг вэ?</h3>
@@ -197,7 +201,7 @@
   // ═════════ Сонирхолтой ═════════
   async function facts() {
     const d = await api("/api/insights");
-    document.getElementById("mock-note").hidden = true;
+    document.getElementById("stale-note").hidden = true;
     const dec3 = Math.round(d.decay[3]);
     const topCat = d.categories[0];
     const pick = [["tech_ai", "Ажлын өдөр"], ["sports", "Ням гараг"], ["true_crime", "Амралтын өдөр"], ["film_tv", "Ням гараг"]];

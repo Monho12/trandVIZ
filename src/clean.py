@@ -89,19 +89,30 @@ def add_attention(df: pd.DataFrame, total: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build() -> pd.DataFrame:
-    pv = pd.read_parquet(P / "pageviews.parquet")
-    alias = pd.read_parquet(P / "alias_pageviews.parquet")
-    total = pd.read_parquet(P / "total_views.parquet")
-    end = pv["date"].max()
+COLS = ["date", "article", "category", "views", "views_raw", "total_views", "attention", "y", "is_spike", "was_missing"]
 
+
+def clean_frame(pv: pd.DataFrame, alias: pd.DataFrame, total: pd.DataFrame,
+                end: pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Түүхий 3 хүснэгт -> цэвэр хүснэгт (COLS) + trim тайлан. Файл уншихгүй, бичихгүй.
+    Сургалт (build) ба вэб сервер (ADR 0008) ЭНЭ функцийг дуудна -> train/serve зөрүүгүй.
+    end: өдөр бүрээр дүүргэх сүүлийн өдөр (анхдагч нь pv-ийн сүүлийн өдөр)."""
+    end = pv["date"].max() if end is None else pd.Timestamp(end)
     df = merge_aliases(pv, alias)
     df = fill_days(df, end)
     df, trim_report = trim_inactive(df)
     df = cap_isolated_spikes(df)
     df = add_attention(df, total)
     df = df.sort_values(["article", "date"]).reset_index(drop=True)
-    cols = ["date", "article", "category", "views", "views_raw", "total_views", "attention", "y", "is_spike", "was_missing"]
+    return df[COLS], trim_report
+
+
+def build() -> pd.DataFrame:
+    pv = pd.read_parquet(P / "pageviews.parquet")
+    alias = pd.read_parquet(P / "alias_pageviews.parquet")
+    total = pd.read_parquet(P / "total_views.parquet")
+    df, trim_report = clean_frame(pv, alias, total)
+    cols = COLS
     out = df[cols].copy()
     out["article"] = out["article"].astype("category")
     out["category"] = out["category"].astype("category")
