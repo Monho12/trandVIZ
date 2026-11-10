@@ -136,26 +136,35 @@
     }
   }
 
-  /** Model-ийн алдааг энгийн аргуудтай харьцуулах бүлэглэсэн багана.
-   *  keys: баганы дараалал, hi: тодруулах (цэнхэр) key, light: цайвар саарал key, names: key -> нэр (tooltip), fmt: утгын бичиглэл */
-  function groups(box, rows, keys, { hi = keys[0], light = [], names = {}, fmt = (v) => v.toFixed(2) } = {}, label) {
+  /** Dumbbell: horizon бүр нэг мөр. Цэнхэр цэг = манай model, саарал цэг = энгийн арга,
+   *  хоёр цэгийн утга шошготой, мөрийн төгсгөлд сайжралт ("−13%"). rows: [{name, model, naive, gain}] */
+  function dumbbell(box, rows, { names = {}, fmt: f = (v) => v.toFixed(1) + "%", label } = {}) {
     const { svg, w, h } = svgFor(box, label);
-    const pad = { l: 4, r: 4, t: 18, b: 26 };
-    const max = Math.max(...rows.flatMap((r) => keys.map((k) => r[k]))) * 1.1;
-    const gw = (w - pad.l - pad.r) / rows.length, bw = Math.min(34, (gw - 28) / keys.length);
-    const base = h - pad.b, narrow = bw < 30;   // утсанд: зөвхөн тодруулсан ба цайвар баганын утгыг бичнэ (бусад нь tooltip-д)
+    const narrow = w < 420;
+    const pad = { l: narrow ? 88 : 118, r: narrow ? 62 : 72, t: 8, b: 24 };
+    const max = Math.max(...rows.map((r) => Math.max(r.model, r.naive)));
+    const step = niceStep(max, 5), top = Math.ceil((max * 1.04) / step) * step;
+    const X = (v) => pad.l + (v / top) * (w - pad.l - pad.r), rh = (h - pad.t - pad.b) / rows.length;
+    for (let v = 0; v <= top + 1e-9; v += step) {
+      el("line", { class: v ? "grid" : "base", x1: X(v), x2: X(v), y1: pad.t, y2: h - pad.b }, svg);
+      el("text", { class: "tick", x: X(v), y: h - 6, "text-anchor": "middle" }, svg).textContent = `${+v.toFixed(1)}%`;
+    }
     rows.forEach((r, i) => {
-      const gx = pad.l + i * gw + (gw - bw * keys.length) / 2;
-      keys.forEach((k, j) => {
-        const bh = (r[k] / max) * (base - pad.t), x = gx + j * bw + 1;
-        const bar = el("path", { class: k === hi ? "b-blue" : "b-gray", d: colPath(x, base - bh, bw - 2, bh), opacity: light.includes(k) ? 0.6 : 1 }, svg);
-        el("title", {}, bar).textContent = `${names[k] || k}: ${fmt(r[k])}`;
-        if (narrow && k !== hi && !light.includes(k)) return;
-        el("text", { class: k === hi ? "val" : "val2", x: x + (bw - 2) / 2, y: base - bh - 5, "text-anchor": "middle", "font-size": 11 }, svg).textContent = fmt(r[k]);
-      });
-      el("text", { class: "tick", x: pad.l + i * gw + gw / 2, y: h - 6, "text-anchor": "middle", "font-size": 12 }, svg).textContent = `${r.h} өдрийн дараа`;
+      const y = pad.t + rh * (i + 0.5), xm = X(r.model), xn = X(r.naive);
+      const g = el("g", {}, svg);
+      el("rect", { x: 0, y: y - rh / 2, width: w, height: rh, fill: "transparent" }, g);   // hover талбай (цэгээс том)
+      el("text", { class: "val2", x: pad.l - 12, y: y + 4, "text-anchor": "end", "font-size": narrow ? 12 : 13 }, g).textContent = r.name;
+      el("line", { class: "db-bar", x1: xm, x2: xn, y1: y, y2: y }, g);
+      el("circle", { class: "db-naive", cx: xn, cy: y, r: 6 }, g);
+      el("circle", { class: "db-model", cx: xm, cy: y, r: 6 }, g);
+      // Утга цэгийн гадна талд: model (бага алдаа) зүүн талд, энгийн арга баруун талд -> хэзээ ч давхцахгүй
+      el("text", { class: "val", x: Math.min(xm, xn) - 10, y: y + 4, "text-anchor": "end" }, g).textContent = f(r.model);
+      el("text", { class: "val2", x: Math.max(xm, xn) + 10, y: y + 4 }, g).textContent = f(r.naive);
+      el("text", { class: "db-gain", x: w - 2, y: y + 5, "text-anchor": "end" }, g).textContent = `−${Math.round(r.gain)}%`;
+      const html = `<b>${r.name}</b>${names.model}: ${f(r.model)} зөрдөг<br><span>${names.naive}: ${f(r.naive)}</span><br><span>Алдаа ${Math.round(r.gain)}% бага</span>`;
+      g.addEventListener("pointermove", (e) => showTip(e, html));
+      g.addEventListener("pointerleave", hideTip);
     });
-    el("line", { class: "base", x1: pad.l, x2: w - pad.r, y1: base, y2: base }, svg);
   }
 
   /** Сургалтын муруй: сургалт ба validation алдаа */
@@ -181,18 +190,6 @@
     el("text", { class: "val2", x: X(last.it) + 8, y: Y(last.train) + 12 }, svg).textContent = "сургалт";
   }
 
-  /** Feature importance: хэвтээ багана */
-  function hbars(box, rows, label) {
-    const { svg, w, h } = svgFor(box, label);
-    const lw = Math.min(200, w * 0.4), max = Math.max(...rows.map((r) => r.gain)), rh = h / rows.length;
-    rows.forEach((r, i) => {
-      const y = i * rh, bw = (r.gain / max) * (w - lw - 46), bh = Math.min(16, rh * 0.6);
-      el("text", { class: "tick", x: lw - 10, y: y + rh / 2 + 4, "text-anchor": "end", "font-size": 12 }, svg).textContent = r.f;
-      el("rect", { class: i < 3 ? "b-blue" : "b-gray", x: lw, y: y + (rh - bh) / 2, width: bw, height: bh, rx: 3 }, svg);
-      el("text", { class: "val2", x: lw + bw + 8, y: y + rh / 2 + 4 }, svg).textContent = r.gain + "%";
-    });
-  }
-
   /** Энгийн босоо багана: hi = тодруулах багануудын индекс, base = дундаж шугам (жишээ нь 100) */
   function bars(box, values, { labels = [], hi = [], valLabels = {}, base, minY = 0, label } = {}) {
     const { svg, w, h } = svgFor(box, label);
@@ -209,14 +206,23 @@
   }
 
   /** Хэвтээ багана, утгатай: эхний hiN нь тод цэнхэр */
-  function hbarsV(box, rows, { fmt: f = fmt, hiN = 1, label } = {}) {
+  function hbarsV(box, rows, { fmt: f = fmt, hiN = 1, label, lw: lwMax = 170, stackBelow = 0 } = {}) {
     const { svg, w, h } = svgFor(box, label);
-    const lw = Math.min(170, w * 0.38), max = Math.max(...rows.map((r) => r.v)), rh = h / rows.length;
+    const stack = w < stackBelow;   // нарийн: нэр баганын дээр, багана бүтэн өргөнөөр
+    const lw = stack ? 0 : Math.min(lwMax, w * 0.42), max = Math.max(...rows.map((r) => r.v)), rh = h / rows.length;
     rows.forEach((r, i) => {
-      const y = i * rh, bw = Math.max(2, (r.v / max) * (w - lw - 70)), bh = Math.min(18, rh * 0.62);
-      el("text", { class: i < hiN ? "val" : "tick", x: lw - 10, y: y + rh / 2 + 4, "text-anchor": "end", "font-size": 13 }, svg).textContent = r.name;
-      el("rect", { class: i < hiN ? "b-blue" : "b-soft", x: lw, y: y + (rh - bh) / 2, width: bw, height: bh, rx: 4 }, svg);
-      el("text", { class: i < hiN ? "val" : "val2", x: lw + bw + 8, y: y + rh / 2 + 4 }, svg).textContent = f(r.v);
+      const bh = Math.min(stack ? 12 : 18, rh * (stack ? 0.32 : 0.62));
+      const y = i * rh, bw = Math.max(2, (r.v / max) * (w - lw - 56)), by = stack ? y + rh - bh - 6 : y + (rh - bh) / 2;
+      el("text", stack ? { class: i < hiN ? "val" : "val2", x: 0, y: by - 6, "font-size": 13 }
+        : { class: i < hiN ? "val" : "tick", x: lw - 10, y: y + rh / 2 + 4, "text-anchor": "end", "font-size": 13 }, svg).textContent = r.name;
+      const bar = el("rect", { class: r.cls || (i < hiN ? "b-blue" : "b-soft"), x: lw, y: by, width: bw, height: bh, rx: 4 }, svg);
+      el("text", { class: i < hiN ? "val" : "val2", x: lw + bw + 8, y: by + bh / 2 + 4 }, svg).textContent = f(r.v);
+      if (r.tip) {
+        const hit = el("rect", { x: 0, y, width: w, height: rh, fill: "transparent" }, svg);
+        hit.addEventListener("pointermove", (e) => showTip(e, r.tip));
+        hit.addEventListener("pointerleave", hideTip);
+        bar.setAttribute("aria-label", r.name + ": " + f(r.v));
+      }
     });
   }
 
@@ -300,5 +306,5 @@
     el("circle", { class: "sp-dot", cx: X(n - 1), cy: Y(history[n - 1].v), r: 2.5 }, svg);
   }
 
-  window.Charts = { columns, groups, curve, hbars, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate, md };
+  window.Charts = { columns, dumbbell, curve, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate, md };
 })();

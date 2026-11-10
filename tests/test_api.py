@@ -55,6 +55,11 @@ def test_model_endpoint_shows_loaded_model_and_data_asof(client):
     assert live["algo"] == "catboost" and live["trained_at"].startswith("2026-11-09")
     assert live["data_asof"] == m["asof"]
     assert m["winner"] == "catboost" and m["metrics"] and m["test_end"]
+    # "Яаж хийсэн бэ?": бүх тоо meta.json / өгөгдлөөс
+    p = m["pipeline"]
+    assert p["topics"] == 301 and p["n_features"] == 18 and p["purge_days"] == 3 and p["trials"] == 225
+    assert p["algo_name"] == "CatBoost" and p["clean_rows"] > 0 and p["naive_h3"]["valid"] < p["naive_h3"]["train"]
+    assert m["names"]["naive"] == "Одоогийнхтой адилхан" and set(m["valid"]["mean"]) == {"lightgbm", "xgboost", "catboost", "naive"}
 
 
 def test_map_categories_insights(client):

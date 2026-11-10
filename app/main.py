@@ -161,6 +161,16 @@ def insights():
     return _insights()
 
 
+_PIPE: dict = {}
+
+
+def _pipeline(meta: dict, snap: serve.Snapshot) -> dict:
+    """"Яаж хийсэн бэ?"-ийн тоо: snapshot солигдох хүртэл (өдөрт нэг) cache."""
+    if _PIPE.get("snap") is not snap:
+        _PIPE.update(snap=snap, value=evaluate.pipeline(meta, snap.clean, snap.asof))
+    return _PIPE["value"]
+
+
 @app.get("/api/model")
 def model():
     """Сайтын ард ажиллаж буй model: алгоритм, сургасан огноо, өгөгдлийн asof (ADR 0008)
@@ -169,6 +179,7 @@ def model():
     page = evaluate.model_page(meta)
     return {
         **page,
+        "pipeline": _pipeline(meta, snap),
         **serve.meta_block(snap.asof, local_today()),
         "test_end": page["asof"],
         "live": {
