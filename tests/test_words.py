@@ -4,9 +4,13 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src import scoring  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "app" / "static"
@@ -35,9 +39,7 @@ def test_short_surge_label_has_no_day():
 
 
 def test_surge_tooltip_always_has_the_date():
-    want = "11/9-нд ердийн өдрөөс 3 дахин их уншигдсан"
-    assert words("surgeTip", 3, ASOF) == want
-    assert "өчигдөр" not in want
+    assert words("surgeTip", 3, ASOF) == "11/9-нд ердийн өдрөөс 3 дахин их уншигдсан"
 
 
 def test_day_word_for_titles_and_tiles():
@@ -55,7 +57,7 @@ def test_interval_reads_as_8_of_10_times():
 
 
 def test_no_views_label_does_not_hardcode_yesterday():
-    na = "— (өчигдөр уншилтгүй)"            # scoring.LABEL_NA (API хэвээр)
+    na = scoring.LABEL_NA                   # "— (өчигдөр уншилтгүй)": API хэвээр
     assert words("forecastLabel", na, ASOF, 1) == na
     assert words("forecastLabel", na, ASOF, 4) == "— (11/9-нд уншилтгүй)"
     assert words("forecastLabel", "🔥 +35%", ASOF, 4) == "🔥 +35%"

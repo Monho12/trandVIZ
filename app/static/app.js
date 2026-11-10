@@ -14,7 +14,7 @@
   const href = (a) => "#/topic/" + encodeURIComponent(a);
   // ▲ = өнгөрсөн (ADR 0014). d: asof ба age_days-тэй хариу (meta_block)
   const surge = (r, d, short) => r >= 1.5
-    ? `<span class="surge" title="${W.surgeTip(r, d.asof)}">${W.surgeText(r, d.asof, d.age_days, short)}</span>`
+    ? `<span class="surge" title="${esc(W.surgeTip(r, d.asof))}">${esc(W.surgeText(r, d.asof, d.age_days, short))}</span>`
     : `<span class="surge calm">ердийн</span>`;
   const last = (t) => t.history[t.history.length - 1].v;
   const in3 = (t) => t.forecast[t.forecast.length - 1];
@@ -22,8 +22,9 @@
   const tipped = (text, tip) => `<span class="anh" title="${esc(tip)}">${esc(text)}</span>`;
   const pct = (t, d) => `${tipped("анхаарал", W.TIP.attention)} ${esc(W.forecastLabel(t.label, d.asof, d.age_days))}`;
   const iv = (t) => {
-    const [head, ...rest] = W.interval(t.interval_text).split(": ");
-    return rest.length ? `<span class="iv">${tipped(head, W.TIP.interval)}: ${esc(rest.join(": "))}</span>` : "";
+    const text = W.interval(t.interval_text), cut = text.indexOf(": ");   // tooltip нь "10 удаагийн 8-д" дээр
+    if (!text) return "";
+    return `<span class="iv">${cut < 0 ? tipped(text, W.TIP.interval) : tipped(text.slice(0, cut), W.TIP.interval) + esc(text.slice(cut))}</span>`;
   };
 
   let redraws = [], rt;
