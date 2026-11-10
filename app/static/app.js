@@ -356,58 +356,64 @@
   async function facts() {
     const d = await api("/api/insights");
     document.getElementById("stale-note").hidden = true;
+    const R = d.ranges, bold = (s) => `<b>${esc(s)}</b>`;
     const dec3 = Math.round(d.decay[3]);
-    const topCat = d.categories[0];
-    const pick = [["tech_ai", "Ажлын өдөр"], ["sports", "Ням гараг"], ["true_crime", "Амралтын өдөр"], ["film_tv", "Ням гараг"]];
-    const mn = d.mongolia[0];
+    const top2 = d.categories.slice(0, 2);
+    const picks = d.weekday_pick, off = (k) => d.weekday[k].map((v) => v - 100);   // 100 = долоо хоногийн дундаж
+    const lim = Math.max(...picks.flatMap((p) => off(p.key).map(Math.abs)));       // хоёр графикт нэг тэнхлэг
+    const mn = d.mongolia[0], H = d.holidays;
     main.innerHTML = `
       <h1 class="page-h">Сонирхолтой</h1>
-      <p class="lead">Wikipedia-ийн 5 жилийн өгөгдлөөс</p>
+      <p class="lead">${esc(W.factsLead(R.decay, d.topics_n))}</p>
       <div class="fgrid">
         <section class="fcard">
           <h3>Шуугиан хэр хурдан мартагддаг вэ?</h3>
           <p class="big"><b>${dec3}%</b> нь л 3 хоногийн дараа үлддэг</p>
+          <p class="fnote">${esc(W.decayNote(d.decay_n))}</p>
           <div class="fchart" id="f-decay"></div>
         </section>
         <section class="fcard">
           <h3>Дэлхий юуг хамгийн их уншдаг вэ?</h3>
-          <p class="big"><b>${CATS[topCat.key][1]}</b> сүүлийн 30 хоногт</p>
+          <p class="big">${W.catsHeadline(top2.map((c) => bold(catShort(c.key))), top2.map((c) => c.views))}</p>
+          <p class="fnote">${esc(W.catsNote(d.curated_n, R.categories))}</p>
           <div class="fchart" id="f-cats" style="height:250px"></div>
         </section>
         <section class="fcard wide">
           <h3>Аль гарагт юу уншдаг вэ?</h3>
-          <p class="big">Ажлын өдөр <b>AI</b>, амралтын өдөр <b>спорт, true crime</b></p>
-          <div class="minis">${pick.map(([k, when]) => `
-            <div><p class="mini-h">${cat(k)}</p><div class="fchart mini" data-k="${k}"></div><p class="mini-s">${when}</p></div>`).join("")}
+          <p class="big">${W.weekdayTitle(picks, Object.fromEntries(picks.map((p) => [p.key, bold(catShort(p.key))])))}</p>
+          <p class="fnote">${esc(W.WEEKDAY_NOTE)}</p>
+          <div class="minis">${picks.map((p) => `
+            <div><p class="mini-h">${cat(p.key)}</p><div class="fchart mini" data-k="${p.key}"></div></div>`).join("")}
           </div>
         </section>
         <section class="fcard">
           <h3>Баяр жил бүр давтагддаг</h3>
-          <p class="big"><b>Хамгийн таамаглахад амар</b> сэдэв</p>
+          <p class="big">${esc(W.HOLIDAY_TITLE)}</p>
+          <p class="fnote">${esc(W.holidayNote(R.holidays, H.incomplete_year))}</p>
           <div class="fchart" id="f-hol"></div>
-          <ul class="key"><li><i style="background:#2a78d6"></i>Зул сар</li><li><i style="background:#e63946"></i>Halloween</li><li><i style="background:#1D3557"></i>Валентин</li></ul>
         </section>
         <section class="fcard">
           <h3>Дэлхий Монголын юуг уншдаг вэ?</h3>
-          <p class="big"><b>${Math.round(mn.share)}%</b> нь ${mn.title === "Genghis Khan" ? "Чингис хаан" : esc(mn.title)}</p>
+          <p class="big"><b>${Math.round(mn.share)}%</b> нь ${esc(MN[mn.title] || mn.title)}</p>
+          <p class="fnote">${esc(W.mongoliaNote(d.mongolia_n, R.mongolia))}</p>
           <div class="fchart" id="f-mn" style="height:220px"></div>
         </section>
       </div>`;
-    const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
     draw(() => C.bars(document.getElementById("f-decay"), d.decay, {
       labels: d.decay.map((_, i) => (i === 0 ? "оргил" : [3, 7, 14].includes(i) ? `${i} хоног` : "")),
       hi: [0, 3], valLabels: { 0: "100%", 3: `${dec3}%`, 7: `${Math.round(d.decay[7])}%` }, label: "Оргилын дараах өдрүүдэд уншилт хэдэн хувь үлддэг вэ" }));
     draw(() => C.hbarsV(document.getElementById("f-cats"), d.categories.map((c) => ({ name: catOnly(c.key), v: c.views })),
-      { fmt: C.fmt, hiN: 1, label: "Ангилал бүрийн сүүлийн 30 хоногийн уншилт" }));
-    draw(() => main.querySelectorAll(".mini").forEach((b) => {
-      const v = d.weekday[b.dataset.k], mx = v.indexOf(Math.max(...v));
-      C.bars(b, v, { labels: DAYS, hi: [mx], base: 100, minY: 70, label: `${catOnly(b.dataset.k)}: гарагаар` });
-    }));
-    draw(() => C.lines(document.getElementById("f-hol"), d.holidays.months, d.holidays.series,
-      { label: "Баярын нийтлэлүүдийн сар бүрийн уншилт" }));
+      { fmt: C.fmt, hiN: 1, label: `Ангилал бүрийн уншилт, ${W.span(R.categories)}` }));
+    draw(() => picks.forEach((p) => C.diverging(main.querySelector(`.mini[data-k="${p.key}"]`), off(p.key), {
+      labels: W.DAYS, hi: p.peak, lim, label: `${catOnly(p.key)}: гараг бүр долоо хоногийн дунджаас хэдэн хувиар зөрдөг вэ, ${W.span(R.weekday)}`,
+      marks: { [p.peak]: W.weekdayLabel(p.peak, d.weekday[p.key][p.peak]), [p.low]: W.weekdayLabel(p.low, d.weekday[p.key][p.low]) } })));
+    draw(() => C.lines(document.getElementById("f-hol"), H.months, H.series, { label: "Баярын нийтлэлүүдийн сар бүрийн өдрийн дундаж уншилт",
+      marks: Object.fromEntries(Object.entries(H.peaks).map(([k, month]) => [k, { month, text: W.holidayLabel(HOL[k] || k, month) }])) }));
     draw(() => C.hbarsV(document.getElementById("f-mn"), d.mongolia.map((r) => ({ name: MN[r.title] || r.title, v: r.share })),
-      { fmt: (v) => Math.round(v) + "%", hiN: 1, label: "Монголын сэдвүүдийн эзлэх хувь" }));
+      { fmt: (v) => Math.round(v) + "%", hiN: 1, label: `Монголын сэдвүүдийн эзлэх хувь, ${W.span(R.mongolia)}` }));
   }
+  const catShort = (k) => catOnly(k).split(",")[0];   // өгүүлбэр дотор: "AI, технологи" -> "AI" (таслал өгүүлбэрийг эвдэхгүй)
+  const HOL = { Christmas: "Зул сар", "Valentine's Day": "Валентин" };   // Halloween орчуулгагүй
   const catOnly = (k) => (CATS[k] || ["", k])[1];
   const MN = { "Genghis Khan": "Чингис хаан", Mongolia: "Монгол Улс", "Mongol Empire": "Монголын эзэнт гүрэн",
     "Kublai Khan": "Хубилай хаан", "Golden Horde": "Алтан Орд", Ulaanbaatar: "Улаанбаатар", Mongols: "Монголчууд", "Ögedei Khan": "Өгөдэй хаан" };

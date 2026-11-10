@@ -133,3 +133,60 @@ def test_other_section_note_agrees_with_how_viral_topics_were_picked():
     assert f"оргил өдөр нь ердийнхөөсөө {fetch_data.VIRAL_MIN_RATIO}+ дахин их" in tip
     shown = " ".join([note["how"], note["why"], tip]).lower()
     assert "viral" not in shown and "вирал" not in shown   # ADR 0005
+
+
+# ── "Сонирхолтой" хуудас (issue #33): гарчиг, саарал мөр, огнооны хүрээ ──
+NAMES = {"tech_ai": "AI", "sports": "Спорт"}
+
+
+def test_weekday_title_names_each_category_with_its_peak_day_in_week_order():
+    picks = [{"key": "sports", "peak": 6, "low": 4}, {"key": "tech_ai", "peak": 3, "low": 6}]   # хэлбэлзлээр эрэмбэлсэн
+    assert words("weekdayTitle", picks, NAMES) == "AI Пүрэв гарагт, Спорт Ням гарагт хамгийн их уншигддаг"
+
+
+def test_weekday_title_when_both_categories_peak_on_the_same_day():
+    picks = [{"key": "sports", "peak": 3, "low": 4}, {"key": "tech_ai", "peak": 3, "low": 6}]
+    assert words("weekdayTitle", picks, NAMES) == "Спорт ба AI хоёулаа Пүрэв гарагт хамгийн их уншигддаг"
+
+
+def test_weekday_bar_labels_are_percent_above_or_below_the_weekly_mean():
+    assert words("weekdayLabel", 3, 109.8) == "Пү +10%"
+    assert words("weekdayLabel", 6, 85.3) == "Ня −15%"      # хасах тэмдэг (−), зураас (-) биш
+    assert words("weekdayLabel", 0, 100.2) == "Да 0%"
+
+
+def test_categories_headline_calls_a_gap_under_five_percent_a_tie():
+    assert words("catsHeadline", ["Улс төр", "AI"], [6146448, 6108244]) == "Улс төр ба AI бараг тэнцүү"
+    assert words("catsHeadline", ["Улс төр", "AI"], [100, 95.1]) == "Улс төр ба AI бараг тэнцүү"
+    assert words("catsHeadline", ["Улс төр", "AI"], [100, 95]) == "Улс төр хамгийн их уншигдсан"   # яг 5% бол тэнцүү биш
+
+
+def test_scope_notes_show_the_real_date_range_and_counts():
+    r30 = {"from": "2026-10-08", "to": "2026-11-06"}
+    assert words("span", r30) == "2026.10.08–2026.11.06"
+    assert words("factsLead", {"from": "2021-01-01", "to": "2026-11-06"}, 301) == "Англи Wikipedia, 2021 оноос хойшх өгөгдөл, манай 301 сэдэв."
+    assert words("decayNote", 146) == "Гэнэт шуугисан 146 сэдвийн дундаж (медиан). Оргил өдрийн уншилт = 100%."
+    assert words("catsNote", 151, r30) == "Бидний сонгосон 151 сэдвийн дотор, 2026.10.08–2026.11.06, англи Wikipedia."
+    assert words("mongoliaNote", 15, {"from": "2025-11-07", "to": "2026-11-06"}) == (
+        "Англи Wikipedia-ийн уншигчид. Бидний сонгосон 15 монгол сэдвийн дотор, 2025.11.07–2026.11.06.")
+    assert words("WEEKDAY_NOTE") == "Долоо хоногийн дунджаас хэдэн хувиар их/бага уншигддаг вэ. Хамгийн тод ялгаатай 2 ангилал."
+
+
+def test_holiday_note_mentions_the_unfinished_year_only_when_there_is_one():
+    r = {"from": "2023-01-01", "to": "2026-11-06"}
+    assert words("holidayNote", r, 2026) == "Сар бүрийн өдрийн дундаж уншилт, 2023 оноос. 2026 он дуусаагүй."
+    assert words("holidayNote", r, None) == "Сар бүрийн өдрийн дундаж уншилт, 2023 оноос."
+    assert words("HOLIDAY_TITLE") == "Баярууд жил бүр яг нэг сардаа оргилдог"
+    assert words("holidayLabel", "Зул сар", "2025-12") == "Зул сар · 12-р сар"
+    assert words("holidayLabel", "Валентин", "2025-02") == "Валентин · 2-р сар"
+
+
+def test_facts_page_has_no_stale_window_words_or_red():
+    """Хүрээг файлаас уншина: "сүүлийн 30 хоног / 1 жил / 5 жил" гэж гараар бичихгүй; графикт улаан үгүй."""
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    facts = js[js.index("async function facts()"):js.index("// ═════════ Router")]
+    for stale in ("сүүлийн 30", "1 жил", "5 жил", "таамаглахад амар", "#e63946", "Ажлын өдөр"):
+        assert stale not in facts, stale
+    css = (STATIC / "styles.css").read_text(encoding="utf-8")
+    line_rules = "\n".join(ln for ln in css.splitlines() if ".l-c" in ln)
+    assert line_rules and not re.search(r"#e63946|#b5222e", line_rules)

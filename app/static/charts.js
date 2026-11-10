@@ -190,18 +190,17 @@
     el("text", { class: "val2", x: X(last.it) + 8, y: Y(last.train) + 12 }, svg).textContent = "сургалт";
   }
 
-  /** Энгийн босоо багана: hi = тодруулах багануудын индекс, base = дундаж шугам (жишээ нь 100) */
-  function bars(box, values, { labels = [], hi = [], valLabels = {}, base, minY = 0, label } = {}) {
+  /** Энгийн босоо багана, тэгээс эхэлнэ: hi = тодруулах багануудын индекс */
+  function bars(box, values, { labels = [], hi = [], valLabels = {}, label } = {}) {
     const { svg, w, h } = svgFor(box, label);
     const pad = { t: 22, b: 22 }, n = values.length, slot = w / n, bw = Math.max(2, slot * 0.68);
-    const max = Math.max(...values), lo = minY, Y = (v) => h - pad.b - ((v - lo) / (max - lo)) * (h - pad.t - pad.b);
+    const max = Math.max(...values), Y = (v) => h - pad.b - (v / max) * (h - pad.t - pad.b);
     values.forEach((v, i) => {
-      const x = i * slot + (slot - bw) / 2, y = Y(Math.max(v, lo));
+      const x = i * slot + (slot - bw) / 2, y = Y(v);
       el("path", { class: hi.includes(i) ? "b-blue" : "b-soft", d: colPath(x, y, bw, h - pad.b - y) }, svg);
       if (valLabels[i] != null) el("text", { class: "val", x: x + bw / 2, y: y - 6, "text-anchor": "middle" }, svg).textContent = valLabels[i];
       if (labels[i]) el("text", { class: "tick", x: x + bw / 2, y: h - 5, "text-anchor": "middle" }, svg).textContent = labels[i];
     });
-    if (base != null) el("line", { class: "norm", x1: 0, x2: w, y1: Y(base), y2: Y(base) }, svg);
     el("line", { class: "base", x1: 0, x2: w, y1: h - pad.b, y2: h - pad.b }, svg);
   }
 
@@ -226,8 +225,24 @@
     });
   }
 
-  /** Олон шугам (3 хүртэл), нэрийг шугамын оргил дээр шууд бичнэ */
-  function lines(box, months, series, { label } = {}) {
+  /** Тэг шугамаас дээш/доош багана: values = дунджаас зөрөх хэмжээ (0 = дундаж), тэнхлэг тэгш хэмтэй (±lim).
+   *  hi = тод цэнхэр баганын индекс (бусад нь цайвар), marks = {индекс: баганын үзүүр дээрх шошго}. */
+  function diverging(box, values, { labels = [], hi, marks = {}, lim, label } = {}) {
+    const { svg, w, h } = svgFor(box, label);
+    const pad = { t: 18, b: 38 }, n = values.length, slot = w / n, bw = Math.max(2, slot * 0.68);
+    const top = lim || Math.max(...values.map(Math.abs)) || 1, zero = (pad.t + h - pad.b) / 2, half = zero - pad.t;
+    values.forEach((v, i) => {
+      const x = i * slot + (slot - bw) / 2, len = Math.max(1, (Math.abs(v) / top) * half), up = v >= 0;
+      el("rect", { class: i === hi ? "b-blue" : "b-soft", x, y: up ? zero - len : zero, width: bw, height: len, rx: Math.min(3, len / 2) }, svg);
+      if (marks[i]) el("text", { class: "val", x: Math.min(Math.max(x + bw / 2, 26), w - 26), y: up ? zero - len - 6 : zero + len + 14, "text-anchor": "middle" }, svg).textContent = marks[i];
+      if (labels[i]) el("text", { class: "tick", x: x + bw / 2, y: h - 5, "text-anchor": "middle" }, svg).textContent = labels[i];
+    });
+    el("line", { class: "base", x1: 0, x2: w, y1: zero, y2: zero }, svg);
+  }
+
+  /** Олон шугам (3 хүртэл). marks = {цувааны түлхүүр: {month, text}}: нэрийг тухайн сарын цэг (оргил) дээр шууд бичнэ, legend-гүй.
+   *  Шошгууд давхцвал доод оргилоос эхлэн дээш нь зайлуулна. */
+  function lines(box, months, series, { label, marks = {} } = {}) {
     const { svg, w, h } = svgFor(box, label);
     const pad = { l: 0, r: 0, t: 22, b: 22 }, keys = Object.keys(series), cls = ["l-c1", "l-c2", "l-c3"];
     const max = Math.max(...keys.flatMap((k) => series[k]));
@@ -238,6 +253,25 @@
     keys.forEach((k, j) => {
       const v = series[k];
       el("path", { class: cls[j], d: "M" + v.map((y, i) => `${X(i).toFixed(1)},${Y(y).toFixed(1)}`).join(" L") }, svg);
+    });
+    // Шошго: оргил цэгийнхээ дээр. Өөр шошго эсвэл өөр оргилын цэгтэй давхцвал дээш зайлна (доод оргилоос эхэлж байрлуулна).
+    const ROW = 15, placed = [];
+    const pts = keys.map((k, j) => ({ k, j, i: months.indexOf((marks[k] || {}).month) })).filter((m) => m.i >= 0)
+      .map((m) => ({ ...m, px: X(m.i), py: Y(series[m.k][m.i]) })).sort((a, b) => b.py - a.py);
+    pts.forEach((m) => el("circle", { class: "ldot " + cls[m.j], cx: m.px, cy: m.py, r: 3 }, svg));
+    pts.forEach((m) => {
+      const t = el("text", { class: "lname " + cls[m.j], "text-anchor": "middle" }, svg);
+      t.textContent = marks[m.k].text;
+      const half = (t.getComputedTextLength ? t.getComputedTextLength() : marks[m.k].text.length * 6.5) / 2;
+      const x = Math.min(Math.max(m.px, half), w - half);
+      let y = m.py - 8, moved = true;
+      for (let pass = 0; moved && pass < 6; pass++) {
+        moved = false;
+        placed.forEach((q) => { if (Math.abs(q.x - x) < q.half + half + 6 && Math.abs(q.y - y) < ROW) { y = q.y - ROW; moved = true; } });
+        pts.forEach((o) => { if (o !== m && Math.abs(o.px - x) < half + 4 && o.py > y - 14 && o.py < y + 6) { y = o.py - 8; moved = true; } });
+      }
+      t.setAttribute("x", x); t.setAttribute("y", Math.max(y, 11));
+      placed.push({ x, y, half });
     });
   }
 
@@ -306,5 +340,5 @@
     el("circle", { class: "sp-dot", cx: X(n - 1), cy: Y(history[n - 1].v), r: 2.5 }, svg);
   }
 
-  window.Charts = { columns, dumbbell, curve, bars, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate, md };
+  window.Charts = { columns, dumbbell, curve, bars, diverging, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate, md };
 })();

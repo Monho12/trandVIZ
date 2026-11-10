@@ -53,6 +53,40 @@
   const listLead = (asof, age) => "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. "
     + `▲ = ${day(asof, age)} ердийнхөөс хэд дахин их. Ангилал бүрт ${md(asof)}-нд хамгийн их уншигдсанаас нь эхлэн.`;
 
+  // ── "Сонирхолтой" хуудас (issue #33). Юуг харуулахыг app/data/make_insights.py сонгоно, энд зөвхөн үг. ──
+  const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];                                   // 0 = Даваа
+  const DAYS_LONG = ["Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба", "Ням"];
+  // r: insights.json-ий ranges-ийн нэг ({from, to}, "YYYY-MM-DD") -> "2026.10.08–2026.11.06"
+  const span = (r) => `${r.from.replace(/-/g, ".")}–${r.to.replace(/-/g, ".")}`;
+  const year = (iso) => iso.slice(0, 4);
+  const factsLead = (r, topics) => `Англи Wikipedia, ${year(r.from)} оноос хойшх өгөгдөл, манай ${topics} сэдэв.`;
+  const decayNote = (n) => `Гэнэт шуугисан ${n} сэдвийн дундаж (медиан). Оргил өдрийн уншилт = 100%.`;
+  const catsNote = (n, r) => `Бидний сонгосон ${n} сэдвийн дотор, ${span(r)}, англи Wikipedia.`;
+  const mongoliaNote = (n, r) => `Англи Wikipedia-ийн уншигчид. Бидний сонгосон ${n} монгол сэдвийн дотор, ${span(r)}.`;
+  // names: эхний хоёр ангиллын нэр (их -> бага), views: тэдний уншилт. Зөрүү 5%-иас бага бол "бараг тэнцүү"
+  const TIE = 0.05;
+  const catsHeadline = ([a, b], [va, vb]) => ((va - vb) / va < TIE ? `${a} ба ${b} бараг тэнцүү` : `${a} хамгийн их уншигдсан`);
+  // picks: insights.json-ий weekday_pick ([{key, peak}], peak: 0 = Даваа), names: {key: нэр}.
+  // Оргил гараг ижил бол нэг өгүүлбэрт нэгтгэнэ, үгүй бол долоо хоногийн дарааллаар.
+  const MOST = "хамгийн их уншигддаг";
+  const weekdayTitle = (picks, names) => {
+    const [a, b] = picks;
+    if (a.peak === b.peak) return `${names[a.key]} ба ${names[b.key]} хоёулаа ${DAYS_LONG[a.peak]} гарагт ${MOST}`;
+    return [...picks].sort((x, y) => x.peak - y.peak).map((p) => `${names[p.key]} ${DAYS_LONG[p.peak]} гарагт`).join(", ") + ` ${MOST}`;
+  };
+  // index: 100 = долоо хоногийн дундаж -> "Пү +10%", "Ня −15%"
+  const weekdayLabel = (dow, index) => {
+    const p = Math.round(index - 100);
+    return `${DAYS[dow]} ${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(p)}%`;
+  };
+  const WEEKDAY_NOTE = "Долоо хоногийн дунджаас хэдэн хувиар их/бага уншигддаг вэ. Хамгийн тод ялгаатай 2 ангилал.";
+  const HOLIDAY_TITLE = "Баярууд жил бүр яг нэг сардаа оргилдог";
+  // month: "YYYY-MM" (сүүлийн бүтэн жилийн оргил сар)
+  const holidayLabel = (name, month) => `${name} · ${+month.slice(5)}-р сар`;
+  // incompleteYear: 12 сар нь бүрдээгүй сүүлийн жил (байхгүй бол null)
+  const holidayNote = (r, incompleteYear) => `Сар бүрийн өдрийн дундаж уншилт, ${year(r.from)} оноос.`
+    + (incompleteYear ? ` ${incompleteYear} он дуусаагүй.` : "");
+
   const TIP = {
     attention: "Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь",
     interval: "80% интервал: model-ийн өмнөх алдаанаас тооцсон хүрээ",
@@ -64,7 +98,9 @@
   };
 
   const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, expand, COLLAPSE,
-    listLead, LOW_TAG, OTHER_NOTE, LOW_VIEWS, TIP };
+    listLead, LOW_TAG, OTHER_NOTE, LOW_VIEWS, TIP,
+    DAYS, span, factsLead, decayNote, catsNote, mongoliaNote, catsHeadline, weekdayTitle, weekdayLabel, WEEKDAY_NOTE,
+    HOLIDAY_TITLE, holidayLabel, holidayNote };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;
 })(typeof window !== "undefined" ? window : globalThis);
