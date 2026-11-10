@@ -1,8 +1,8 @@
 /* ══════════ Шуугиан ══════════
    Энгийн, цэвэрхэн, light горим. Өнгө бүр нэг утгатай:
      цэнхэр  = бодит уншилт (өнгөрсөн)
-     улбар шар = таамаг (ирээдүй)
-     улаан   = хэвийнээсээ хэт их өссөн (үргэлж ▲ тэмдэг, тоотой хамт)            */
+     улаан   = таамаг (ирээдүй: ↗/🔥) ба ердийнхөөс их уншигдсан (өнгөрсөн: үргэлж ▲ тэмдэг, тоотой хамт).
+               Өнгөөр биш үгээр ялгана (ADR 0014).                                 */
 :root {
   --bg: #f4f5f7;          /* хуудасны дэвсгэр */
   --surface: #ffffff;     /* карт */
@@ -12,9 +12,9 @@
   --muted: #737887;
   --blue: #2a78d6;
   --blue-soft: rgba(42, 120, 214, .10);
-  --orange: #e63946;   /* таамаг = улаан */
-  --orange-2: #b5222e;
-  --orange-soft: rgba(230, 57, 70, .10);
+  --forecast: #e63946;   /* таамаг = улаан */
+  --forecast-2: #b5222e;
+  --forecast-soft: rgba(230, 57, 70, .10);
   --red: #e63946;
   --red-soft: rgba(230, 57, 70, .10);
   --gray-bar: #b7bcc8;
@@ -61,7 +61,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .page-h { margin: 28px 0 6px; font-size: clamp(26px, 3.4vw, 36px); font-weight: 700; letter-spacing: -.01em; }
 .lead { margin: 0 0 22px; color: var(--text-2); max-width: 66ch; }
 
-/* ── Хэвийнээс өссөн шошго: тэмдэг + тоо + үг (зөвхөн өнгөөр биш) ── */
+/* ── Ердийнхөөс их уншигдсан (▲) шошго: тэмдэг + тоо + үг (зөвхөн өнгөөр биш) ── */
 .surge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
   background: var(--red-soft); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .surge::before { content: "▲"; color: var(--red); font-size: 10px; }
@@ -89,17 +89,18 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .tile dt { color: var(--muted); font-size: 13px; }
 .tile dd { margin: 2px 0 0; font-size: 26px; font-weight: 600; }
 .tile dd small { font-size: 14px; color: var(--text-2); font-weight: 500; margin-left: 6px; }
+.tile dd small.sub { display: block; margin: 2px 0 0; }
 .tile dd small.iv { display: block; margin: 2px 0 0; font-size: 13px; color: var(--muted); font-weight: 400; }
 .tile.t-blue { box-shadow: inset 3px 0 0 var(--blue); }
-.tile.t-orange { box-shadow: inset 3px 0 0 var(--orange); }
+.tile.t-forecast { box-shadow: inset 3px 0 0 var(--forecast); }
 
 .chart-h { margin: 20px 0 2px; font-size: 16px; font-weight: 600; color: var(--text); }
 .chart { position: relative; height: 260px; }
 .key { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--text-2); }
 .key li { display: flex; align-items: center; gap: 7px; }
 .key i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.key .k-blue { background: linear-gradient(#3d8ef0, #2a78d6); } .key .k-orange { background: repeating-linear-gradient(45deg, #e63946 0 2px, #f6b0b5 2px 4px); outline: 1px solid #e63946; outline-offset: -1px; }
-.key .k-range { width: 2px; height: 14px; border-radius: 1px; background: var(--orange-2); }
+.key .k-blue { background: linear-gradient(#3d8ef0, #2a78d6); } .key .k-forecast { background: repeating-linear-gradient(45deg, #e63946 0 2px, #f6b0b5 2px 4px); outline: 1px solid #e63946; outline-offset: -1px; }
+.key .k-range { width: 2px; height: 14px; border-radius: 1px; background: var(--forecast-2); }
 .key .k-norm { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed #5b6170; }
 .hint { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 .chart-sub { margin: 0 0 6px; color: var(--muted); font-size: 13.5px; }
@@ -153,16 +154,16 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
 .ch .val { fill: var(--text); font: 600 12px var(--font); }
 .ch .val2 { fill: var(--text-2); font: 500 11px var(--font); }
 .ch .b-blue { fill: var(--blue); }
-.ch .b-orange { fill: var(--orange); }
+.ch .b-forecast { fill: var(--forecast); }
 .ch .b-gray { fill: var(--gray-bar); }
-.ch .range { stroke: var(--orange-2); stroke-width: 2; stroke-linecap: round; }
+.ch .range { stroke: var(--forecast-2); stroke-width: 2; stroke-linecap: round; }
 .ch .split { stroke: var(--muted); stroke-dasharray: 3 4; }
 .ch .norm { stroke: #5b6170; stroke-width: 1.5; stroke-dasharray: 6 4; }
 .ch text { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 .ch .hl { fill: rgba(21, 23, 28, .05); }
 .ch .l-gray { fill: none; stroke: #9aa0ad; stroke-width: 2; }
 .ch .l-blue { fill: none; stroke: var(--blue); stroke-width: 2; }
-.ch .stop { stroke: var(--orange-2); stroke-dasharray: 4 4; }
+.ch .stop { stroke: var(--forecast-2); stroke-dasharray: 4 4; }
 
 /* Tooltip */
 .tip { position: fixed; z-index: 20; pointer-events: none; background: #fff; border: 1px solid var(--line);

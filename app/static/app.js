@@ -1,6 +1,6 @@
 // Шуугиан — энгийн hash router + хуудсууд
 (function () {
-  const C = window.Charts;
+  const C = window.Charts, W = window.Words;
   const main = document.getElementById("main");
   const CATS = {
     politics: ["🏛️", "Улс төр"], film_tv: ["🎬", "Кино, цуврал"], true_crime: ["🕯️", "True crime"],
@@ -12,15 +12,19 @@
   const cat = (k) => (CATS[k] || ["", k]).join(" ");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
-  const surge = (r, short) => r >= 1.5
-    ? `<span class="surge" title="Хэвийн өдрөөс ${r} дахин их">×${r}${short ? "" : " хэвийнээс"}</span>`
-    : `<span class="surge calm">хэвийн</span>`;
+  // ▲ = өнгөрсөн (ADR 0014). d: asof ба age_days-тэй хариу (meta_block)
+  const surge = (r, d, short) => r >= 1.5
+    ? `<span class="surge" title="${W.surgeTip(r, d.asof)}">${W.surgeText(r, d.asof, d.age_days, short)}</span>`
+    : `<span class="surge calm">ердийн</span>`;
   const last = (t) => t.history[t.history.length - 1].v;
   const in3 = (t) => t.forecast[t.forecast.length - 1];
-  // Таамгийн шошго (ADR 0003/0004): backend-ийн pct(h3), сум, 🔥. "Уншилт" биш "анхаарал".
-  const ANH = `<span class="anh" title="Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь">анхаарал</span>`;
-  const pct = (t) => `${ANH} ${esc(t.label)}`;
-  const iv = (t) => `<span class="iv">${esc(t.interval_text)}</span>`;
+  // Таамгийн хувь (ADR 0003/0004, 0014): backend-ийн pct(h3), сум, 🔥. Хувь = "анхаарал", тоо = "уншилт".
+  const tipped = (text, tip) => `<span class="anh" title="${esc(tip)}">${esc(text)}</span>`;
+  const pct = (t, d) => `${tipped("анхаарал", W.TIP.attention)} ${esc(W.forecastLabel(t.label, d.asof, d.age_days))}`;
+  const iv = (t) => {
+    const [head, ...rest] = W.interval(t.interval_text).split(": ");
+    return rest.length ? `<span class="iv">${tipped(head, W.TIP.interval)}: ${esc(rest.join(": "))}</span>` : "";
+  };
 
   let redraws = [], rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => redraws.forEach((f) => f()), 150); });
@@ -36,7 +40,7 @@
   }
 
   // Сэдвийн дэлгэрэнгүй хэсэг (нүүр болон сэдвийн хуудсанд хоёуланд)
-  function focusHTML(t, { titleTag = "h2", link = true, days = 30 } = {}) {
+  function focusHTML(t, d, { titleTag = "h2", link = true } = {}) {
     const normal = t.views / Math.max(t.ratio, 0.01);
     const title = link ? `<a href="${href(t.article)}">${esc(t.title)}</a>` : esc(t.title);
     return `
@@ -45,20 +49,21 @@
         <span class="focus-cat">${cat(t.category)}</span>
       </div>
       <dl class="tiles">
-        <div class="tile t-blue"><dt>Өчигдөр</dt><dd>${C.fmt(t.views)}</dd></div>
-        <div class="tile"><dt>Ердийн өдөр</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `×${t.ratio}` : ""}</small></dd></div>
-        <div class="tile t-orange"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small><small class="iv">${iv(t)}</small></dd></div>
+        <div class="tile t-blue"><dt>${W.dayTile(d.asof, d.age_days)}</dt><dd>${C.fmt(t.views)}<small>уншилт</small></dd></div>
+        <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `×${t.ratio}` : ""}</small></dd></div>
+        <div class="tile t-forecast"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>уншилт</small><small class="sub">${pct(t, d)}</small><small class="iv">${iv(t)}</small></dd></div>
       </dl>
       <p class="chart-h">Өдөр бүрийн уншилт</p>
       <div class="chart" id="chart"></div>
       <ul class="key">
         <li><i class="k-blue"></i>Бодит</li>
-        <li><i class="k-orange"></i>Таамаг</li>
+        <li><i class="k-forecast"></i>Таамаг</li>
         <li><i class="k-norm"></i>Ердийн өдөр</li>
         <li><i class="k-range"></i>Таамгийн хүрээ</li>
       </ul>`;
   }
-  const drawFocus = (t) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.views / Math.max(t.ratio, 0.01),
+  const drawFocus = (t, d) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.views / Math.max(t.ratio, 0.01),
+    day: W.day(d.asof, d.age_days),
     label: `${t.title}: өдөр бүрийн уншилт ба ирэх 3 өдрийн таамаг` });
 
   // ═════════ Нүүр ═════════
@@ -69,7 +74,7 @@
     const chans = ORDER.map((k) => cs.categories.find((c) => c.key === k)).filter(Boolean);
     const EMO = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, v[0]]));
     main.innerHTML = `
-      <h1 class="page-h">Өчигдөр дэлхий юуг уншив?</h1>
+      <h1 class="page-h">${W.homeTitle(tr.asof, tr.age_days)}</h1>
       <div class="map-key">
         <span><b>Том</b> = олон хүн уншсан</span>
         <span class="scale"><b>Өнгө</b> = ердийнхөөс
@@ -81,7 +86,7 @@
       <h2 class="sub-h">Сэдэв бүрээр</h2>
       <p class="lead">▲ ×3 = ердийн өдрөөс 3 дахин их уншигдсан. Таамаг: ${esc(tr.dates)}</p>
       <ul class="picker" aria-label="Сэдэв сонгох">${top.map((t, i) => `
-        <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${surge(t.ratio, true)}</button></li>`).join("")}
+        <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${surge(t.ratio, tr, true)}</button></li>`).join("")}
       </ul>
       <section class="focus" id="focus" aria-live="polite"></section>
       <section class="sec" aria-labelledby="cat-h">
@@ -89,12 +94,12 @@
         <div class="cats">${chans.map((c) => `
           <div class="cat">
             <h3>${cat(c.key)}</h3>
-            <ul>${c.topics.slice(0, 4).map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t.ratio, true)}</li>`).join("")}</ul>
+            <ul>${c.topics.slice(0, 4).map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t.ratio, cs, true)}</li>`).join("")}</ul>
           </div>`).join("")}
         </div>
       </section>`;
 
-    draw(() => C.treemap(document.getElementById("tmap"), mp.items, { emoji: EMO, label: "Өчигдрийн анхаарлын газрын зураг" }));
+    draw(() => C.treemap(document.getElementById("tmap"), mp.items, { emoji: EMO, label: `Уншилтын газрын зураг, ${C.md(mp.asof)}` }));
     const byKey = Object.fromEntries(cs.categories.map((c) => [c.key, c.topics]));
     draw(() => main.querySelectorAll(".sp").forEach((b) => {
       const t = byKey[b.dataset.k].find((x) => x.article === b.dataset.a);
@@ -105,9 +110,9 @@
     function select(i) {
       btns.forEach((b, j) => b.setAttribute("aria-pressed", j === i));
       const t = top[i];
-      document.getElementById("focus").innerHTML = focusHTML(t);
+      document.getElementById("focus").innerHTML = focusHTML(t, tr);
       redraws = redraws.filter((f) => f !== fn);
-      fn = draw(drawFocus(t));
+      fn = draw(drawFocus(t, tr));
     }
     btns.forEach((b) => b.addEventListener("click", () => select(+b.dataset.i)));
     select(0);
@@ -119,13 +124,13 @@
     meta(tr);
     main.innerHTML = `
       <h1 class="page-h">Бүх сэдэв</h1>
-      <p class="lead">Цэнхэр = бодит, улбар шар = таамаг</p>
+      <p class="lead">Цэнхэр = бодит уншилт, улаан = таамаг</p>
       <ol class="rows">${tr.items.map((t, i) => `
         <li class="row">
           <span class="rk">${i + 1}</span>
           <div>
             <h3><a href="${href(t.article)}">${esc(t.title)}</a></h3>
-            <p class="meta">${surge(t.ratio)}<span><b>${C.fmt(t.views)}</b> уншилт</span><span>${esc(t.dates)}: ${pct(t)} ${iv(t)}</span><span>${cat(t.category)}</span></p>
+            <p class="meta">${surge(t.ratio, tr)}<span><b>${C.fmt(t.views)}</b> уншилт</span><span>${esc(t.dates)}: ${pct(t, tr)} ${iv(t)}</span><span>${cat(t.category)}</span></p>
           </div>
           <div class="mini" data-i="${i}"></div>
         </li>`).join("")}
@@ -142,20 +147,20 @@
     meta(t);
     main.innerHTML = `
       <a class="back" href="#/">← Нүүр рүү буцах</a>
-      <section class="focus topic" style="margin-top:14px">${focusHTML(t, { titleTag: "h1", link: false, days: t.history.length })}
+      <section class="focus topic" style="margin-top:14px">${focusHTML(t, t, { titleTag: "h1", link: false })}
         <table class="fc">
-          <caption>Ирэх 3 өдрийн таамаг. 80% хүрээг model-ийн өмнөх үеийн бодит алдаанаас тооцоолсон.</caption>
+          <caption>Ирэх 3 өдрийн таамагласан уншилт. ${W.TIP.table}</caption>
           <thead><tr><th>Өдөр</th><th>Доод</th><th>Таамаг</th><th>Дээд</th></tr></thead>
           <tbody>${t.forecast.map((f) => `<tr><td>${C.longDate(f.d)}</td><td>${C.fmt(f.lo)}</td><td class="y">${C.fmt(f.y)}</td><td>${C.fmt(f.hi)}</td></tr>`).join("")}</tbody>
         </table>
       </section>`;
-    draw(drawFocus(t));
+    draw(drawFocus(t, t));
   }
 
   // ═════════ Загвар ═════════
   // Feature-ийн энгийн монгол нэр (meta.json-ийн нэрээс)
   const FEAT = { ratio_7: "7 хоногийн дунджаас хэр зөрж байна", roll_std_3: "Сүүлийн 3 өдрийн савлагаа",
-    growth_1: "Өчигдрөөс хэр өссөн", vs_level: "Ердийн түвшнээсээ хэр дээр", dow: "Гарагийн өдөр",
+    growth_1: "Өмнөх өдрөөс хэр өссөн", vs_level: "Ердийн түвшнээсээ хэр дээр", dow: "Гарагийн өдөр",
     growth_3: "3 өдрийн өсөлт", roll_std_7: "7 хоногийн савлагаа", roll_std_14: "14 хоногийн савлагаа",
     roll_std_28: "28 хоногийн савлагаа", roll_mean_7: "7 хоногийн дундаж", roll_max_28: "28 хоногийн оргил",
     from_max_28: "28 хоногийн оргилоос хэр доор", days_since_peak: "Оргилоос хойш хэдэн хоног",
@@ -352,7 +357,7 @@
     const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
     draw(() => C.bars(document.getElementById("f-decay"), d.decay, {
       labels: d.decay.map((_, i) => (i === 0 ? "оргил" : [3, 7, 14].includes(i) ? `${i} хоног` : "")),
-      hi: [0, 3], valLabels: { 0: "100%", 3: `${dec3}%`, 7: `${Math.round(d.decay[7])}%` }, label: "Оргилын дараах өдрүүдэд анхаарал хэдэн хувь үлддэг вэ" }));
+      hi: [0, 3], valLabels: { 0: "100%", 3: `${dec3}%`, 7: `${Math.round(d.decay[7])}%` }, label: "Оргилын дараах өдрүүдэд уншилт хэдэн хувь үлддэг вэ" }));
     draw(() => C.hbarsV(document.getElementById("f-cats"), d.categories.map((c) => ({ name: catOnly(c.key), v: c.views })),
       { fmt: C.fmt, hiN: 1, label: "Ангилал бүрийн сүүлийн 30 хоногийн уншилт" }));
     draw(() => main.querySelectorAll(".mini").forEach((b) => {

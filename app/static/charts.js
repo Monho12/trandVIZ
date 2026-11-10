@@ -10,7 +10,7 @@
     return String(v);
   };
   const MONTHS = ["1-р", "2-р", "3-р", "4-р", "5-р", "6-р", "7-р", "8-р", "9-р", "10-р", "11-р", "12-р"];
-  const md = (s) => { const [, m, d] = s.split("-"); return `${+m}/${+d}`; };
+  const md = window.Words.md;
   const longDate = (s) => { const [, m, d] = s.split("-"); return `${MONTHS[+m - 1]} сарын ${+d}`; };
   const el = (tag, attrs = {}, parent) => {
     const n = document.createElementNS(NS, tag);
@@ -58,10 +58,10 @@
 
   /**
    * Баганан график: өдөр бүр нэг багана, тэгээс эхэлнэ.
-   * Цэнхэр = бодит уншилт, улбар шар = таамаг; нимгэн шугам = таамгийн 80% бүс.
+   * Цэнхэр = бодит уншилт, улаан = таамагласан уншилт; нимгэн шугам = таамгийн 80% бүс.
    */
   function columns(box, opts) {
-    const { history, forecast = [], axis = false, label, normal } = opts;
+    const { history, forecast = [], axis = false, label, normal, day } = opts;   // day: asof өдрийн нэр (Words.day)
     const { svg, w, h } = svgFor(box, label);
     const pad = axis ? { l: 58, r: 6, t: 26, b: 24 } : { l: 0, r: 0, t: 2, b: 2 };
     const H = history.length, F = forecast.length, gapSlots = F ? 0.8 : 0;
@@ -87,7 +87,7 @@
     });
     forecast.forEach((f, j) => {
       const i = H + j, x = X(i);
-      const b = el("path", { class: "bar " + (axis ? "b-hatch" : "b-orange"), d: colPath(x, Y(f.y), bw, base - Y(f.y)) }, svg);
+      const b = el("path", { class: "bar " + (axis ? "b-hatch" : "b-forecast"), d: colPath(x, Y(f.y), bw, base - Y(f.y)) }, svg);
       b.style.setProperty("--i", i);
       if (axis) el("line", { class: "range", x1: x + bw / 2, x2: x + bw / 2, y1: Y(f.hi), y2: Y(f.lo) }, svg);
     });
@@ -106,16 +106,16 @@
         el("line", { class: "norm", x1: pad.l, x2: X(H - 1) + bw, y1: Y(normal), y2: Y(normal) }, svg);
         el("text", { class: "val2", x: pad.l + 4, y: Y(normal) - 6 }, svg).textContent = `ердийн өдөр ≈ ${fmt(normal)}`;
       }
-      // Оргил өдөр өчигдөр биш бол түүнийг тэмдэглэнэ
+      // Оргил өдөр сүүлийн (asof) өдөр биш бол түүнийг тэмдэглэнэ
       let pk = 0; history.forEach((p, i) => { if (p.v > history[pk].v) pk = i; });
       if (pk < H - 2 && history[pk].v > 1.5 * history[H - 1].v) {
         const px = X(pk) + bw / 2, py = Y(history[pk].v);
         el("circle", { class: "peak", cx: px, cy: py - 10, r: 3 }, svg);
         el("text", { class: "val2", x: px - 8, y: py - 7, "text-anchor": "end" }, svg).textContent = `оргил ${md(history[pk].d)}: ${fmt(history[pk].v)}`;
       }
-      // Сонгомол шошго: өчигдрийн утга
+      // Сонгомол шошго: сүүлийн (asof) өдрийн утга
       const lx = X(H - 1) + bw / 2, lv = history[H - 1].v;
-      el("text", { class: "val", x: lx, y: Y(lv) - 6, "text-anchor": F ? "end" : "middle" }, svg).textContent = `өчигдөр ${fmt(lv)}`;
+      el("text", { class: "val", x: lx, y: Y(lv) - 6, "text-anchor": F ? "end" : "middle" }, svg).textContent = `${day || md(history[H - 1].d)} ${fmt(lv)}`;
       // Огноо
       const every = Math.max(1, Math.round(H / 6));
       for (let i = 0; i < H - every / 2; i += every)
@@ -129,7 +129,7 @@
       const r = el("rect", { x: X(i) - (slot - bw) / 2, y: 0, width: slot, height: h, fill: "transparent" }, hits);
       const isF = i >= H, d = isF ? forecast[i - H] : history[i];
       const html = isF
-        ? `<b>${longDate(d.d)}, таамаг</b>≈ ${fmt(d.y)} уншилт<br><span>80% магадлалтай: ${fmt(d.lo)} – ${fmt(d.hi)}</span>`
+        ? `<b>${longDate(d.d)}, таамаг</b>≈ ${fmt(d.y)} уншилт<br><span>10 удаагийн 8-д: ${fmt(d.lo)} – ${fmt(d.hi)}</span><br><span>${window.Words.TIP.forecastBar}</span>`
         : `<b>${longDate(d.d)}</b>${fmt(d.v)} уншилт`;
       r.addEventListener("pointermove", (e) => { hl.setAttribute("x", X(i) - (slot - bw) / 2); hl.setAttribute("visibility", "visible"); showTip(e, html); });
       r.addEventListener("pointerleave", () => { hl.setAttribute("visibility", "hidden"); hideTip(); });
@@ -294,7 +294,7 @@
     box.setAttribute("role", "list"); box.setAttribute("aria-label", label || "");
   }
 
-  /** Жижиг sparkline: сүүлийн 30 хоног, өчигдрийн цэг тод */
+  /** Жижиг sparkline: сүүлийн 30 хоног, сүүлийн (asof) өдрийн цэг тод */
   function spark(box, history) {
     const { svg, w, h } = svgFor(box, "");
     svg.setAttribute("aria-hidden", "true");

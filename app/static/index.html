@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Шуугиан — дэлхий юуг уншиж байна</title>
-  <meta name="description" content="Wikipedia-ийн хандалтаар дэлхийн анхаарлыг хэмжиж, ирэх 3 өдрийг таамагладаг.">
+  <meta name="description" content="Wikipedia-ийн уншилтаар дэлхийн анхаарлыг хэмжиж, ирэх 3 өдрийг таамагладаг.">
   <meta name="theme-color" content="#f4f5f7">
   <link rel="preload" href="/static/fonts/onest-cyrillic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/fonts.css">
@@ -19,7 +19,7 @@
         <rect x="2" y="12" width="3.5" height="8" rx="1.5" fill="var(--blue)"/>
         <rect x="7.5" y="7" width="3.5" height="13" rx="1.5" fill="var(--blue)"/>
         <rect x="13" y="3" width="3.5" height="17" rx="1.5" fill="var(--blue)"/>
-        <rect x="18.5" y="9" width="3.5" height="11" rx="1.5" fill="var(--orange)"/>
+        <rect x="18.5" y="9" width="3.5" height="11" rx="1.5" fill="var(--forecast)"/>
       </svg>
       <span>Шуугиан</span>
     </a>
@@ -37,11 +37,12 @@
   <main id="main" tabindex="-1"></main>
 
   <footer class="foot">
-    <p>Өгөгдөл: англи Wikipedia-ийн өдөр тутмын хандалт, зөвхөн хүн (Wikimedia Pageviews API).
+    <p>Өгөгдөл: англи Wikipedia-ийн өдөр тутмын уншилт, зөвхөн хүн (bot биш), Wikimedia Pageviews API.
       Таамаг: CatBoost, ирэх 3 өдөр. <a href="https://github.com/Monho12/trandVIZ">Эх код</a></p>
   </footer>
 
   <div class="tip" id="tip" role="status" hidden></div>
+  <script src="/static/words.js"></script>
   <script src="/static/charts.js"></script>
   <script src="/static/app.js"></script>
 </body>
