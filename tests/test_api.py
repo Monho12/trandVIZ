@@ -86,3 +86,9 @@ def test_topic_with_zero_views_on_asof_serializes_without_inf(client):
         it = serve.item(r, hist[r.article], state.snapshot.asof)
         json.dumps(it, allow_nan=False)
         assert it["pct"] is None and all(f["pct"] is None for f in it["forecast"]) and not it["fire"]
+
+
+def test_static_files_are_revalidated_so_css_matches_js(client):
+    """Cache-Control-гүй бол браузер хуучин styles.css-ийг шинэ app.js-тэй хамт ашиглаж, загвар эвдэрдэг байв."""
+    for f in ("styles.css", "app.js", "charts.js"):
+        assert client.get(f"/static/{f}").headers["cache-control"] == "no-cache"
