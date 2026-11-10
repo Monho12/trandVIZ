@@ -242,6 +242,7 @@ def pipeline(meta: dict, stats: dict, asof: pd.Timestamp) -> dict:
     return {
         "topics": int(sum(g["topics"] for g in t["groups"].values())),
         "topics_main": int(t["groups"][t["main_group"]]["topics"]),
+        "topics_groups": {k: int(g["topics"]) for k, g in t["groups"].items()},
         "start": start.strftime("%Y-%m-%d"), "end": end.strftime("%Y-%m-%d"),
         "years": round((end - start).days / 365.25, 1),
         "clean_rows": stats["clean_rows"],
