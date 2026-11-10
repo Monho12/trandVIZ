@@ -186,12 +186,14 @@ def format_pct(p: float) -> str:
     return "0%" if r == 0 else f"+{r}%" if r > 0 else f"−{-r}%"
 
 
-LABEL_FLAT, LABEL_FALL = "≈ тогтвортой", "↓ унаж байна"
+LABEL_FLAT, LABEL_FALL, LABEL_NA = "≈ тогтвортой", "↓ унаж байна", "— (өчигдөр уншилтгүй)"
 INTERVAL_PREFIX = "80%"
 
 
 def label(arrow_sym: str, p: float) -> str:
     """Вэбийн сумны текст (ADR 0004): 🔥 +x%, ↗ +x%, ≈ тогтвортой, ↘ −x%, ↓ унаж байна. arrow_sym нь arrow()-ийн утга."""
+    if arrow_sym is None or p is None or not np.isfinite(p):
+        return LABEL_NA   # x_0 = 0: хувь тодорхойгүй
     if arrow_sym == FLAT:
         return LABEL_FLAT
     if arrow_sym == FALL:
@@ -200,5 +202,7 @@ def label(arrow_sym: str, p: float) -> str:
 
 
 def interval_text(lo: float, hi: float) -> str:
-    """80% интервалыг саарал текстээр (ADR 0003): "80%: −5% … +40%"."""
+    """80% интервалыг саарал текстээр (ADR 0003): "80%: −5% … +40%". Хил тодорхойгүй (x_0 = 0) бол ""."""
+    if any(v is None or not np.isfinite(v) for v in (lo, hi)):
+        return ""
     return f"{INTERVAL_PREFIX}: {format_pct(lo)} … {format_pct(hi)}"

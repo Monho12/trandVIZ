@@ -68,3 +68,21 @@ def test_map_categories_insights(client):
     cs = client.get("/api/categories").json()["categories"]
     assert "Бусад" in {c["key"] for c in cs} and all(len(c["topics"]) <= 4 for c in cs)
     assert client.get("/api/insights").json()["decay"]
+
+
+def test_topic_with_zero_views_on_asof_serializes_without_inf(client):
+    """asof өдөр 0 уншилт (x_0 = 0) бол pct = inf байсан тул JSON үүсгэхэд сервер унадаг байв: одоо null, top-10-д орохгүй."""
+    import json
+    from app.main import state
+    from src import serve
+    rows = state.snapshot.universe.copy()
+    zero = rows.index[:3]
+    rows.loc[zero, "y_0"] = 0.0
+    p = serve.ranked(serve.predict(state.model, rows))
+    z = p[p["article"].isin(rows.loc[zero, "article"])]
+    assert z["pct_h3"].isna().all() and z["rank"].isna().all() and z["arrow"].isna().all()
+    hist = serve._histories(state.snapshot, z["article"], serve.LIST_DAYS)
+    for r in z.itertuples():
+        it = serve.item(r, hist[r.article], state.snapshot.asof)
+        json.dumps(it, allow_nan=False)
+        assert it["pct"] is None and all(f["pct"] is None for f in it["forecast"]) and not it["fire"]
