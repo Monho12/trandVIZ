@@ -19,6 +19,7 @@ UP, DOWN, STABLE = "↑ өсөж байна", "↓ унаж байна", "тог
 
 # 🔥 ба сум (ADR 0004), таамагласан pct(h3) дээр
 T_FLOOR = 0.25
+FIRES_PER_DAY_TARGET = 7.5   # "өдөрт ~5–10 🔥"-ийн дунд (ADR 0004), valid дээр T-г үүгээр тааруулна
 FIRE, RISE, FLAT, DIP, FALL = "🔥", "↗", "≈", "↘", "↓"
 
 # Хэмжигдэх сэдэв (ADR 0004): сүүлийн 7 хоногийн дундаж анхаарал (x хуваарьт) ≥ 1
@@ -47,6 +48,21 @@ def predicted_pct(y_0, delta):
     return pct(y_0, np.add(y_0, delta))
 
 
+INTERVAL_Q = (0.10, 0.90)   # 80% интервал (ADR 0003)
+
+
+def residual_quantiles(delta, delta_hat, q=INTERVAL_Q) -> tuple[float, float]:
+    """Residual r = Δ − Δ̂ (лог хуваарьт)-ийн 10% ба 90%-ийн квантил. 80% интервал = Δ̂ + [q10, q90]."""
+    r = np.subtract(delta, delta_hat)
+    lo, hi = np.quantile(r[~np.isnan(r)], q)
+    return float(lo), float(hi)
+
+
+def interval_pct(y_0, delta_hat, q_lo, q_hi):
+    """80% интервалын хил pct-ээр: predicted_pct(y_0, Δ̂ + q). L1 медиан ба квантил expm1-ээр хадгалагдана (ADR 0003)."""
+    return predicted_pct(y_0, np.add(delta_hat, q_lo)), predicted_pct(y_0, np.add(delta_hat, q_hi))
+
+
 def true_trend(actual_pct: pd.Series) -> pd.Series:
     """Үнэн trend (ADR 0001): БОДИТ pct(h3) ≥ +25% -> ↑, ≤ −20% -> ↓, бусад нь тогтвортой. NaN -> None."""
     a = pd.Series(actual_pct)
@@ -69,6 +85,24 @@ def arrow(pred_pct: pd.Series, tuned_T: float, measurable: pd.Series) -> pd.Seri
     conds = [((p >= T) & m).to_numpy(), (p >= 0.10).to_numpy(), (p > -0.10).to_numpy(), (p > -0.20).to_numpy()]
     out = pd.Series(np.select(conds, [FIRE, RISE, FLAT, DIP], default=FALL), index=p.index, dtype=object)
     return out.where(p.notna(), None)
+
+
+def fires_per_day(df: pd.DataFrame, T: float, pct_col: str = "pred_pct", measurable_col: str = "measurable") -> float:
+    """df: [date, pct_col, measurable_col]. Өдөрт дунджаар хэдэн 🔥 (хэмжигдэх сэдэв ба pct ≥ T) гарах вэ (ADR 0004).
+    Нэг ч 🔥-гүй (нам гүм) өдөр 0 гэж тооцогдоно: хуваарь нь df-д байгаа бүх өдрийн тоо."""
+    fire = df[measurable_col].fillna(False).astype(bool) & (df[pct_col] >= T)
+    return float(fire.sum() / df["date"].nunique())
+
+
+def tune_threshold(df: pd.DataFrame, target: float = FIRES_PER_DAY_TARGET, pct_col: str = "pred_pct",
+                   measurable_col: str = "measurable") -> float:
+    """T = max(өдөрт дунджаар `target` 🔥 гаргах босго, 25%) (ADR 0004). df нь fires_per_day-тэй ижил.
+    Тааруулсан босго = хэмжигдэх сэдвийн таамгуудаас k = round(target × өдрийн тоо) дахь хамгийн өндөр нь,
+    тэгвэл яг k мөр (тэнцүү утгагүй бол) ≥ босго болно."""
+    vals = df.loc[df[measurable_col].fillna(False).astype(bool), pct_col].dropna().sort_values(ascending=False)
+    k = int(round(target * df["date"].nunique()))
+    tuned = float(vals.iloc[k - 1]) if 0 < k <= len(vals) else -np.inf
+    return fire_threshold(tuned)
 
 
 def is_measurable(df: pd.DataFrame) -> pd.Series:

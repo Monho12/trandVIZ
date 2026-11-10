@@ -140,3 +140,58 @@ def test_momentum_direction_and_pct():
 def test_format_pct_rounds_to_5_and_caps_at_3x(p, text):
     # ADR 0003: 5%-д дугуйлна (хагас нь тэгээс холдоно, тэгш хэмтэй); +300%-иас их бол "↑ 3×-ээс их"
     assert scoring.format_pct(p) == text
+
+
+def fire_frame(preds_by_day: dict, measurable=None):
+    """Өдөр бүрийн таамагласан pct(h3)-ийн жагсаалтаас [date, article, pred_pct, measurable] хүснэгт."""
+    rows = [{"date": pd.Timestamp(d), "article": f"a{i}", "pred_pct": p, "measurable": True}
+            for d, ps in preds_by_day.items() for i, p in enumerate(ps)]
+    df = pd.DataFrame(rows)
+    if measurable is not None:
+        df["measurable"] = measurable
+    return df
+
+
+def test_fires_per_day_counts_quiet_days_as_zero():
+    # ADR 0004: 2 өдөр. 1-д 3 🔥 (≥ 25%), 2-т 0 🔥 (нам гүм өдөр) -> дунджаар 1.5
+    df = fire_frame({"2025-08-01": [0.30, 0.25, 0.90, 0.10], "2025-08-02": [0.24, -0.5]})
+    assert scoring.fires_per_day(df, 0.25) == 1.5
+
+
+def test_fires_per_day_ignores_unmeasurable_topics():
+    df = fire_frame({"2025-08-01": [0.50, 0.60]}, measurable=[True, False])
+    assert scoring.fires_per_day(df, 0.25) == 1.0
+
+
+def test_tuned_threshold_gives_target_fires_per_day():
+    # 2 өдөр, зорилго өдөрт 1.5 🔥 -> нийт 3 🔥: хэмжигдэх сэдвийн 3 дахь хамгийн өндөр таамаг = 0.60.
+    # Хэмжигдэхгүй 5.0 нь тооцогдохгүй.
+    df = fire_frame({"2025-08-01": [0.90, 0.60, 0.20, 5.0], "2025-08-02": [0.70, 0.40, 0.30, 0.10]},
+                    measurable=[True, True, True, False, True, True, True, True])
+    T = scoring.tune_threshold(df, target=1.5)
+    assert T == pytest.approx(0.60)
+    assert scoring.fires_per_day(df, T) == 1.5
+
+
+def test_tuned_threshold_never_below_25pct():
+    # ADR 0004: зорилгод хүрэхийн тулд 10% хүртэл буулгах шаардлагатай ч T = 25% хэвээр (өдөрт 0.5 🔥)
+    df = fire_frame({"2025-08-01": [0.40, 0.10], "2025-08-02": [0.20, 0.05]})
+    assert scoring.tune_threshold(df, target=1.0) == 0.25
+
+
+def test_default_target_is_inside_5_to_10_per_day():
+    assert 5 <= scoring.FIRES_PER_DAY_TARGET <= 10
+
+
+def test_residual_quantiles_are_10_and_90_of_actual_minus_predicted():
+    # residual = Δ − Δ̂ = −0.5, −0.4, …, +0.5 (11 утга) -> 10%: −0.4, 90%: +0.4
+    resid = np.round(np.arange(-5, 6) / 10, 1)
+    delta_hat = np.full(11, 0.3)
+    lo, hi = scoring.residual_quantiles(delta_hat + resid, delta_hat)
+    assert (lo, hi) == pytest.approx((-0.4, 0.4))
+
+
+def test_interval_pct_shifts_prediction_by_quantiles_in_log_scale():
+    # x_0 = 0.5, Δ̂ = 0.11, квантил ±0.11 -> Δ [0, 0.22] -> [0%, +74%] (ADR 0003)
+    lo, hi = scoring.interval_pct(np.log1p(0.5), 0.11, -0.11, 0.11)
+    assert (lo, hi) == pytest.approx((0.0, 0.74), abs=0.005)
