@@ -51,6 +51,14 @@ def predicted_pct(y_0, delta):
 INTERVAL_Q = (0.10, 0.90)   # 80% интервал (ADR 0003)
 
 
+def floor_delta(y_0, delta):
+    """Вэбэд: Δ̂-г −y_0-оор доороос хязгаарлана. y = log1p(x) ≥ 0 тул y_0 + Δ̂ < 0 гэдэг нь x̂ < 0 (pct < −100%),
+    боломжгүй утга. Ихэвчлэн жижиг сэдвийн 80% интервалын доод хил дээр тохиолдоно. Медиан/квантил нь монотон
+    хувиргалтад хадгалагддаг тул хязгаарласан квантил нь x ≥ 0-ийн квантил хэвээр (ADR 0003).
+    Test-ийн үнэлгээнд (src/evaluate.py) ашиглаагүй: тэр нь нэг удаа хийгдсэн."""
+    return np.maximum(delta, np.negative(y_0))
+
+
 def residual_quantiles(delta, delta_hat, q=INTERVAL_Q) -> tuple[float, float]:
     """Residual r = Δ − Δ̂ (лог хуваарьт)-ийн 10% ба 90%-ийн квантил. 80% интервал = Δ̂ + [q10, q90]."""
     r = np.subtract(delta, delta_hat)
@@ -176,3 +184,21 @@ def format_pct(p: float) -> str:
         return CAP_TEXT
     r = round(round_pct(p) * 100)
     return "0%" if r == 0 else f"+{r}%" if r > 0 else f"−{-r}%"
+
+
+LABEL_FLAT, LABEL_FALL = "≈ тогтвортой", "↓ унаж байна"
+INTERVAL_PREFIX = "80%"
+
+
+def label(arrow_sym: str, p: float) -> str:
+    """Вэбийн сумны текст (ADR 0004): 🔥 +x%, ↗ +x%, ≈ тогтвортой, ↘ −x%, ↓ унаж байна. arrow_sym нь arrow()-ийн утга."""
+    if arrow_sym == FLAT:
+        return LABEL_FLAT
+    if arrow_sym == FALL:
+        return LABEL_FALL
+    return f"{arrow_sym} {format_pct(p)}"
+
+
+def interval_text(lo: float, hi: float) -> str:
+    """80% интервалыг саарал текстээр (ADR 0003): "80%: −5% … +40%"."""
+    return f"{INTERVAL_PREFIX}: {format_pct(lo)} … {format_pct(hi)}"

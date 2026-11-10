@@ -18,3 +18,6 @@ data/processed/features.parquet
 
 # CatBoost-ийн түр log
 catboost_info/
+
+# Сервер Wikimedia-аас шинэчилсэн cache (ADR 0008)
+data/live/

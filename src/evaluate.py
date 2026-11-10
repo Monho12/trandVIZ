@@ -103,7 +103,7 @@ def verdict(g: dict) -> dict:
     return v
 
 
-# ---------------------------------------------------------------- Загвар хуудас (app/mock/model.json)
+# ---------------------------------------------------------------- Загвар хуудас (/api/model, meta.json-оос)
 
 ALGO_NAME = {"lightgbm": "LightGBM", "xgboost": "XGBoost", "catboost": "CatBoost"}
 
@@ -225,7 +225,8 @@ def _round(o, nd=5):
 
 
 def run(log=print) -> dict:
-    """Test-ийг НЭГ удаа үнэлж, meta.json-д "test" талбар, app/mock/model.json-ийг бичнэ.
+    """Test-ийг НЭГ удаа үнэлж, meta.json-д "test" талбарыг бичнэ. Загвар хуудсыг сервер meta.json-оос
+    model_page()-ээр тооцдог (/api/model, ADR 0008), тусдаа JSON файл бичихгүй.
     meta.json-д "test" аль хэдийн байвал ажиллахгүй (дахин ажиллуулах сонголт байхгүй): тоог "сайжруулахгүй"."""
     import json
     from src import train
@@ -273,8 +274,6 @@ def run(log=print) -> dict:
     }
     meta = {**model.meta, "test": test}
     (train.MODEL_DIR / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
-    page = model_page(meta)
-    (train.ROOT / "app" / "mock" / "model.json").write_text(json.dumps(page, ensure_ascii=False), encoding="utf-8")
     report(test, log)
     return {"test": test, "frame": te, "refits": refits}
 

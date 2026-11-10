@@ -19,8 +19,9 @@ from urllib.parse import quote
 import pandas as pd
 import requests
 
-# Wikimedia-ийн дүрмээр хэн хүсэлт илгээж байгааг User-Agent-д тодорхой бичих ёстой
-USER_AGENT = "Shuugiaan/0.1 (https://github.com/Monho12/trandVIZ; student data-mining project)"
+# Wikimedia-ийн дүрмээр хэн хүсэлт илгээж байгааг User-Agent-д тодорхой бичих ёстой, үгүй бол 403 (ADR 0008).
+# И-мэйл бичихгүй.
+USER_AGENT = "Shuugian/1.0 (https://github.com/Monho12/trandVIZ)"
 BASE = "https://wikimedia.org/api/rest_v1/metrics/pageviews"
 PROJECT = "en.wikipedia"
 
@@ -71,11 +72,11 @@ def _fmt(d) -> str:
     return pd.Timestamp(d).strftime("%Y%m%d")
 
 
-def article_daily(title: str, start, end, cache_dir: Path | None = None) -> pd.DataFrame:
+def article_daily(title: str, start, end, cache_dir: Path | None = None, **kw) -> pd.DataFrame:
     """Нэг нийтлэлийн өдөр тутмын ХҮНИЙ хандалт (agent=user -> ботыг хассан)."""
     t = quote(title.replace(" ", "_"), safe="")
     url = f"{BASE}/per-article/{PROJECT}/all-access/user/{t}/daily/{_fmt(start)}/{_fmt(end)}"
-    data = _get_json(url, cache_dir)
+    data = _get_json(url, cache_dir, **kw)
     if not data or not data.get("items"):
         return pd.DataFrame(columns=["date", "views"])
     df = pd.DataFrame(data["items"])
@@ -83,10 +84,12 @@ def article_daily(title: str, start, end, cache_dir: Path | None = None) -> pd.D
     return df[["date", "views"]]
 
 
-def total_daily(start, end, cache_dir: Path | None = None) -> pd.DataFrame:
+def total_daily(start, end, cache_dir: Path | None = None, **kw) -> pd.DataFrame:
     """Англи Wikipedia-ийн НИЙТ өдөр тутмын хүний хандалт (анхаарлын хувийг тооцоход хэрэгтэй)."""
     url = f"{BASE}/aggregate/{PROJECT}/all-access/user/daily/{_fmt(start)}/{_fmt(end)}"
-    data = _get_json(url, cache_dir)
+    data = _get_json(url, cache_dir, **kw)
+    if not data or not data.get("items"):
+        return pd.DataFrame(columns=["date", "total_views"])
     df = pd.DataFrame(data["items"])
     df["date"] = pd.to_datetime(df["timestamp"].str[:8], format="%Y%m%d")
     return df[["date", "views"]].rename(columns={"views": "total_views"})

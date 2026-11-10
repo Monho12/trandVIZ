@@ -47,8 +47,11 @@ main:focus, main:focus-visible { outline: none; }
 .nav a:hover { color: var(--text); }
 .nav a[aria-current="page"] { color: var(--text); background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
 .asof { margin: 0 0 0 auto; color: var(--muted); font-size: 14px; }
-.mock-note { max-width: var(--wrap); margin: 0 auto; padding: 0 16px; color: var(--text-2); font-size: 14px; }
-.mock-note::before { content: "ⓘ "; color: var(--muted); }
+.stale-note { max-width: var(--wrap); margin: 0 auto 8px; padding: 8px 16px; color: #5c4400; font-size: 14px;
+  background: #fff4c2; border-radius: 8px; }
+.stale-note::before { content: "⚠ "; }
+.iv { color: var(--muted); font-weight: 400; }
+.anh { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 
 main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .foot { max-width: var(--wrap); margin: 0 auto; padding: 28px 16px 40px; color: var(--muted); font-size: 13px;
@@ -85,6 +88,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .tile dt { color: var(--muted); font-size: 13px; }
 .tile dd { margin: 2px 0 0; font-size: 26px; font-weight: 600; }
 .tile dd small { font-size: 14px; color: var(--text-2); font-weight: 500; margin-left: 6px; }
+.tile dd small.iv { display: block; margin: 2px 0 0; font-size: 13px; color: var(--muted); font-weight: 400; }
 .tile.t-blue { box-shadow: inset 3px 0 0 var(--blue); }
 .tile.t-orange { box-shadow: inset 3px 0 0 var(--orange); }
 

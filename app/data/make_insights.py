@@ -1,6 +1,6 @@
 """
 "Сонирхолтой" хуудасны баримтуудыг БОДИТ өгөгдлөөс тооцоолно.
-Ажиллуулах:  python app/mock/make_insights.py   ->  app/mock/insights.json
+Ажиллуулах:  python app/data/make_insights.py   ->  app/data/insights.json
 """
 import json
 from pathlib import Path
