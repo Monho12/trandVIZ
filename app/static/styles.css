@@ -75,7 +75,11 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
   transition: border-color .15s, background-color .15s; }
 .pick:hover { border-color: var(--muted); color: var(--text); }
 .pick[aria-pressed="true"] { background: var(--blue-soft); border-color: var(--blue); color: var(--text); }
-.pick .surge { font-size: 12px; padding: 1px 7px; }
+.pick .surge, .pick .fcl { font-size: 12px; padding: 1px 7px; }
+/* Чипний таамгийн шошго (🔥 +35% / ↗ +20% / ≈ тогтвортой): сум нь API-ийн label дотор, ▲-ийн хэлбэртэй ижил */
+.fcl { display: inline-flex; align-items: center; border-radius: 999px; background: var(--bg); color: var(--text-2);
+  font-weight: 500; white-space: nowrap; }
+.fcl.fire { background: var(--forecast-soft); color: var(--text); font-weight: 600; }
 
 /* ── Сонгосон сэдэв ── */
 .focus { background: var(--surface); border-radius: 14px; padding: 24px 24px 18px; border: 1px solid var(--line); }
@@ -116,6 +120,8 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
   border-top: 1px solid var(--line); font-size: 14px; }
 .cat li a { text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cat li a:hover { text-decoration: underline; }
+.cat .more { display: inline-block; margin: 8px 0 2px; font-size: 13px; font-weight: 500; color: var(--blue); text-decoration: none; }
+.cat .more:hover { text-decoration: underline; }
 
 /* ── Бүх сэдэв ── */
 .rows { list-style: none; margin: 0; padding: 0; }

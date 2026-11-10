@@ -19,10 +19,10 @@ ASOF = "2026-11-09"   # сайтын огнооны формат: "11/9"
 
 
 def words(fn: str, *args):
-    """Words.<fn>(*args)-ийн утга."""
+    """Words.<fn>(*args)-ийн утга (fn нь тогтмол бол түүний утга)."""
     if NODE is None:
         pytest.skip("node алга")
-    code = f"const W = require({json.dumps(str(STATIC / 'words.js'))}); console.log(JSON.stringify(W[{json.dumps(fn)}](...{json.dumps(args)})))"
+    code = f"const W = require({json.dumps(str(STATIC / 'words.js'))}); const v = W[{json.dumps(fn)}]; console.log(JSON.stringify(typeof v === 'function' ? v(...{json.dumps(args)}) : v))"
     return json.loads(subprocess.run([NODE, "-e", code], capture_output=True, text=True, check=True).stdout)
 
 
@@ -73,3 +73,47 @@ def test_static_files_have_no_banned_words_or_old_colour_name():
         if f.name != "words.js":
             assert not re.search(r"[өӨ]чигд[өр]", text), f"{f.name}: 'өчигдөр'-ийг хатуу бичсэн"
     assert "--forecast: #e63946" in (STATIC / "styles.css").read_text(encoding="utf-8")
+
+
+DATES = "11/11–11/13"
+
+
+def test_trend_lead_with_fires_names_dates_and_threshold_in_percent():
+    s = words("trendLead", DATES, 3, 0.25, 10)
+    assert s == ("11/11–11/13-нд анхаарал нь хамгийн их өсөх 10 сэдэв (model-ийн таамаг). "
+                 "🔥 = 25% ба түүнээс их өсөлт.")
+    assert "0.25" not in s
+    assert words("trendLead", DATES, 1, 0.3, 8).startswith("11/11–11/13-нд анхаарал нь хамгийн их өсөх 8 сэдэв")
+    assert "🔥 = 30% ба" in words("trendLead", DATES, 1, 0.3, 8)
+
+
+def test_trend_lead_without_fires_does_not_mention_a_threshold():
+    s = words("trendLead", DATES, 0, 0.25, 10)
+    assert s == "11/11–11/13: онцгой өсөлт (🔥) таамаглагдаагүй. Хамгийн өндөр таамагтай 10 сэдэв."
+    assert "ба түүнээс их" not in s and "хамгийн их өсөх" not in s
+
+
+def test_map_scope_names_both_counts():
+    assert words("mapScope", 301, 40) == "Манай 301 сэдвээс хамгийн их уншигдсан 40, англи Wikipedia."
+
+
+def test_category_lead_counts_from_data_and_skips_empty_reason():
+    assert words("catLead", 10, 15.1, 4, ASOF, 1, "") == (
+        "10 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Карт бүрт өчигдөр хамгийн их уншигдсан 4 нь. "
+        "▲ ×2 = ердийн өдрөөс 2 дахин их.")
+    assert words("catLead", 9, 14.6, 3, ASOF, 4, "Учир нь X.") == (
+        "9 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Учир нь X. Карт бүрт 11/9-нд хамгийн их уншигдсан 3 нь. "
+        "▲ ×2 = ердийн өдрөөс 2 дахин их.")
+
+
+def test_category_reason_stays_out_until_mike_fills_it_in_plan():
+    plan = (ROOT / "docs" / "PLAN.md").read_text(encoding="utf-8")
+    reason = words("CAT_REASON")
+    if "[Майк бөглөнө" in plan:
+        assert reason == ""
+    else:
+        assert reason and reason in plan
+
+
+def test_see_all_link_text():
+    assert words("seeAll", 16) == "Бүгдийг харах (16) →"
