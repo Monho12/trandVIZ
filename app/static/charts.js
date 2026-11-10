@@ -136,24 +136,26 @@
     }
   }
 
-  /** Model-ийн алдааг энгийн аргуудтай харьцуулах бүлэглэсэн багана */
-  function groups(box, rows, keys, names, label) {
+  /** Model-ийн алдааг энгийн аргуудтай харьцуулах бүлэглэсэн багана.
+   *  keys: баганы дараалал, hi: тодруулах (цэнхэр) key, light: цайвар саарал key, names: key -> нэр (tooltip), fmt: утгын бичиглэл */
+  function groups(box, rows, keys, { hi = keys[0], light = [], names = {}, fmt = (v) => v.toFixed(2) } = {}, label) {
     const { svg, w, h } = svgFor(box, label);
     const pad = { l: 4, r: 4, t: 18, b: 26 };
     const max = Math.max(...rows.flatMap((r) => keys.map((k) => r[k]))) * 1.1;
     const gw = (w - pad.l - pad.r) / rows.length, bw = Math.min(34, (gw - 28) / keys.length);
-    const base = h - pad.b, cls = ["b-blue", "b-gray", "b-gray"];
+    const base = h - pad.b, narrow = bw < 30;   // утсанд: зөвхөн тодруулсан ба цайвар баганын утгыг бичнэ (бусад нь tooltip-д)
     rows.forEach((r, i) => {
       const gx = pad.l + i * gw + (gw - bw * keys.length) / 2;
       keys.forEach((k, j) => {
         const bh = (r[k] / max) * (base - pad.t), x = gx + j * bw + 1;
-        el("path", { class: cls[j], d: colPath(x, base - bh, bw - 2, bh), opacity: j === 2 ? 0.6 : 1 }, svg);
-        el("text", { class: j === 0 ? "val" : "val2", x: x + (bw - 2) / 2, y: base - bh - 5, "text-anchor": "middle", "font-size": 11 }, svg).textContent = r[k].toFixed(2);
+        const bar = el("path", { class: k === hi ? "b-blue" : "b-gray", d: colPath(x, base - bh, bw - 2, bh), opacity: light.includes(k) ? 0.6 : 1 }, svg);
+        el("title", {}, bar).textContent = `${names[k] || k}: ${fmt(r[k])}`;
+        if (narrow && k !== hi && !light.includes(k)) return;
+        el("text", { class: k === hi ? "val" : "val2", x: x + (bw - 2) / 2, y: base - bh - 5, "text-anchor": "middle", "font-size": 11 }, svg).textContent = fmt(r[k]);
       });
       el("text", { class: "tick", x: pad.l + i * gw + gw / 2, y: h - 6, "text-anchor": "middle", "font-size": 12 }, svg).textContent = `${r.h} өдрийн дараа`;
     });
     el("line", { class: "base", x1: pad.l, x2: w - pad.r, y1: base, y2: base }, svg);
-    void names;
   }
 
   /** Сургалтын муруй: сургалт ба validation алдаа */

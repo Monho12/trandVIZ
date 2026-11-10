@@ -2081,5 +2081,331 @@
       "lo": -0.14911,
       "hi": 0.24637
     }
+  },
+  "test": {
+    "evaluated_at": "2026-11-10T06:19:34+00:00",
+    "rule": "Test-ийг нэг удаа үнэлсэн (issue #7). Шалгуур ADR 0002: h бүрт skill ≥ 5% ба 95% CI-ийн доод хил > 0; precision@10 (h3) > momentum; ӨСӨХ-ийн чиглэл > momentum. Гол дүгнэлт (а) дээр (ADR 0005).",
+    "test_start": "2026-04-01",
+    "test_end": "2026-11-03",
+    "bootstrap": {
+      "n": 1000,
+      "seed": 42,
+      "unit": "өдөр",
+      "ci": 0.95
+    },
+    "mae_unit": "лог (y = log1p(анхаарал)), бүх мөр",
+    "refit_reproduction": {
+      "lightgbm_h1": {
+        "valid_mae": 0.0944,
+        "recorded": 0.0944,
+        "best_iteration": 715,
+        "recorded_iteration": 715
+      },
+      "lightgbm_h2": {
+        "valid_mae": 0.12568,
+        "recorded": 0.12568,
+        "best_iteration": 772,
+        "recorded_iteration": 772
+      },
+      "lightgbm_h3": {
+        "valid_mae": 0.14087,
+        "recorded": 0.14087,
+        "best_iteration": 629,
+        "recorded_iteration": 629
+      },
+      "xgboost_h1": {
+        "valid_mae": 0.09425,
+        "recorded": 0.09425,
+        "best_iteration": 1158,
+        "recorded_iteration": 1158
+      },
+      "xgboost_h2": {
+        "valid_mae": 0.1258,
+        "recorded": 0.1258,
+        "best_iteration": 1103,
+        "recorded_iteration": 1103
+      },
+      "xgboost_h3": {
+        "valid_mae": 0.14108,
+        "recorded": 0.14108,
+        "best_iteration": 1002,
+        "recorded_iteration": 1002
+      }
+    },
+    "main_group": "а",
+    "notes": {
+      "а": "гол дүгнэлт: сонгосон 151 сэдэв, сонголтын хазайлт бага",
+      "б": "train үед оргилсон вирал: ихэвчлэн оргилын дараах уналт, \"↓\" чиглэл хэт сайн харагдана (гол дүгнэлт биш)",
+      "в": "valid/test үед оргилсон вирал: сонголтын хазайлттай (ирээдүйг мэдэж сонгосон), гол дүгнэлт биш"
+    },
+    "groups": {
+      "а": {
+        "rows": 32767,
+        "topics": 151,
+        "days": 217,
+        "mae": {
+          "h1": {
+            "model": 0.09822,
+            "naive": 0.11306,
+            "seasonal": 0.20182,
+            "lightgbm": 0.09825,
+            "xgboost": 0.09823,
+            "catboost": 0.09822
+          },
+          "h2": {
+            "model": 0.13094,
+            "naive": 0.16011,
+            "seasonal": 0.20185,
+            "lightgbm": 0.13092,
+            "xgboost": 0.1309,
+            "catboost": 0.13094
+          },
+          "h3": {
+            "model": 0.14612,
+            "naive": 0.18298,
+            "seasonal": 0.20195,
+            "lightgbm": 0.14642,
+            "xgboost": 0.14648,
+            "catboost": 0.14612
+          }
+        },
+        "skill": {
+          "h1": {
+            "point": 0.13128,
+            "lo": 0.11976,
+            "hi": 0.14259
+          },
+          "h2": {
+            "point": 0.1822,
+            "lo": 0.17044,
+            "hi": 0.19385
+          },
+          "h3": {
+            "point": 0.20143,
+            "lo": 0.19064,
+            "hi": 0.21357
+          }
+        },
+        "days_better": {
+          "h1": 0.94931,
+          "h2": 0.99078,
+          "h3": 0.98618
+        },
+        "coverage": {
+          "h1": 0.79574,
+          "h2": 0.79562,
+          "h3": 0.79534
+        },
+        "precision10": {
+          "model": 0.31244,
+          "momentum": 0.0894,
+          "base_rate": 0.12433,
+          "days": 217
+        },
+        "direction": {
+          "model": {
+            "rise": 0.57161,
+            "fall": 0.96215,
+            "n_rise": 4022,
+            "n_fall": 4280
+          },
+          "momentum": {
+            "rise": 0.33018,
+            "fall": 0.24393,
+            "n_rise": 4022,
+            "n_fall": 4280
+          }
+        },
+        "verdict": {
+          "skill": {
+            "h1": true,
+            "h2": true,
+            "h3": true
+          },
+          "skill_all": true,
+          "precision10": true,
+          "rise_direction": true,
+          "pass": true
+        }
+      },
+      "б": {
+        "rows": 24738,
+        "topics": 114,
+        "days": 217,
+        "mae": {
+          "h1": {
+            "model": 0.09661,
+            "naive": 0.10919,
+            "seasonal": 0.18641,
+            "lightgbm": 0.09655,
+            "xgboost": 0.09664,
+            "catboost": 0.09661
+          },
+          "h2": {
+            "model": 0.12234,
+            "naive": 0.14665,
+            "seasonal": 0.18639,
+            "lightgbm": 0.12231,
+            "xgboost": 0.12244,
+            "catboost": 0.12234
+          },
+          "h3": {
+            "model": 0.13468,
+            "naive": 0.16472,
+            "seasonal": 0.18647,
+            "lightgbm": 0.13477,
+            "xgboost": 0.13485,
+            "catboost": 0.13468
+          }
+        },
+        "skill": {
+          "h1": {
+            "point": 0.11518,
+            "lo": 0.10458,
+            "hi": 0.1249
+          },
+          "h2": {
+            "point": 0.16573,
+            "lo": 0.15471,
+            "hi": 0.17692
+          },
+          "h3": {
+            "point": 0.18239,
+            "lo": 0.17111,
+            "hi": 0.19349
+          }
+        },
+        "days_better": {
+          "h1": 0.94009,
+          "h2": 0.97696,
+          "h3": 0.99078
+        },
+        "coverage": {
+          "h1": 0.78814,
+          "h2": 0.80722,
+          "h3": 0.80912
+        },
+        "precision10": {
+          "model": 0.35853,
+          "momentum": 0.09908,
+          "base_rate": 0.17263,
+          "days": 217
+        },
+        "direction": {
+          "model": {
+            "rise": 0.60455,
+            "fall": 0.91789,
+            "n_rise": 3075,
+            "n_fall": 3544
+          },
+          "momentum": {
+            "rise": 0.3213,
+            "fall": 0.26552,
+            "n_rise": 3075,
+            "n_fall": 3544
+          }
+        },
+        "verdict": {
+          "skill": {
+            "h1": true,
+            "h2": true,
+            "h3": true
+          },
+          "skill_all": true,
+          "precision10": true,
+          "rise_direction": true,
+          "pass": true
+        }
+      },
+      "в": {
+        "rows": 7812,
+        "topics": 36,
+        "days": 217,
+        "mae": {
+          "h1": {
+            "model": 0.12649,
+            "naive": 0.14049,
+            "seasonal": 0.31709,
+            "lightgbm": 0.12664,
+            "xgboost": 0.12662,
+            "catboost": 0.12649
+          },
+          "h2": {
+            "model": 0.17457,
+            "naive": 0.20132,
+            "seasonal": 0.31698,
+            "lightgbm": 0.17424,
+            "xgboost": 0.17388,
+            "catboost": 0.17457
+          },
+          "h3": {
+            "model": 0.20153,
+            "naive": 0.23656,
+            "seasonal": 0.31753,
+            "lightgbm": 0.20104,
+            "xgboost": 0.20081,
+            "catboost": 0.20153
+          }
+        },
+        "skill": {
+          "h1": {
+            "point": 0.09964,
+            "lo": 0.08326,
+            "hi": 0.11565
+          },
+          "h2": {
+            "point": 0.13287,
+            "lo": 0.11422,
+            "hi": 0.15001
+          },
+          "h3": {
+            "point": 0.14809,
+            "lo": 0.13082,
+            "hi": 0.16607
+          }
+        },
+        "days_better": {
+          "h1": 0.82488,
+          "h2": 0.86175,
+          "h3": 0.85714
+        },
+        "coverage": {
+          "h1": 0.71889,
+          "h2": 0.71173,
+          "h3": 0.70609
+        },
+        "precision10": {
+          "model": 0.23594,
+          "momentum": 0.17281,
+          "base_rate": 0.17835,
+          "days": 217
+        },
+        "direction": {
+          "model": {
+            "rise": 0.52917,
+            "fall": 0.90246,
+            "n_rise": 1200,
+            "n_fall": 1507
+          },
+          "momentum": {
+            "rise": 0.4275,
+            "fall": 0.34572,
+            "n_rise": 1200,
+            "n_fall": 1507
+          }
+        },
+        "verdict": {
+          "skill": {
+            "h1": true,
+            "h2": true,
+            "h3": true
+          },
+          "skill_all": true,
+          "precision10": true,
+          "rise_direction": true,
+          "pass": true
+        }
+      }
+    }
   }
 }
