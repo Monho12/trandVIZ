@@ -10,6 +10,7 @@
   D гараагүй / алдаа бол ~3 цагийн дараа нэг удаа дахин оролдоно, тэгээд ч болохгүй бол сүүлийн cache.
 - /api/topic, /api/categories, /api/trending, /api/map: хүсэлт бүрт model -> scoring (src/serve.py).
 - /api/model: ачаалагдсан алгоритм, сургасан огноо, өгөгдлийн asof + Загвар хуудасны үнэлгээ.
+- /api/health: санах ой (cgroup + процессын RSS), uptime, refresh-ийн төлөв (Render free санах ойн график харуулдаггүй).
 
 Орчны хувьсагч:
   SHUUGIAN_REFRESH=0       Wikimedia-аас татахгүй (offline, тест)
@@ -22,6 +23,7 @@ import json
 import logging
 import os
 import threading
+import time
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
@@ -73,6 +75,58 @@ def release_memory() -> None:
         pass
 
 
+CGROUP = Path("/sys/fs/cgroup")
+PROC_STATUS = Path("/proc/self/status")
+MIB = 1024 * 1024
+
+
+def _read_bytes(path: Path) -> int | None:
+    """cgroup-ийн тоон файл (байтаар). Файл байхгүй (Windows, macOS, cgroup-гүй), уншиж болохгүй, эсвэл "max"
+    (хязгааргүй) бол None."""
+    try:
+        return int(path.read_text().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _mib(b: int | None) -> float | None:
+    return None if b is None else round(b / MIB, 1)
+
+
+def cgroup_memory(root: Path | None = None) -> dict:
+    """Контейнерийн санах ой MiB-ээр: cgroup v2 (memory.current/peak/max), эс бол v1 (memory/memory.usage_in_bytes,
+    memory.max_usage_in_bytes, memory.limit_in_bytes). Render 512 MB-ийн хязгаар нь энэ тоонд үйлчилнэ."""
+    root = CGROUP if root is None else root
+    v2 = {"current": "memory.current", "peak": "memory.peak", "max": "memory.max"}
+    if (root / v2["current"]).exists():
+        version, files = "v2", {k: root / f for k, f in v2.items()}
+    else:
+        d = root / "memory"
+        version = "v1" if (d / "memory.usage_in_bytes").exists() else None
+        files = {"current": d / "memory.usage_in_bytes", "peak": d / "memory.max_usage_in_bytes",
+                 "max": d / "memory.limit_in_bytes"}
+    out = {k: _mib(_read_bytes(f)) for k, f in files.items()}
+    if version == "v1" and out["max"] is not None and out["max"] > 2 ** 40 / MIB:
+        out["max"] = None   # v1 хязгааргүй бол ~2^63 байт буцаадаг
+    return {"cgroup": version, **{f"{k}_mib": v for k, v in out.items()}}
+
+
+def process_memory(status: Path | None = None) -> dict:
+    """Процессын одоогийн (VmRSS) ба оргил (VmHWM) санах ой MiB-ээр /proc/self/status-аас. Linux биш бол None."""
+    out = {"rss_mib": None, "hwm_mib": None}
+    try:
+        lines = (PROC_STATUS if status is None else status).read_text().splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        key, _, val = line.partition(":")
+        name = {"VmRSS": "rss_mib", "VmHWM": "hwm_mib"}.get(key)
+        parts = val.split()
+        if name and parts and parts[0].isdigit():
+            out[name] = round(int(parts[0]) / 1024, 1)   # kB
+    return out
+
+
 class Server:
     """Ачаалсан model + өгөгдлийн snapshot + өдөр тутмын шинэчлэлт. snapshot-ийг бүхэлд нь сольдог."""
 
@@ -80,6 +134,7 @@ class Server:
         self.model = None
         self.snapshot: serve.Snapshot | None = None
         self.loaded_at = None
+        self.started = None   # time.monotonic(): uptime
         self.refresh = {"enabled": False, "status": None, "message": "", "at": None, "next": None}
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -90,6 +145,7 @@ class Server:
     def start(self, refresh: bool = True) -> None:
         """Түүхий cache-ийг (raw) санах ойд барихгүй: Snapshot барьсны дараа чөлөөлнө, шинэчлэлт дискнээс дахин уншина
         (өдөрт нэг удаа, ADR 0012: Render 512 MB)."""
+        self.started = time.monotonic()
         self.model = train.load()
         self.snapshot = self._build(load_raw())
         release_memory()
@@ -204,6 +260,20 @@ def model():
             "fire_T": meta["fire"]["T"], "topics": snap.history["topics"],
             "refresh": dict(state.refresh),
         },
+    }
+
+
+@app.get("/api/health")
+def health():
+    """Сервер амьд эсэх + санах ой (Render free санах ойн график харуулдаггүй, ADR 0012). /api/model-оос тусдаа.
+    Файл байхгүй орчинд (Windows, local) санах ойн талбарууд null."""
+    snap = state.snapshot
+    return {
+        "status": "ok",
+        "uptime_s": None if state.started is None else round(time.monotonic() - state.started),
+        "memory": {**cgroup_memory(), **process_memory()},
+        "refresh": dict(state.refresh),
+        "asof": None if snap is None else snap.asof.strftime("%Y-%m-%d"),
     }
 
 
