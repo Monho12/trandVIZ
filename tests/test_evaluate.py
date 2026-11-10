@@ -113,3 +113,25 @@ def test_model_page_shows_group_a_mae_as_percent_and_marks_winner():
     assert page["metrics"] == [{"h": 1, "lightgbm": 10.5, "xgboost": 10.5, "catboost": 15.0, "naive": 22.1}]
     assert page["skill"] == {"h1": {"point": 30.1, "lo": 25.0, "hi": 35.0}}
     assert page["importance"] == [{"f": "ratio_7", "gain": 9}]
+    assert page["names"]["naive"] == "Одоогийнхтой адилхан" and page["names"]["model"] == "Манай model (CatBoost)"
+    assert page["curve_h"] == 3 and "valid" not in page   # valid_table-гүй meta
+
+
+def test_valid_comparison_uses_valid_without_new_viral_and_selection_mean():
+    # exp(0.1) − 1 = 10.52%, exp(0.2) − 1 = 22.14%
+    vt = [{"algo": a, "h": h, "valid_mae": m, "naive_valid_mae": 0.2, "trials": 25}
+          for a, m in (("lightgbm", 0.1), ("catboost", 0.1)) for h in (1, 2)]
+    v = evaluate.valid_comparison({"valid_table": vt, "optuna": {"n_trials": 25}})
+    assert v["algos"] == ["lightgbm", "catboost"] and v["trials"] == 100 and v["horizons"] == 2
+    assert v["rows"][0] == {"h": 1, "lightgbm": 10.52, "catboost": 10.52, "naive": 22.14}
+    assert v["mean"]["naive"] == 22.14 and v["mean_log"] == {"lightgbm": 0.1, "catboost": 0.1}
+
+
+def test_naive_mae_by_period_purges_split_boundary():
+    import pandas as pd
+    from src import features
+    # Train-ийн сүүлийн 3 өдөр: t+3 нь valid -> хасагдана. y нь train-д 0,1,0,1…, valid-д тогтмол.
+    d = pd.date_range(features.TRAIN_END - pd.Timedelta(days=9), features.TRAIN_END + pd.Timedelta(days=10))
+    y = [float(i % 2) if t <= features.TRAIN_END else 5.0 for i, t in enumerate(d)]
+    out = evaluate.naive_mae_by_period(pd.DataFrame({"date": d, "article": "A", "y": y}), 3, d[0])
+    assert out == {"train": 1.0, "valid": 0.0}

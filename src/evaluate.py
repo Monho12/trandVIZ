@@ -114,21 +114,96 @@ def mae_as_pct_error(mae_log: float) -> float:
     return float(np.expm1(mae_log))
 
 
+NAIVE_NAME = "Одоогийнхтой адилхан"   # naive baseline-ийн сайт дээрх нэр (Майк, 2026-11-10)
+
+
+def model_name(algo: str) -> str:
+    """Сонгосон model-ийн сайт дээрх нэр: "Манай model (CatBoost)"."""
+    return f"Манай model ({ALGO_NAME[algo]})"
+
+
+def valid_comparison(meta: dict) -> dict:
+    """3 алгоритмыг сонгосон valid ((в)-гүй) дээрх алдаа (хувиар, 2 оронтой: зөрүү нь ~0.1 нэгж) + naive.
+    `mean` нь сонголтын дүрэм: h1–h3-ын дундаж лог MAE, мөн хувиар. Test-ийг ашиглаагүй."""
+    vt = meta["valid_table"]
+    algos = list(dict.fromkeys(r["algo"] for r in vt))
+    hs = sorted({r["h"] for r in vt})
+    cell = {(r["algo"], r["h"]): r for r in vt}
+    pc = lambda v: round(mae_as_pct_error(v) * 100, 2)
+    rows = [{"h": h, **{a: pc(cell[a, h]["valid_mae"]) for a in algos}, "naive": pc(cell[algos[0], h]["naive_valid_mae"])}
+            for h in hs]
+    mean = {a: pc(np.mean([cell[a, h]["valid_mae"] for h in hs])) for a in algos}
+    mean["naive"] = pc(np.mean([cell[algos[0], h]["naive_valid_mae"] for h in hs]))
+    mean_log = {a: round(float(np.mean([cell[a, h]["valid_mae"] for h in hs])), 5) for a in algos}
+    return {"algos": algos, "rows": rows, "mean": mean, "mean_log": mean_log,
+            "trials": int(sum(r["trials"] for r in vt)), "n_trials": meta["optuna"]["n_trials"],
+            "horizons": len(hs)}
+
+
 def model_page(meta: dict, group: str = "а") -> dict:
     """meta.json (test-тэй) -> Загвар хуудасны JSON: 3 алгоритм + naive-ийн `group` дээрх test MAE (хувиар),
-    ялагч, skill score, ялагчийн learning curve (h3) ба importance top-10."""
+    ялагч, skill score, ялагчийн learning curve (h3), importance top-10 ба 3 алгоритмын valid харьцуулалт."""
     t, algo = meta["test"], meta["algo"]
     g = t["groups"][group]
     keys = list(ALGO_NAME) + ["naive"]
     lc = meta["learning_curve"]["h3"]
-    return {
+    page = {
         "asof": t["test_end"], "mock": False, "group": group, "winner": algo,
-        "keys": keys, "names": {**ALGO_NAME, "naive": "Өчигдрийнх шиг"},
+        "keys": keys, "names": {**ALGO_NAME, "naive": NAIVE_NAME, "model": model_name(algo)},
         "metrics": [{"h": int(h[1:]), **{k: round(mae_as_pct_error(g["mae"][h][k]) * 100, 1) for k in keys}} for h in g["mae"]],
         "skill": {h: {k: round(v * 100, 1) for k, v in s.items()} for h, s in g["skill"].items()},
+        "curve_h": 3,
         "curve": [{"it": i, "train": tr, "valid": va} for i, tr, va in zip(lc["iteration"], lc["train"], lc["valid"])],
         "best_iter": meta["best_iteration"]["h3"],
         "importance": [{"f": r["feature"], "gain": round(r["share"] * 100)} for r in meta["importance_top10"]],
+        "importance_share": [{"f": r["feature"], "share": round(r["share"] * 100, 1)} for r in meta["importance_top10"]],
+    }
+    if "valid_table" in meta:
+        page["valid"] = valid_comparison(meta)
+    return page
+
+
+def naive_mae_by_period(clean: pd.DataFrame, h: int, train_from: pd.Timestamp) -> dict:
+    """Naive ("одоогийнхтой адилхан")-ийн лог MAE |y_{t+h} − y_t| сургалт (train_from-оос) ба validation үед,
+    хилийн purge-тэй (t+h нь өөрийн хуваалтад). Validation-ий алдаа сургалтынхаас яагаад бага вэ гэдгийг тайлбарлана:
+    validation үе тайван байсан бол naive-ийн алдаа ч бага."""
+    from src import features
+
+    c = clean[["date", "article", "y"]].sort_values(["article", "date"])
+    fut = c.groupby("article")["y"].shift(-h)
+    err = (fut - c["y"]).abs()
+    split, split_h = features.split_of(c["date"]), features.split_of(c["date"] + pd.Timedelta(days=h))
+    ok = err.notna() & (split.to_numpy() == split_h.to_numpy())
+    tr = ok & (split == "train").to_numpy() & (c["date"] >= train_from).to_numpy()
+    va = ok & (split == "valid").to_numpy()
+    return {"train": round(float(err[tr].mean()), 4), "valid": round(float(err[va].mean()), 4)}
+
+
+def pipeline(meta: dict, clean: pd.DataFrame, asof: pd.Timestamp) -> dict:
+    """"Яаж хийсэн бэ?" хэсгийн 8 алхмын тоо: бүгд meta.json, код (хуваалт, purge) ба цэвэрлэсэн өгөгдлөөс."""
+    from src import features, train
+
+    t = meta["test"]
+    end = pd.Timestamp(t["test_end"])
+    cl = clean[clean["date"] <= end]
+    start = pd.Timestamp(cl["date"].min())
+    vc = valid_comparison(meta)
+    return {
+        "topics": int(sum(g["topics"] for g in t["groups"].values())),
+        "topics_main": int(t["groups"][t["main_group"]]["topics"]),
+        "start": start.strftime("%Y-%m-%d"), "end": end.strftime("%Y-%m-%d"),
+        "years": round((end - start).days / 365.25, 1),
+        "clean_rows": int(len(cl)),
+        "n_features": len(meta["features"]),
+        "train_from": meta["train_from"], "train_end": features.TRAIN_END.strftime("%Y-%m-%d"),
+        "valid_end": features.VALID_END.strftime("%Y-%m-%d"), "test_start": t["test_start"],
+        "purge_days": int(max(features.HORIZONS)),
+        "train_rows": meta["train_rows"], "valid_rows": meta["valid_rows"],
+        "n_algos": len(vc["algos"]), "horizons": vc["horizons"], "n_trials": vc["n_trials"], "trials": vc["trials"],
+        "algo": meta["algo"], "algo_name": ALGO_NAME[meta["algo"]],
+        "skill_h3": round(t["groups"][t["main_group"]]["skill"]["h3"]["point"] * 100, 1),
+        "asof": asof.strftime("%Y-%m-%d"),
+        "naive_h3": naive_mae_by_period(clean, 3, train.TRAIN_FROM),
     }
 
 

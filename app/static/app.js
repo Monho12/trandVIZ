@@ -153,49 +153,159 @@
   }
 
   // ═════════ Загвар ═════════
+  // Feature-ийн энгийн монгол нэр (meta.json-ийн нэрээс)
+  const FEAT = { ratio_7: "7 хоногийн дунджаас хэр зөрж байна", roll_std_3: "Сүүлийн 3 өдрийн савлагаа",
+    growth_1: "Өчигдрөөс хэр өссөн", vs_level: "Ердийн түвшнээсээ хэр дээр", dow: "Гарагийн өдөр",
+    growth_3: "3 өдрийн өсөлт", roll_std_7: "7 хоногийн савлагаа", roll_std_14: "14 хоногийн савлагаа",
+    roll_std_28: "28 хоногийн савлагаа", roll_mean_7: "7 хоногийн дундаж", roll_max_28: "28 хоногийн оргил",
+    from_max_28: "28 хоногийн оргилоос хэр доор", days_since_peak: "Оргилоос хойш хэдэн хоног",
+    doy_sin: "Жилийн аль үе", doy_cos: "Жилийн аль үе", level_365: "Жилийн ердийн түвшин", month: "Сар", is_weekend: "Амралтын өдөр эсэх" };
+  const STRENGTH = {
+    lightgbm: "Хамгийн хурдан: модоо навч навчаар нь ургуулдаг тул том өгөгдөлд хэмнэлттэй.",
+    xgboost: "Хамгийн олон жил туршигдсан: регуляризаци сайтай, үр дүн нь тогтвортой.",
+    catboost: "Тэгш хэмтэй мод ба ordered boosting: бага тохиргоотой ч overfit бага.",
+  };
+  const num = (v) => Number(v).toLocaleString("en-US").replace(/,/g, " ");
+  const dot = (s) => s.replaceAll("-", ".");
+
+  function pipelineSteps(p, m) {
+    const ym = (s) => dot(s.slice(0, 7));
+    return [
+      ["Цуглуулах", num(p.topics), "сэдэв", `Wikipedia-ийн өдөр тутмын уншилт, ${p.years} жил`,
+        `Wikimedia Pageviews API-аас англи Wikipedia-ийн ${dot(p.start)}–${dot(p.end)} хоорондох өдөр тутмын уншилтыг татсан, зөвхөн хүний (bot биш).
+         Нэр нь солигдсон нийтлэлийн хуучин нэрийн уншилтыг нэгтгэсэн. Анхаарлыг тооцохын тулд Wikipedia-ийн нийт уншилтыг ч татсан.`],
+      ["Цэвэрлэх", num(Math.round(p.clean_rows / 1000)), "мянган мөр", "Огцом bot үсрэлт, хоосон эхлэлийг зассан",
+        `Ганц өдрийн тусгаарлагдсан огцом үсрэлтийг хязгаарласан. Сэдэв идэвхтэй болохоос өмнөх хоосон өдрүүдийг зөвхөн өнгөрсөн өгөгдлөөр шийдэж хассан.
+         Эцэст нь уншилтыг тухайн өдрийн нийт уншилтад хувааж "анхаарал" болгосон.`],
+      ["Feature", num(p.n_features), "feature", "Өсөлт, савлагаа, гараг, улирал",
+        `Feature бүрийг зөвхөн өнгөрсөн өдрүүдээс тооцсон. Хоорондоо хэт төстэй feature-ийг хасаж ${p.n_features}-ийг үлдээсэн.
+         Сэдвийн ангиллыг ("вирал" гэх мэт) ирээдүйг илтгэдэг тул model-д оруулаагүй.`],
+      ["Хуваах", `${p.purge_days} өдөр`, "хил дээр хассан", `Train ${ym(p.train_end)} хүртэл, valid ${ym(p.valid_end)}, test ${ym(p.end)}`,
+        `Цаг хугацаагаар нь хуваасан, санамсаргүй холиогүй. Хил бүр дээр ${p.purge_days} өдрийг хассан (purge): эс бөгөөс ${p.purge_days} өдрийн дараах хариулт нь дараагийн хэсгээс ирж, мэдээлэл нэвчинэ.
+         Сургалтад ${dot(p.train_from)}-аас хойшх ${num(p.train_rows)} мөр орсон.`],
+      ["Сургах", num(p.trials), "Optuna trial", `${p.n_algos} алгоритм × ${p.horizons} horizon × ${p.n_trials}`,
+        `LightGBM, XGBoost, CatBoost-ыг horizon тус бүрт тусад нь сургасан. Optuna параметрийг хайж, муу trial-ыг эрт зогсоосон.
+         Гурвуулаа ижил өгөгдөл, ижил feature, ижил тооны trial авсан.`],
+      ["Сонгох", p.algo_name, "сонгосон", "Дундаж valid алдаа хамгийн бага",
+        `1–${p.horizons} өдрийн дундаж valid MAE-ээр сонгосон. Valid-аас шинэ вирал (в) сэдвүүдийг хассан, test-ийг огт ашиглаагүй.
+         Гурав бараг ижил гарсан, доорх "Яагаад ${esc(p.algo_name)}?" хэсгийг үзнэ үү.`],
+      ["Шалгах", `${Math.round(p.skill_h3)}%`, "бага алдаа", `${p.horizons} өдрийн дараа, "${esc(m.names.naive)}"-аас`,
+        `Test-ийг (${dot(p.test_start)}–${dot(p.end)}) зөвхөн нэг удаа үнэлсэн, дахин тааруулаагүй.
+         Гол дүгнэлтийг сонгосон сэдвүүд (а) дээр хийсэн. Дээрх "Таамаг хэр зөрдөг вэ?" хэсэг эндээс.`],
+      ["Вэб", C.md(p.asof), "хүртэлх өгөгдөл", "Өдөр бүр шинэ өгөгдлөөр таамаглана",
+        `Сервер өдөр бүр Wikimedia-аас шинэ өдрийг татаж, сургалттай ижил кодоор цэвэрлэж feature тооцоод ${esc(p.algo_name)} model-оор ирэх ${p.horizons} өдрийг таамаглана.
+         Model-ийг сайт дээр дахин сургадаггүй.`],
+    ];
+  }
+
   async function model() {
     const m = await api("/api/model");
     meta(m);
-    const win = m.names[m.winner], others = m.keys.filter((k) => k !== m.winner && k !== "naive");
-    const order = [m.winner, ...others, "naive"];
-    const sk = (h) => `${C.fmt(m.skill[h].point)}%`;
+    const p = m.pipeline, v = m.valid, N = m.names;
+    const mdl = esc(N.model), nv = esc(N.naive);
+    const h3 = m.metrics.find((r) => r.h === 3), e = Math.round(h3[m.winner]);
+    const rows = m.metrics.map((r) => ({ name: `${r.h} өдрийн дараа`, model: r[m.winner], naive: r.naive, gain: m.skill["h" + r.h].point }));
+    const others = v.algos.filter((a) => a !== m.winner), order = [m.winner, ...others];
+    const spread = Math.max(...v.rows.map((r) => Math.max(...v.algos.map((a) => r[a])) - Math.min(...v.algos.map((a) => r[a]))));
+    const vsNaive = Math.min(...v.rows.map((r) => r.naive - r[m.winner]));
+    const steps = pipelineSteps(p, m);
+    const grp = m.group;
     main.innerHTML = `
       <h1 class="page-h">Загвар хэр сайн таамагладаг вэ?</h1>
-      <p class="lead">Энгийн аргуудаас илүү зөв үү?</p>
+      <p class="lead">Энгийн аргаас илүү зөв үү?</p>
       <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b>, сургасан ${C.md(m.live.trained_at.slice(0, 10))},
         өгөгдөл ${C.md(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
       <div class="mgrid">
         <div class="mcard">
-          <h3>Хэр их алддаг вэ?</h3>
-          <p class="chart-sub">Дунджаар хэдэн хувиар зөрдөг вэ. Богино = илүү зөв</p>
-          <div class="mchart" id="m-bars"></div>
+          <h3>Таамаг хэр зөрдөг вэ?</h3>
+          <p class="big">3 өдрийн дараах таамаг "${nv}" аргаас <b>${Math.round(m.skill.h3.point)}%</b> бага алддаг.</p>
+          <p class="chart-sub">100 гэж таамагласан бол бодит нь ихэвчлэн ~${100 - e}–${100 + e} орчим.</p>
           <ul class="key">
-            <li><i class="k-blue"></i>${esc(win)} (сонгосон)</li>
-            <li><i style="background:var(--gray-bar)"></i>${others.map((k) => esc(m.names[k])).join(", ")}</li>
-            <li><i style="background:var(--gray-bar);opacity:.6"></i>${esc(m.names.naive)}</li>
+            <li><i class="k-dot"></i>${mdl}</li>
+            <li><i class="k-dot k-dot-gray"></i>${nv}</li>
           </ul>
-          <p class="chart-sub">Өчигдрийнхөөс ${sk("h1")}, ${sk("h2")}, ${sk("h3")} бага алдаатай (1, 2, 3 өдөр; шалгалтын үе, сонгосон 151 сэдэв)</p>
+          <div class="mchart db" id="m-err"></div>
+          <p class="note">${nv}: 3 өдрийн дараа ч анхаарал өнөөдрийнхтэй адилхан байна гэж таах хамгийн энгийн арга. Model үүнээс бага алдах ёстой.</p>
+          <p class="hint">Дунджаар хэдэн хувиар зөрдөг вэ (test ${dot(p.test_start)}–${dot(p.end)}, сонгосон ${m.pipeline.topics_main} сэдэв (${grp})). Ойр = илүү зөв.</p>
         </div>
         <div class="mcard">
-          <h3>Overfit болсон уу?</h3>
+          <h3>Overfit болсон уу? <span class="h-sub">(${m.curve_h} өдрийн дараах model)</span></h3>
           <p class="chart-sub">Хоёр шугам ойрхон = сайн</p>
           <div class="mchart" id="m-curve"></div>
+          <p class="note">Validation-ий алдаа ихэнхдээ сургалтынхаас бага байгаа нь leakage биш: validation үе илүү тайван байсан.
+            "${nv}"-ийн алдаа ч сургалтын үед ${p.naive_h3.train.toFixed(3)}, validation үед ${p.naive_h3.valid.toFixed(3)} (лог MAE).</p>
         </div>
-        <div class="mcard" style="grid-column:1/-1">
-          <h3>Таамаглахад юу хамгийн их тусалдаг вэ?</h3>
-          <p class="chart-sub">Урт = илүү чухал</p>
-          <div class="mchart" id="m-imp" style="height:290px"></div>
+      </div>
+
+      <section class="sec" aria-labelledby="pl-h">
+        <h2 id="pl-h">Яаж хийсэн бэ?</h2>
+        <p class="lead">Карт дээр дарж дэлгэрэнгүйг үзнэ үү.</p>
+        <ol class="pl">${steps.map(([t, n, u, line, more], i) => `
+          <li class="pl-step">
+            <button class="pl-card" aria-expanded="false" aria-controls="pl-more-${i}" data-i="${i}">
+              <span class="pl-n">${i + 1}</span>
+              <span class="pl-t">${t}</span>
+              <span class="pl-v">${esc(n)}</span><span class="pl-u">${esc(u)}</span>
+              <span class="pl-l">${line}</span>
+            </button>
+            <p class="pl-more" id="pl-more-${i}" hidden>${more}</p>
+          </li>`).join("")}
+        </ol>
+        <p class="pl-panel" id="pl-panel" aria-live="polite" hidden></p>
+      </section>
+
+      <section class="sec" aria-labelledby="why-h">
+        <h2 id="why-h">Яагаад ${esc(p.algo_name)}?</h2>
+        <p class="lead">Алгоритмаас илүү feature чухал байсан.</p>
+        <div class="mgrid">
+          <div class="mcard">
+            <h3>Шударга уралдаан</h3>
+            <ul class="why">
+              <li>Гурвуулаа ижил өгөгдөл, ижил <b>${p.n_features}</b> feature, ижил Optuna төсөв (${p.n_trials} trial × ${p.horizons} horizon).</li>
+              <li>1–${p.horizons} өдрийн дундаж valid алдаагаар сонгосон, valid-аас шинэ вирал (в) сэдвийг хассан. <b>Test-ийг ашиглаагүй.</b></li>
+              <li>Гурав бараг ижил: хоорондоо ${spread.toFixed(2)} нэгжээс бага зөрдөг, харин "${nv}"-аас ${vsNaive.toFixed(1)}+ нэгж бага.</li>
+            </ul>
+            <p class="chart-h">Дундаж valid алдаа (1–${p.horizons} өдөр)</p>
+            <div class="mchart" id="m-algo" style="height:150px"></div>
+          </div>
+          <div class="mcard">
+            <h3>Алгоритм бүрийн алдаа, valid</h3>
+            <table class="fc vt">
+              <caption>Дунджаар хэдэн хувиар зөрдөг вэ, (в)-гүй valid. Сонгосон нь тод.</caption>
+              <thead><tr><th>Арга</th>${v.rows.map((r) => `<th>${r.h} өдөр</th>`).join("")}<th>Дундаж</th></tr></thead>
+              <tbody>${order.map((a) => `<tr class="${a === m.winner ? "y" : ""}"><td>${esc(N[a])}</td>${v.rows.map((r) => `<td>${r[a].toFixed(2)}%</td>`).join("")}<td>${v.mean[a].toFixed(2)}%</td></tr>`).join("")}
+                <tr class="nv"><td>${nv}</td>${v.rows.map((r) => `<td>${r.naive.toFixed(2)}%</td>`).join("")}<td>${v.mean.naive.toFixed(2)}%</td></tr></tbody>
+            </table>
+            <p class="hint">Сонголтын дүрэм (дундаж лог MAE): ${order.map((a) => `${esc(N[a])} ${v.mean_log[a].toFixed(5)}`).join(" · ")}</p>
+            <ul class="why str">${order.map((a) => `<li><b>${esc(N[a])}</b> ${STRENGTH[a] || ""}</li>`).join("")}</ul>
+          </div>
+          <div class="mcard" style="grid-column:1/-1">
+            <h3>Model юуг хамгийн их хардаг вэ? <span class="h-sub">(эхний 5)</span></h3>
+            <p class="chart-sub">Урт = илүү чухал (${esc(p.algo_name)}-ийн feature importance)</p>
+            <div class="mchart" id="m-imp" style="height:220px"></div>
+          </div>
         </div>
-      </div>`;
-    const pctFmt = (v) => `${v.toFixed(1)}%`;
-    draw(() => C.groups(document.getElementById("m-bars"), m.metrics, order,
-      { hi: m.winner, light: ["naive"], names: m.names, fmt: pctFmt }, "Гурван алгоритм ба энгийн аргын алдааг хувиар харьцуулсан"));
-    draw(() => C.curve(document.getElementById("m-curve"), m.curve, m.best_iter, "Сургалт ба validation алдааны муруй"));
-    const FEAT = { ratio_7: "7 хоногийн дунджаас", roll_std_3: "3 хоногийн хэлбэлзэл", growth_1: "Өчигдрөөс өсөлт",
-      vs_level: "Ердийн түвшнээс", dow: "Гараг", growth_3: "3 хоногийн өсөлт", roll_std_7: "7 хоногийн хэлбэлзэл",
-      doy_cos: "Жилийн улирал", level_365: "Ердийн түвшин (жил)", roll_std_28: "28 хоногийн хэлбэлзэл", roll_mean_7: "7 хоногийн дундаж",
-      lag_1: "Өчигдрийн анхаарал", lag_7: "7 хоногийн өмнөх анхаарал", days_since_peak: "Оргилоос хойш хоног" };
-    draw(() => C.hbars(document.getElementById("m-imp"), m.importance.map((r) => ({ ...r, f: FEAT[r.f] || r.f })), "Feature importance"));
+      </section>`;
+
+    draw(() => C.dumbbell(document.getElementById("m-err"), rows, { names: N, label: `${N.model} ба ${N.naive}: алдааг хувиар, 1–3 өдрийн дараа` }));
+    draw(() => C.curve(document.getElementById("m-curve"), m.curve, m.best_iter, `Сургалт ба validation алдааны муруй, ${m.curve_h} өдрийн дараах model`));
+    draw(() => C.hbarsV(document.getElementById("m-algo"), [...order, "naive"].map((a) => ({
+      name: N[a], v: v.mean[a], cls: a === m.winner ? "b-blue" : a === "naive" ? "b-naive" : "b-gray",
+      tip: `<b>${esc(N[a])}</b>Дунджаар ${v.mean[a].toFixed(2)}% зөрдөг` })),
+      { fmt: (x) => x.toFixed(2) + "%", hiN: 1, lw: 150, label: "Гурван алгоритм ба энгийн аргын дундаж valid алдаа" }));
+    draw(() => C.hbarsV(document.getElementById("m-imp"), m.importance_share.slice(0, 5).map((r) => ({
+      name: FEAT[r.f] || r.f, v: r.share, cls: "b-blue", tip: `<b>${esc(FEAT[r.f] || r.f)}</b>${r.share}% <span>(${esc(r.f)})</span>` })),
+      { fmt: (x) => x.toFixed(1) + "%", hiN: 0, lw: 260, stackBelow: 560, label: "Feature importance, эхний 5" }));
+
+    // Алхмын карт: утсанд картын доор, том дэлгэцэнд мөрийн доорх нэг талбайд дэлгэрнэ
+    const cards = [...main.querySelectorAll(".pl-card")], panel = document.getElementById("pl-panel");
+    cards.forEach((b) => b.addEventListener("click", () => {
+      const open = b.getAttribute("aria-expanded") !== "true";
+      cards.forEach((c) => { c.setAttribute("aria-expanded", "false"); c.nextElementSibling.hidden = true; });
+      if (open) { b.setAttribute("aria-expanded", "true"); b.nextElementSibling.hidden = false; }
+      panel.hidden = !open;
+      panel.innerHTML = open ? `<b>${steps[+b.dataset.i][0]}.</b> ${steps[+b.dataset.i][4]}` : "";
+    }));
   }
 
   // ═════════ Сонирхолтой ═════════
