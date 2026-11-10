@@ -1,0 +1,11 @@
+# Мөрийн төгсгөл: repo дотор үргэлж LF (Windows дээр CRLF-ээс болж "modified" харагдахгүй).
+* text=auto eol=lf
+
+# Binary: мөрийн төгсгөл хөрвүүлэхгүй, diff хийхгүй.
+*.parquet binary
+*.cbm     binary
+*.woff2   binary
+*.woff    binary
+*.png     binary
+*.jpg     binary
+*.ico     binary

@@ -30,16 +30,35 @@ def test_trending_top10_is_ten_measurable_topics_ranked_by_predicted_pct(client)
     assert all(t["measurable"] and t["pct"] >= d["T"] - 0.025 for t in d["items"] if t["fire"])
 
 
-def test_forecast_has_concrete_dates_interval_and_no_viral_category(client):
-    d = client.get("/api/trending").json()
+def _check_forecast(d):
     t = d["items"][0]
     assert [f["d"] for f in t["forecast"]] == [str(x.date()) for x in pd.date_range(d["asof"], periods=4)[1:]]
     assert t["dates"] == d["dates"] and "–" in d["dates"]
     for x in d["items"]:
+        if x["pct"] is None:  # asof өдөр 0 уншилт (x_0 = 0, PR #21): хувь хэмжигдэхгүй
+            assert x["interval"]["lo"] is None and x["interval"]["hi"] is None
+            assert x["rank"] is None and x["fire"] is False
+            continue
         assert x["interval"]["lo"] <= x["pct"] <= x["interval"]["hi"]
         assert x["interval"]["lo"] >= -1.0
         assert all(f["lo"] <= f["y"] <= f["hi"] for f in x["forecast"])
     assert "viral" not in {x["category"] for x in d["items"]}
+
+
+def test_forecast_has_concrete_dates_interval_and_no_viral_category(client):
+    _check_forecast(client.get("/api/trending").json())
+
+
+def test_forecast_check_holds_when_some_topics_have_zero_views_on_asof(client, monkeypatch):
+    """Майкийн data/live/ cache-д 11/09-нд WWE_Bash_in_Berlin = 0 уншилт байсан (PR #21: pct/interval = null).
+    data/live/-гүй орчинд ч энэ тохиолдлыг давтахын тулд хэдэн сэдвийн x_0-г 0 болгоно."""
+    from app.main import state
+    rows = state.snapshot.universe.copy()
+    rows.loc[rows.index[:3], "y_0"] = 0.0
+    monkeypatch.setitem(state.snapshot.__dict__, "universe", rows)
+    d = client.get("/api/trending").json()
+    assert sum(x["pct"] is None for x in d["items"]) == 3
+    _check_forecast(d)
 
 
 def test_topic_runs_model_and_unknown_topic_is_404(client):
