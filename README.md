@@ -1,14 +1,3 @@
----
-title: Шуугиан
-emoji: 📈
-colorFrom: red
-colorTo: blue
-sdk: docker
-app_port: 7860
-pinned: false
-short_description: Wikipedia-ийн анхаарлын 3 өдрийн таамаг (gradient boosting)
----
-
 # Шуугиан — Дэлхий юуг шуугиж байна?
 
 Wikipedia-ийн өдөр тутмын хандалтаар дэлхийн анхаарлыг хэмжиж, **ирэх 3 өдрийн**
@@ -40,7 +29,7 @@ uvicorn app.main:app --reload
 (ADR 0008). Өдөрт нэг удаа Wikimedia-аас дутуу сүүлийн өдрүүдийг татаж `data/live/`-д хадгална.
 Интернэтгүй ажиллуулах бол `SHUUGIAN_REFRESH=0`. Model амьд ажиллаж байгааг **http://127.0.0.1:8000/api/model** харуулна.
 
-### Docker (Hugging Face Space-тэй яг ижил image)
+### Docker (ижил орчинг давтах)
 
 ```bash
 docker build -t shuugian .
@@ -50,27 +39,12 @@ docker run --rm -p 7860:7860 shuugian
 Браузерт **http://127.0.0.1:7860**. Image-д `app/model/` болон эхлэх cache `data/processed/` орсон байна.
 Image зөвхөн серверт хэрэгтэй сангуудыг суулгана (`requirements-app.txt`).
 
-### Hugging Face Space руу байршуулах
+### Хамгаалалт дээр
 
-Эхлээд HF бүртгэл, Space (`SDK = Docker`), token-ийг **өөрөө** үүсгэнэ: [`docs/PLAN.md`](docs/PLAN.md) → "Hugging Face тохиргоо".
-Token-ийг repo, `.env`, notebook, commit, чат хаана ч бичихгүй.
-
-Windows: `cmd`-д `.venv\Scripts\activate` хийгээд `pip install -U huggingface_hub`, скриптийг **Git Bash**-аас ажиллуулна.
-
-```bash
-hf auth login                  # "Add token as git credential?" гэхэд Y
-git remote add space https://huggingface.co/spaces/<нэр>/shuugian
-bash scripts/deploy_space.sh   # HEAD-ийг Space руу
-```
-
-Энгийн `git push space main` ажиллахгүй: HF нь 10 MB-аас том болон binary файлыг (`app/model/*.cbm`, `*.parquet`, фонт)
-LFS-гүй хүлээж авдаггүй. Скрипт HEAD-ийн нэг commit-тэй хуулбарыг LFS-тэйгээр Space руу push хийнэ. GitHub-ийн түүх өөрчлөгдөхгүй.
-Дараа нь Space-ийн **Logs** tab-аас build-ийг харж, `https://<нэр>-shuugian.hf.space/api/model` нээгдэж байгааг шалгана.
-
-> **Хамгаалалтын өмнө:** үнэгүй Space 48 цаг хүсэлтгүй бол унтдаг, сэрэхэд 30+ секунд болдог.
-> Хамгаалалтаас **~5 минутын өмнө** Space-ийг нээж сэрээнэ. Нөөц болгож local дээр `uvicorn app.main:app` (http://127.0.0.1:8000)
-> эсвэл `docker run -p 7860:7860 shuugian` (http://127.0.0.1:7860)-ийг бэлэн байлгана. Space дахин эхлэх бүрд `data/live/` арилж,
-> сервер `data/processed/`-оос хойших дутуу өдрүүдийг дахин татна (ердөө хэдэн секунд).
+Сайт онлайнаар биш, **local**-оор ажиллана (ADR 0010: HF-ийн Docker Space төлбөртэй болсон).
+Хамгаалалтын өмнө `uvicorn app.main:app`-ийг ажиллуулж http://127.0.0.1:8000 болон `/api/model`-ийг нээж шалгана.
+Интернэт найдваргүй бол `SHUUGIAN_REFRESH=0` (Windows `cmd`: `set SHUUGIAN_REFRESH=0`): сервер repo доторх өгөгдөл дээр ажиллаж,
+asof хуучин бол шар анхааруулга харуулна. Нөөц: `docker run -p 7860:7860 shuugian` (http://127.0.0.1:7860).
 
 ## Бүтэц
 
@@ -95,7 +69,7 @@ LFS-гүй хүлээж авдаггүй. Скрипт HEAD-ийн нэг commit
 | Ня 11/08 | Цэвэрлэх + EDA | `02_cleaning_eda.ipynb` |
 | Да 11/09 | Feature engineering + selection | `03_features.ipynb` |
 | Мя 11/10 | 3 алгоритм + Optuna + overfit + test үнэлгээ | `04_model.ipynb` |
-| Лх 11/11 | Model-ийг сайтын ард → local Docker → HF Space → слайд | `app/` |
+| Лх 11/11 | Model-ийг сайтын ард → local Docker → слайд | `app/` |
 | Пү 11/12 | Нөөц өдөр, хамгаалалт | — |
 
 ## Өгөгдлийн эх сурвалж

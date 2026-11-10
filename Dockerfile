@@ -1,4 +1,4 @@
-# Шуугиан — Hugging Face Docker Space (#9, ADR 0008).
+# Шуугиан — Docker image (#9, ADR 0008, 0010: хамгаалалт дээр local).
 #   local:  docker build -t shuugian . && docker run --rm -p 7860:7860 shuugian
 #           -> http://127.0.0.1:7860   (offline: -e SHUUGIAN_REFRESH=0)
 FROM python:3.13-slim
@@ -7,7 +7,7 @@ FROM python:3.13-slim
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# HF Space контейнерийг uid 1000-аар ажиллуулдаг: data/live/-д бичих эрхтэй байхын тулд ижил хэрэглэгч.
+# root биш хэрэглэгч (uid 1000); data/live/-д бичих эрхтэй.
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
