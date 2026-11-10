@@ -194,7 +194,17 @@ def model():
     }
 
 
-app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
+class NoCacheStatic(StaticFiles):
+    """Cache-Control байхгүй бол браузер хуучин styles.css-ийг шалгалгүй ашиглаад шинэ app.js-тэй таарахгүй болдог.
+    no-cache: хадгалж болно, гэхдээ хэрэглэхээсээ өмнө ETag-аар шалгана (өөрчлөгдөөгүй бол 304, хурдан)."""
+
+    async def get_response(self, path, scope):
+        r = await super().get_response(path, scope)
+        r.headers["Cache-Control"] = "no-cache"
+        return r
+
+
+app.mount("/static", NoCacheStatic(directory=HERE / "static"), name="static")
 
 
 @app.get("/")
