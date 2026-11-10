@@ -7,6 +7,11 @@
 Feature-ийг сүүлийн FEATURE_DAYS өдрөөр тооцно: хамгийн урт цонх нь level_365 (365 хоног) тул asof өдрийн
 утга бүтэн түүхээр тооцсонтой ижил (зөрүү ~1e-11). Бүх сэдвийн feature-ийг өгөгдлийн хувилбар бүрт нэг удаа
 тооцож хадгална (`Snapshot.universe`). Model ба scoring нь хүсэлт бүрт ажиллана.
+
+Санах ой (ADR 0012, Render 512 MB): цэвэрлэгээг (`clean_frame`) сэдэв бүрийн БҮТЭН түүх дээр хийнэ (trim, spike нь
+бүтэн түүхээс хамаардаг), гэхдээ сэдвийн хэсгүүдээр (CHUNK_ARTICLES): алхам бүр сэдэв бүрээр бие даасан тул үр дүн
+нэг дор цэвэрлэсэнтэй ижил. Хэсэг бүрээс Snapshot-д зөвхөн сүүлийн KEEP_DAYS өдрийг үлдээж, `/api/model`-д хэрэгтэй
+бүтэн түүхийн тоог (`evaluate.HistoryStats`) тэр үед нь нэмж тооцно. Тиймээс хариу бүтэн түүхээр тооцсонтой ЯГ ижил.
 """
 from __future__ import annotations
 
@@ -16,7 +21,7 @@ from functools import cached_property
 import numpy as np
 import pandas as pd
 
-from src import clean, features, scoring
+from src import clean, evaluate, features, scoring
 from src.live import RawCache
 
 FEATURE_DAYS = 366          # level_365-ийн цонх + asof
@@ -24,19 +29,34 @@ LIST_DAYS, TOPIC_DAYS = 30, 180
 NORMAL_FROM, NORMAL_TO = 59, 7   # "ердийн өдөр" = t−59 … t−7 өдрийн уншилтын медиан (сүүлийн долоо хоногийг оруулахгүй)
 MAP_N, CATEGORY_N = 40, 4
 STALE_DAYS = 2                   # asof нь өнөөдрөөс 2-оос олон өдрийн өмнөх бол шар анхааруулга (ADR 0008)
+# Snapshot-д барих өдөр: feature (level_365 + asof), /api/topic-ийн history, жагсаалт, "ердийн өдөр"-ийн хамгийн урт нь.
+# Нөөц хэрэггүй: цэвэрлэгээ тайрахаас ӨМНӨ бүтэн түүхээр хийгдсэн тул тайрсан мөрийн утга өөрчлөгдөхгүй.
+KEEP_DAYS = max(FEATURE_DAYS, TOPIC_DAYS, LIST_DAYS, NORMAL_FROM + 1)
+CHUNK_ARTICLES = 40              # нэг удаа цэвэрлэх сэдвийн тоо (~70k мөр): Snapshot барих үеийн санах ойн оргил
 
 
 @dataclass(eq=False)
 class Snapshot:
     """Нэг хувилбарын цэвэр өгөгдөл. Сервер шинэ өгөгдөл ирэхэд бүхэлд нь сольдог (thread-д аюулгүй)."""
-    clean: pd.DataFrame          # clean.COLS
+    clean: pd.DataFrame          # clean.COLS, зөвхөн сүүлийн KEEP_DAYS өдөр (asof-оос); index нь бүтэн хүснэгтийнх
     asof: pd.Timestamp
+    history: dict | None = None  # evaluate.HistoryStats.result(): бүтэн түүхийн тоо (/api/model)
     built_at: pd.Timestamp = field(default_factory=lambda: pd.Timestamp.now(tz="UTC"))
 
     @classmethod
-    def from_raw(cls, raw: RawCache) -> "Snapshot":
-        cl, _ = clean.clean_frame(raw.pageviews, raw.alias, raw.total, end=raw.end)
-        return cls(cl, raw.end)
+    def from_raw(cls, raw: RawCache, test_end: pd.Timestamp | None = None) -> "Snapshot":
+        """test_end: /api/model-ийн түүхийн тоог тооцох сүүлийн өдөр (meta.json: test.test_end). None бол тооцохгүй."""
+        since = raw.end - pd.Timedelta(days=KEEP_DAYS)
+        acc = None if test_end is None else evaluate.HistoryStats(test_end)
+        keep, offset = [], 0
+        for cl in clean_chunks(raw):
+            if acc is not None:
+                acc.add(cl)
+            cl.index += offset                 # бүтэн clean_frame-ийн index (сэдвүүд эрэмбээрээ залгагдана)
+            offset += len(cl)
+            keep.append(cl[cl["date"] > since].copy())
+            del cl
+        return cls(pd.concat(keep), raw.end, None if acc is None else acc.result())
 
     def tail(self, articles=None) -> pd.DataFrame:
         d = self.clean[self.clean["date"] > self.asof - pd.Timedelta(days=FEATURE_DAYS)]
@@ -46,6 +66,20 @@ class Snapshot:
     def universe(self) -> pd.DataFrame:
         """Бүх сэдвийн asof өдрийн feature + measurable (нэг хувилбарт нэг удаа)."""
         return feature_rows(self.tail(), self.asof)
+
+
+def clean_chunks(raw: RawCache, size: int = CHUNK_ARTICLES):
+    """clean.clean_frame-ийг сэдвийн хэсгүүдээр: (article, date)-аар эрэмбэлсэн бүтэн үр дүнгийн дараалсан хэсгүүд."""
+    pv_idx = raw.pageviews.groupby("article", sort=False).indices
+    al_idx = raw.alias.groupby("article", sort=False).indices
+    articles = sorted(pv_idx)
+    for i in range(0, len(articles), size):
+        part = articles[i:i + size]
+        pv = raw.pageviews.take(np.concatenate([pv_idx[a] for a in part]))
+        rows = [al_idx[a] for a in part if a in al_idx]
+        al = raw.alias.take(np.concatenate(rows)) if rows else raw.alias.iloc[:0]
+        cl, _ = clean.clean_frame(pv, al, raw.total, end=raw.end)
+        yield cl
 
 
 def feature_rows(tail: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:

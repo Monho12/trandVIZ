@@ -45,6 +45,11 @@ class RawCache:
         """Cache-ийн сүүлийн бүрэн өдөр (total_views байгаа сүүлийн өдөр)."""
         return pd.Timestamp(self.total["date"].max())
 
+    @staticmethod
+    def end_on_disk(directory: Path) -> pd.Timestamp:
+        """Дискэн дээрх cache-ийн `end` (total_views-ийн сүүлийн өдөр), бүтэн cache-ийг уншилгүйгээр."""
+        return pd.Timestamp(pd.read_parquet(Path(directory) / FILES["total"], columns=["date"])["date"].max())
+
     @classmethod
     def load(cls, directory: Path) -> "RawCache":
         d = Path(directory)

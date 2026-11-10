@@ -13,7 +13,11 @@ ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ARROW_DEFAULT_MEMORY_POOL=system \
+    MALLOC_ARENA_MAX=2
+# Сүүлийн 2: санах ойн оргил (ADR 0012, Render 512 MB). pyarrow-ийн mimalloc pool parquet уншсаны дараа санах ойг
+# процесст барьдаг; glibc-ийн arena-г 2 болгож thread бүрийн тусдаа heap-ийг хязгаарлана. Үр дүнд нөлөөлөхгүй.
 WORKDIR /home/user/app
 
 COPY --chown=user requirements-app.txt .

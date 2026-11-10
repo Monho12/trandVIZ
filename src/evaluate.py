@@ -163,10 +163,9 @@ def model_page(meta: dict, group: str = "а") -> dict:
     return page
 
 
-def naive_mae_by_period(clean: pd.DataFrame, h: int, train_from: pd.Timestamp) -> dict:
-    """Naive ("одоогийнхтой адилхан")-ийн лог MAE |y_{t+h} − y_t| сургалт (train_from-оос) ба validation үед,
-    хилийн purge-тэй (t+h нь өөрийн хуваалтад). Validation-ий алдаа сургалтынхаас яагаад бага вэ гэдгийг тайлбарлана:
-    validation үе тайван байсан бол naive-ийн алдаа ч бага."""
+def naive_errors(clean: pd.DataFrame, h: int, train_from: pd.Timestamp) -> tuple[np.ndarray, np.ndarray]:
+    """Naive-ийн |y_{t+h} − y_t| алдаа: (сургалт train_from-оос, validation), хилийн purge-тэй (t+h нь өөрийн хуваалтад).
+    Мөрийн дараалал: (article, date). Сэдэв бүр бие даасан тул сэдвийн хэсгүүдээр (chunk) дуудаж залгаж болно."""
     from src import features
 
     c = clean[["date", "article", "y"]].sort_values(["article", "date"])
@@ -180,24 +179,72 @@ def naive_mae_by_period(clean: pd.DataFrame, h: int, train_from: pd.Timestamp) -
     ok = ~np.isnan(err) & (split == code(d + np.timedelta64(h, "D")))
     tr = ok & (split == 0) & (d >= np.datetime64(train_from))
     va = ok & (split == 1)
-    return {"train": round(float(err[tr].mean()), 4), "valid": round(float(err[va].mean()), 4)}
+    return err[tr], err[va]
 
 
-def pipeline(meta: dict, clean: pd.DataFrame, asof: pd.Timestamp) -> dict:
-    """"Яаж хийсэн бэ?" хэсгийн 8 алхмын тоо: бүгд meta.json, код (хуваалт, purge) ба цэвэрлэсэн өгөгдлөөс."""
-    from src import features, train
+def naive_mae_by_period(clean: pd.DataFrame, h: int, train_from: pd.Timestamp) -> dict:
+    """Naive ("одоогийнхтой адилхан")-ийн лог MAE |y_{t+h} − y_t| сургалт (train_from-оос) ба validation үед,
+    хилийн purge-тэй (t+h нь өөрийн хуваалтад). Validation-ий алдаа сургалтынхаас яагаад бага вэ гэдгийг тайлбарлана:
+    validation үе тайван байсан бол naive-ийн алдаа ч бага."""
+    tr, va = naive_errors(clean, h, train_from)
+    return {"train": round(float(tr.mean()), 4), "valid": round(float(va.mean()), 4)}
+
+
+class HistoryStats:
+    """pipeline()-д хэрэгтэй, бүтэн цэвэр түүхээс л тооцогдох тоо. Сервер цэвэр өгөгдлийг сэдвийн хэсгүүдээр (chunk,
+    (article, date) дарааллаар) нэмж тооцдог тул бүтэн хүснэгт санах ойд нэг дор байхгүй (ADR 0012).
+    Үр дүн нь бүтэн хүснэгтээр нэг удаа тооцсонтой ЯГ ижил: naive-ийн алдааг ижил дарааллаар залгаад дунджийг авна."""
+
+    H = 3
+
+    def __init__(self, test_end):
+        self.end = pd.Timestamp(test_end)
+        self.rows, self.start, self.topics = 0, None, 0
+        self._tr: list[np.ndarray] = []
+        self._va: list[np.ndarray] = []
+
+    def add(self, clean: pd.DataFrame) -> None:
+        from src import train
+
+        d = clean["date"]
+        upto = d <= self.end
+        self.rows += int(upto.sum())
+        if upto.any():
+            m = pd.Timestamp(d[upto].min())
+            self.start = m if self.start is None else min(self.start, m)
+        self.topics += int(clean["article"].nunique())
+        tr, va = naive_errors(clean, self.H, train.TRAIN_FROM)
+        self._tr.append(tr)
+        self._va.append(va)
+
+    def result(self) -> dict:
+        tr, va = np.concatenate(self._tr), np.concatenate(self._va)
+        return {"start": self.start, "clean_rows": self.rows, "topics": self.topics,
+                "naive_h3": {"train": round(float(tr.mean()), 4), "valid": round(float(va.mean()), 4)}}
+
+
+def history_stats(clean: pd.DataFrame, test_end) -> dict:
+    """HistoryStats-ийг бүтэн хүснэгтээр нэг удаа (тест, notebook)."""
+    acc = HistoryStats(test_end)
+    acc.add(clean)
+    return acc.result()
+
+
+def pipeline(meta: dict, stats: dict, asof: pd.Timestamp) -> dict:
+    """"Яаж хийсэн бэ?" хэсгийн 8 алхмын тоо: бүгд meta.json, код (хуваалт, purge) ба цэвэрлэсэн өгөгдлөөс
+    (stats = history_stats(бүтэн цэвэр түүх, meta["test"]["test_end"]))."""
+    from src import features
 
     t = meta["test"]
     end = pd.Timestamp(t["test_end"])
-    cl = clean[clean["date"] <= end]
-    start = pd.Timestamp(cl["date"].min())
+    start = stats["start"]
     vc = valid_comparison(meta)
     return {
         "topics": int(sum(g["topics"] for g in t["groups"].values())),
         "topics_main": int(t["groups"][t["main_group"]]["topics"]),
         "start": start.strftime("%Y-%m-%d"), "end": end.strftime("%Y-%m-%d"),
         "years": round((end - start).days / 365.25, 1),
-        "clean_rows": int(len(cl)),
+        "clean_rows": stats["clean_rows"],
         "n_features": len(meta["features"]),
         "train_from": meta["train_from"], "train_end": features.TRAIN_END.strftime("%Y-%m-%d"),
         "valid_end": features.VALID_END.strftime("%Y-%m-%d"), "test_start": t["test_start"],
@@ -207,7 +254,7 @@ def pipeline(meta: dict, clean: pd.DataFrame, asof: pd.Timestamp) -> dict:
         "algo": meta["algo"], "algo_name": ALGO_NAME[meta["algo"]],
         "skill_h3": round(t["groups"][t["main_group"]]["skill"]["h3"]["point"] * 100, 1),
         "asof": asof.strftime("%Y-%m-%d"),
-        "naive_h3": naive_mae_by_period(clean, 3, train.TRAIN_FROM),
+        "naive_h3": stats["naive_h3"],
     }
 
 
