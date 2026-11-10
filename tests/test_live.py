@@ -112,3 +112,17 @@ def test_retry_once_three_hours_later_then_wait_for_next_day(status, retried, wa
     when, is_retry = live.next_attempt(status, now, retried)
     assert when == pd.Timestamp(want)
     assert is_retry == (status in (live.NOT_PUBLISHED, live.ERROR) and not retried)
+
+
+def test_day_without_article_data_is_not_accepted_even_if_total_is_published():
+    """total_views D өдөрт гарсан ч сэдвүүдийн өгөгдөл хоцорвол: тэр өдрийг 0 уншилт гэж авахгүй (PARTIAL)."""
+
+    class LaggingArticles(FakeFetcher):
+        def article(self, title, start, end):
+            df = super().article(title, start, end)
+            return df[df["date"] < TODAY - pd.Timedelta(days=1)]     # өчигдрийн нийтлэлийн өгөгдөл хараахан алга
+
+    res = live.update_cache(cache_ending(TODAY - pd.Timedelta(days=3)), LaggingArticles(), TODAY)
+    assert res.cache.end == pd.Timestamp("2026-11-09")
+    assert res.cache.pageviews["date"].max() == pd.Timestamp("2026-11-09")
+    assert res.status == live.PARTIAL and res.needs_retry

@@ -112,15 +112,14 @@ def build() -> pd.DataFrame:
     alias = pd.read_parquet(P / "alias_pageviews.parquet")
     total = pd.read_parquet(P / "total_views.parquet")
     df, trim_report = clean_frame(pv, alias, total)
-    cols = COLS
-    out = df[cols].copy()
+    out = df.copy()
     out["article"] = out["article"].astype("category")
     out["category"] = out["category"].astype("category")
     for c in ("attention", "y"):
         out[c] = out[c].astype("float32")
     out.to_parquet(P / "clean.parquet", index=False, compression="zstd")
     trim_report.to_csv(P / "trim_report.csv", index=False)
-    return df[cols]
+    return df
 
 
 if __name__ == "__main__":

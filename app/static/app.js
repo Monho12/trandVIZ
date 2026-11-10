@@ -47,7 +47,7 @@
       <dl class="tiles">
         <div class="tile t-blue"><dt>Өчигдөр</dt><dd>${C.fmt(t.views)}</dd></div>
         <div class="tile"><dt>Ердийн өдөр</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `×${t.ratio}` : ""}</small></dd></div>
-        <div class="tile t-orange"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small><small class="iv">${esc(t.interval_text)}</small></dd></div>
+        <div class="tile t-orange"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>${pct(t)}</small><small class="iv">${iv(t)}</small></dd></div>
       </dl>
       <p class="chart-h">Өдөр бүрийн уншилт</p>
       <div class="chart" id="chart"></div>

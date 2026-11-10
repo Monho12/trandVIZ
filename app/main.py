@@ -38,13 +38,18 @@ ROOT = HERE.parent
 DATA = HERE / "data"
 PROCESSED = ROOT / "data" / "processed"
 LIVE_DIR = Path(os.environ.get("SHUUGIAN_DATA_DIR", ROOT / "data" / "live"))
-HTTP_CACHE = LIVE_DIR / "http"
 
 log = logging.getLogger("shuugian")
 
 
 def utc_now() -> pd.Timestamp:
+    """Татах хуваарьт (Wikimedia-ийн өдөр UTC-ээр)."""
     return pd.Timestamp.now(tz="UTC").tz_localize(None)
+
+
+def local_today() -> pd.Timestamp:
+    """Хэрэглэгчийн өнөөдөр (УБ): asof хэдэн өдрийн өмнөх вэ, шар анхааруулга (ADR 0008)."""
+    return pd.Timestamp.now(tz="Asia/Ulaanbaatar").tz_localize(None).normalize()
 
 
 def load_raw() -> live.RawCache:
@@ -85,7 +90,7 @@ class Server:
         self._stop.set()
 
     def _loop(self) -> None:
-        fetcher, retried = live.WikiFetcher(HTTP_CACHE), False
+        fetcher, retried = live.WikiFetcher(), False
         while not self._stop.is_set():
             now = utc_now()
             res = live.update_cache(self.raw, fetcher, now)
@@ -121,19 +126,19 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 @app.get("/api/trending")
 def trending():
     """Top-10 (хэмжигдэх сэдэв, таамагласан pct(h3)-ээр) эхэнд, дараа нь бусад бүх сэдэв."""
-    return serve.trending(state.model, state.snapshot, utc_now())
+    return serve.trending(state.model, state.snapshot, local_today())
 
 
 @app.get("/api/categories")
 def categories():
     """Ангилал тус бүрийн хамгийн их уншигдсан сэдвүүд (вирал -> "Бусад")."""
-    return serve.categories(state.model, state.snapshot, utc_now())
+    return serve.categories(state.model, state.snapshot, local_today())
 
 
 @app.get("/api/topic/{article}")
 def topic(article: str):
     """Нэг сэдвийн 180 өдрийн түүх + ирэх 3 өдрийн таамаг."""
-    t = serve.topic(state.model, state.snapshot, article, utc_now())
+    t = serve.topic(state.model, state.snapshot, article, local_today())
     if t is None:
         raise HTTPException(404, "Ийм сэдэв манай жагсаалтад алга")
     return t
@@ -142,7 +147,7 @@ def topic(article: str):
 @app.get("/api/map")
 def attention_map():
     """Анхаарлын газрын зураг: asof өдрийн хамгийн их уншигдсан 40 сэдэв."""
-    return serve.attention_map(state.model, state.snapshot, utc_now())
+    return serve.attention_map(state.model, state.snapshot, local_today())
 
 
 @lru_cache(maxsize=1)
@@ -164,7 +169,7 @@ def model():
     page = evaluate.model_page(meta)
     return {
         **page,
-        **serve.meta_block(snap.asof, utc_now()),
+        **serve.meta_block(snap.asof, local_today()),
         "test_end": page["asof"],
         "live": {
             "algo": meta["algo"], "algo_name": evaluate.ALGO_NAME[meta["algo"]],

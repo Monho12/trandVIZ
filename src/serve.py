@@ -24,7 +24,6 @@ LIST_DAYS, TOPIC_DAYS = 30, 180
 NORMAL_FROM, NORMAL_TO = 59, 7   # "ердийн өдөр" = t−59 … t−7 өдрийн уншилтын медиан (сүүлийн долоо хоногийг оруулахгүй)
 MAP_N, CATEGORY_N = 40, 4
 STALE_DAYS = 2                   # asof нь өнөөдрөөс 2-оос олон өдрийн өмнөх бол шар анхааруулга (ADR 0008)
-INTERVAL_PREFIX = "80%"
 
 
 @dataclass(eq=False)
@@ -70,18 +69,16 @@ def predict(model, rows: pd.DataFrame) -> pd.DataFrame:
     meta = model.meta
     r = rows.dropna(subset=meta["features"]).copy()
     y0 = r["y_0"].to_numpy()
-    floor = lambda delta: np.maximum(delta, -y0)   # noqa: E731  y = log1p(x) ≥ 0: x̂ сөрөг (pct < −100%) болохгүй
     scale = (r["total_views"] / 1e6).to_numpy()     # анхаарал -> уншилт, asof өдрийн нийт уншилтаар
     for h in meta["horizons"]:
         q = meta["interval"][f"h{h}"]
         d = model.predict(r, h) if len(r) else np.array([])
         r[f"delta_hat_h{h}"] = d
-        for col, delta in ((f"pct_h{h}", d), (f"lo_h{h}", d + q["lo"]), (f"hi_h{h}", d + q["hi"])):
-            # = scoring.predicted_pct / interval_pct (ADR 0003), зөвхөн y ≥ 0 хязгаартай
-            r[col] = scoring.predicted_pct(y0, floor(delta))
-        r[f"views_h{h}"] = np.expm1(y0 + floor(d)) * scale
-        r[f"views_lo_h{h}"] = np.expm1(y0 + floor(d + q["lo"])) * scale
-        r[f"views_hi_h{h}"] = np.expm1(y0 + floor(d + q["hi"])) * scale
+        # таамаг, 80% интервалын доод/дээд хил (ADR 0003): pct ба уншилт
+        for name, delta in (("", d), ("lo", d + q["lo"]), ("hi", d + q["hi"])):
+            delta = scoring.floor_delta(y0, delta)
+            r[f"{name or 'pct'}_h{h}"] = scoring.predicted_pct(y0, delta)
+            r[f"views{'_' + name if name else ''}_h{h}"] = np.expm1(y0 + delta) * scale
     r["arrow"] = scoring.arrow(r["pct_h3"], meta["fire"]["T"], r["measurable"])
     r["category"] = scoring.display_category(r["category"])
     return r
@@ -108,19 +105,6 @@ def dates_text(asof: pd.Timestamp) -> str:
     return f"{md(f[0])}–{md(f[-1])}"
 
 
-def label(arrow: str, p: float) -> str:
-    """Сумны текст (ADR 0004): 🔥 +x%, ↗ +x%, ≈ тогтвортой, ↘ −x%, ↓ унаж байна."""
-    if arrow == scoring.FLAT:
-        return "≈ тогтвортой"
-    if arrow == scoring.FALL:
-        return "↓ унаж байна"
-    return f"{arrow} {scoring.format_pct(p)}"
-
-
-def interval_text(lo: float, hi: float) -> str:
-    return f"{INTERVAL_PREFIX}: {scoring.format_pct(lo)} … {scoring.format_pct(hi)}"
-
-
 def meta_block(asof: pd.Timestamp, today: pd.Timestamp) -> dict:
     age = int((pd.Timestamp(today).normalize() - asof).days)
     return {"asof": asof.strftime("%Y-%m-%d"), "mock": False, "dates": dates_text(asof),
@@ -142,8 +126,8 @@ def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None) 
                      for h, d in zip((1, 2, 3), forecast_dates(asof))],
         "pct": _r(r.pct_h3), "pct_text": scoring.format_pct(r.pct_h3),
         "interval": {"lo": _r(r.lo_h3), "hi": _r(r.hi_h3)},
-        "interval_text": interval_text(r.lo_h3, r.hi_h3),
-        "arrow": r.arrow, "label": label(r.arrow, r.pct_h3),
+        "interval_text": scoring.interval_text(r.lo_h3, r.hi_h3),
+        "arrow": r.arrow, "label": scoring.label(r.arrow, r.pct_h3),
         "fire": r.arrow == scoring.FIRE, "measurable": bool(r.measurable),
         "rank": rank, "dates": dates_text(asof),
     }
