@@ -60,7 +60,7 @@
 
 ## Лхагва 11/11 — model-ийг сайтын ард ажиллуулах → local Docker → слайд
 
-**Зорилго:** Майкийн шаардлага: *"the model must be deployed behind the website"* (ADR 0008). Аюулгүй дарааллаар: эхлээд local, дараа нь онлайн.
+**Зорилго:** Майкийн шаардлага: *"the model must be deployed behind the website"* (ADR 0008). Аюулгүй дарааллаар: local Docker-оор (ADR 0010).
 
 1. **Wikipedia-ийн өгөгдлийн давхарга** (`src/live.py` гэх мэт). `src/wiki.py`-ийн `USER_AGENT`-ийг `Shuugian/1.0 (https://github.com/Monho12/trandVIZ)` болгоно (и-мэйлгүй).
    Snapshot скрипт **байхгүй**, таамаг урьдчилж тооцохгүй. Одоогийн боловсруулсан өгөгдлийг (`data/processed/`) **Docker image дотор** хамт хийнэ.
