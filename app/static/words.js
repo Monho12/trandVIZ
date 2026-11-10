@@ -17,15 +17,38 @@
   // API-ийн "— (өчигдөр уншилтгүй)" шошгыг хуучирсан өгөгдөлд огноотой болгоно
   const forecastLabel = (label, asof, age) => (isYesterday(age) ? label : label.replace("өчигдөр", `${md(asof)}-нд`));
 
+  // Нүүрний "Ирэх 3 өдөрт юу өсөх вэ?"-ийн тайлбар (PLAN, Нүүр). dates: API-ийн "11/11–11/13", fires: 🔥-ийн тоо,
+  // T: 🔥-ийн босго (0.25 -> "25%"), n: API-ийн top_n. "Хэт цөөн уншигддаг..." өгүүлбэрийг app.js tooltip-тэй нь нэмнэ (W.LOW_VIEWS).
+  const pctText = (x) => `${Math.round(x * 100)}%`;
+  const trendLead = (dates, fires, T, n) => (fires >= 1
+    ? `${dates}-нд анхаарал нь хамгийн их өсөх ${n} сэдэв (model-ийн таамаг). 🔥 = ${pctText(T)} ба түүнээс их өсөлт.`
+    : `${dates}: онцгой өсөлт (🔥) таамаглагдаагүй. Хамгийн өндөр таамагтай ${n} сэдэв.`);
+  // Treemap-ийн хүрээ: n = нийт сэдэв (/api/trending-ийн мөр), m = газрын зурагт орсон (/api/map-ийн мөр)
+  const mapScope = (n, m) => `Манай ${n} сэдвээс хамгийн их уншигдсан ${m}, англи Wikipedia.`;
+  // "Ангилал бүрт юу уншигдав?"-ийн тайлбар. nCats: картын тоо, perCat: сонгосон сэдэв ÷ ангилал (~15),
+  // shown: карт бүрт харуулах сэдэв, reason: "яагаад эдгээр ангилал" (хоосон бол оруулахгүй).
+  const catLead = (nCats, perCat, shown, asof, age, reason) => [
+    `${nCats} бүлэгт тус бүр ~${Math.round(perCat)} сэдвийг бид гараар сонгосон.`, reason,
+    `Карт бүрт ${isYesterday(age) ? "өчигдөр" : md(asof) + "-нд"} хамгийн их уншигдсан ${shown} нь.`,
+    "▲ ×2 = ердийн өдрөөс 2 дахин их."].filter(Boolean).join(" ");
+  // PLAN-ийн "[Майк бөглөнө: яагаад эдгээр ангилал]". Майк бөглөтөл хоосон (test_words шалгана),
+  // "оюутан, залуучуудын сонирхдог" гэж бичихгүй.
+  const CAT_REASON = "";
+  const catReason = () => CAT_REASON;
+  // Хэмжигдэх сэдвийн босго уншилтаар хөдөлдөг тул тоогүй (ADR 0004)
+  const LOW_VIEWS = "Хэт цөөн уншигддаг сэдвийг оруулаагүй.";
+  const seeAll = (n) => `Бүгдийг харах (${n}) →`;
+
   const TIP = {
     attention: "Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь",
     interval: "80% интервал: model-ийн өмнөх алдаанаас тооцсон хүрээ",
     normal: "ердийн түвшин (медиан): сүүлийн 2 сарын уншилт, сүүлийн 7 хоногийг оруулаагүй",
     forecastBar: "таамагласан уншилт (Wikipedia-ийн нийт уншилт өөрчлөгдөхгүй гэж үзвэл)",
+    lowViews: "сүүлийн 7 хоногт Wikipedia-ийн сая уншилт тутмаас дунджаар 1-ээс бага",
     table: "Доод–Дээд: 10 удаагийн 8-д бодит тоо энэ хооронд байдаг (80% интервал).",
   };
 
-  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, TIP };
+  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, catReason, seeAll, LOW_VIEWS, TIP };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;
 })(typeof window !== "undefined" ? window : globalThis);

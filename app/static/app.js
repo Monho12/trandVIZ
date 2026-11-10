@@ -18,6 +18,8 @@
     : `<span class="surge calm">ердийн</span>`;
   const last = (t) => t.history[t.history.length - 1].v;
   const in3 = (t) => t.forecast[t.forecast.length - 1];
+  // Нүүрний чип: таамгийн шошго (API-ийн label, сум нь дотроо), ▲ биш (#31)
+  const chip = (t, d) => `<span class="fcl${t.fire ? " fire" : ""}">${esc(W.forecastLabel(t.label, d.asof, d.age_days))}</span>`;
   // Таамгийн хувь (ADR 0003/0004, 0014): backend-ийн pct(h3), сум, 🔥. Хувь = "анхаарал", тоо = "уншилт".
   const tipped = (text, tip) => `<span class="anh" title="${esc(tip)}">${esc(text)}</span>`;
   const pct = (t, d) => `${tipped("анхаарал", W.TIP.attention)} ${esc(W.forecastLabel(t.label, d.asof, d.age_days))}`;
@@ -71,7 +73,8 @@
   async function home() {
     const [tr, cs, mp] = await Promise.all([api("/api/trending"), api("/api/categories"), api("/api/map")]);
     meta(tr);
-    const top = tr.items.slice(0, 10);
+    const top = tr.items.slice(0, tr.top_n);
+    const count = (k) => tr.items.filter((t) => t.category === k).length;   // ангиллын бодит сэдвийн тоо
     const chans = ORDER.map((k) => cs.categories.find((c) => c.key === k)).filter(Boolean);
     const EMO = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, v[0]]));
     main.innerHTML = `
@@ -82,20 +85,24 @@
           <i style="background:#2a78d6"></i><em>бага</em>
           <i style="background:#eef1f5;outline:1px solid #d5dae3;outline-offset:-1px"></i><em>ердийн</em>
           <i style="background:#f4a3a9"></i><i style="background:#b5222e"></i><em>их шуугиж байна</em></span>
+        <span>${esc(W.mapScope(tr.items.length, mp.items.length))}</span>
       </div>
       <div class="tmap" id="tmap"></div>
-      <h2 class="sub-h">Сэдэв бүрээр</h2>
-      <p class="lead">▲ ×3 = ердийн өдрөөс 3 дахин их уншигдсан. Таамаг: ${esc(tr.dates)}</p>
+      <h2 class="sub-h">Ирэх 3 өдөрт юу өсөх вэ?</h2>
+      <p class="lead">${esc(W.trendLead(tr.dates, tr.fires, tr.T, tr.top_n))} ${tipped(W.LOW_VIEWS, W.TIP.lowViews)}</p>
       <ul class="picker" aria-label="Сэдэв сонгох">${top.map((t, i) => `
-        <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${surge(t.ratio, tr, true)}</button></li>`).join("")}
+        <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${chip(t, tr)}</button></li>`).join("")}
       </ul>
       <section class="focus" id="focus" aria-live="polite"></section>
       <section class="sec" aria-labelledby="cat-h">
-        <h2 id="cat-h">Ангилал бүрээр</h2>
+        <h2 id="cat-h">Ангилал бүрт юу уншигдав?</h2>
+        <p class="lead">${esc(W.catLead(chans.length, chans.reduce((n, c) => n + count(c.key), 0) / chans.length, Math.max(...chans.map((c) => c.topics.length)),
+          cs.asof, cs.age_days, W.catReason()))}</p>
         <div class="cats">${chans.map((c) => `
           <div class="cat">
             <h3>${cat(c.key)}</h3>
-            <ul>${c.topics.slice(0, 4).map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t.ratio, cs, true)}</li>`).join("")}</ul>
+            <ul>${c.topics.map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t.ratio, cs, true)}</li>`).join("")}</ul>
+            <a class="more" href="#/list/${encodeURIComponent(c.key)}">${esc(W.seeAll(count(c.key)))}</a>
           </div>`).join("")}
         </div>
       </section>`;
