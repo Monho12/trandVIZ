@@ -30,7 +30,6 @@ def test_trending_top10_is_ten_measurable_topics_ranked_by_predicted_pct(client)
     assert all(t["measurable"] and t["pct"] >= d["T"] for t in d["items"] if t["fire"])
 
 
-
 def test_home_chip_label_agrees_with_arrow_and_fires_count(client):
     """Нүүрний чип API-ийн label-ийг харуулна (#31): шошго сумаараа эхэлнэ, тайлбарын 🔥-ийн тоо чиптэй таарна."""
     d = client.get("/api/trending").json()
@@ -39,6 +38,7 @@ def test_home_chip_label_agrees_with_arrow_and_fires_count(client):
             assert t["label"].startswith(t["arrow"]), (t["article"], t["arrow"], t["label"])
             assert t["label"].startswith("🔥") == t["fire"]
     assert d["fires"] == sum(t["fire"] for t in d["items"][:d["top_n"]])
+
 
 def _check_forecast(d):
     t = d["items"][0]

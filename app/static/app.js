@@ -97,7 +97,7 @@
       <section class="sec" aria-labelledby="cat-h">
         <h2 id="cat-h">Ангилал бүрт юу уншигдав?</h2>
         <p class="lead">${esc(W.catLead(chans.length, chans.reduce((n, c) => n + count(c.key), 0) / chans.length, Math.max(...chans.map((c) => c.topics.length)),
-          cs.asof, cs.age_days, W.catReason()))}</p>
+          cs.asof, cs.age_days, W.CAT_REASON))}</p>
         <div class="cats">${chans.map((c) => `
           <div class="cat">
             <h3>${cat(c.key)}</h3>

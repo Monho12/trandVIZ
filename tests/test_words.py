@@ -19,10 +19,10 @@ ASOF = "2026-11-09"   # сайтын огнооны формат: "11/9"
 
 
 def words(fn: str, *args):
-    """Words.<fn>(*args)-ийн утга."""
+    """Words.<fn>(*args)-ийн утга (fn нь тогтмол бол түүний утга)."""
     if NODE is None:
         pytest.skip("node алга")
-    code = f"const W = require({json.dumps(str(STATIC / 'words.js'))}); console.log(JSON.stringify(W[{json.dumps(fn)}](...{json.dumps(args)})))"
+    code = f"const W = require({json.dumps(str(STATIC / 'words.js'))}); const v = W[{json.dumps(fn)}]; console.log(JSON.stringify(typeof v === 'function' ? v(...{json.dumps(args)}) : v))"
     return json.loads(subprocess.run([NODE, "-e", code], capture_output=True, text=True, check=True).stdout)
 
 
@@ -108,7 +108,7 @@ def test_category_lead_counts_from_data_and_skips_empty_reason():
 
 def test_category_reason_stays_out_until_mike_fills_it_in_plan():
     plan = (ROOT / "docs" / "PLAN.md").read_text(encoding="utf-8")
-    reason = words("catReason")
+    reason = words("CAT_REASON")
     if "[Майк бөглөнө" in plan:
         assert reason == ""
     else:

@@ -34,7 +34,6 @@
   // PLAN-ийн "[Майк бөглөнө: яагаад эдгээр ангилал]". Майк бөглөтөл хоосон (test_words шалгана),
   // "оюутан, залуучуудын сонирхдог" гэж бичихгүй.
   const CAT_REASON = "";
-  const catReason = () => CAT_REASON;
   // Хэмжигдэх сэдвийн босго уншилтаар хөдөлдөг тул тоогүй (ADR 0004)
   const LOW_VIEWS = "Хэт цөөн уншигддаг сэдвийг оруулаагүй.";
   const seeAll = (n) => `Бүгдийг харах (${n}) →`;
@@ -48,7 +47,7 @@
     table: "Доод–Дээд: 10 удаагийн 8-д бодит тоо энэ хооронд байдаг (80% интервал).",
   };
 
-  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, catReason, seeAll, LOW_VIEWS, TIP };
+  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, LOW_VIEWS, TIP };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;
 })(typeof window !== "undefined" ? window : globalThis);
