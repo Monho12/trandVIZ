@@ -69,12 +69,14 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .surge.calm::before { content: "•"; color: var(--muted); font-size: 14px; }
 
 /* ── Сэдэв сонгох товчнууд ── */
-.picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+/* .chips: "Бүх сэдэв"-ийн ангиллын чип. .picker-тэй ижил харагдана, утсанд ч мөр шилжинэ (хэвтээ гүйлгэхгүй, ADR 0013) */
+.picker, .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
 .pick { display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 12px; border: 1px solid var(--line);
   border-radius: 999px; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-2);
   transition: border-color .15s, background-color .15s; }
 .pick:hover { border-color: var(--muted); color: var(--text); }
-.pick[aria-pressed="true"] { background: var(--blue-soft); border-color: var(--blue); color: var(--text); }
+.pick[aria-pressed="true"], .pick[aria-current] { background: var(--blue-soft); border-color: var(--blue); color: var(--text); }
+a.pick { padding: 7px 12px; text-decoration: none; }
 .pick .surge, .pick .fcl { font-size: 12px; padding: 1px 7px; }
 /* Чипний таамгийн шошго (🔥 +35% / ↗ +20% / ≈ тогтвортой): сум нь API-ийн label дотор, ▲-ийн хэлбэртэй ижил */
 .fcl { display: inline-flex; align-items: center; border-radius: 999px; background: var(--bg); color: var(--text-2);
@@ -120,14 +122,19 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
   border-top: 1px solid var(--line); font-size: 14px; }
 .cat li a { text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cat li a:hover { text-decoration: underline; }
-.cat .more { display: inline-block; margin: 8px 0 2px; font-size: 13px; font-weight: 500; color: var(--blue); text-decoration: none; }
-.cat .more:hover { text-decoration: underline; }
+.more { display: inline-block; margin: 8px 0 2px; font-size: 13px; font-weight: 500; color: var(--blue); text-decoration: none; }
+.more:hover { text-decoration: underline; }
+button.more { padding: 0; border: 0; background: none; cursor: pointer; }
 
 /* ── Бүх сэдэв ── */
 .rows { list-style: none; margin: 0; padding: 0; }
-.row { display: grid; grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: center;
+.lsec { padding-top: 32px; scroll-margin-top: 12px; }   /* ангиллын хэсэг (ADR 0013) */
+.lsec .lead { margin-bottom: 0; }
+.lsec .rows { margin-top: 10px; }
+.lsec .more { margin-top: 12px; font-size: 14px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: center;
   padding: 14px 0; border-top: 1px solid var(--line); }
-.row .rk { color: var(--muted); font-weight: 600; text-align: right; }
+.row .low { padding: 2px 8px; background: var(--line); cursor: help; }   /* "цөөн уншилттай": хэмжигдэх биш сэдэв (саарал) */
 .row h3 { margin: 0; font-size: 17px; font-weight: 600; }
 .row h3 a { text-decoration: none; } .row h3 a:hover { text-decoration: underline; }
 .row .meta { margin: 5px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--muted); font-size: 13px; }
@@ -196,7 +203,7 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
   .tiles .tile:last-child { grid-column: 1 / -1; }
   .tile dd { font-size: 21px; }
   .chart { height: 210px; }
-  .row { grid-template-columns: 24px minmax(0, 1fr); gap: 10px; }
+  .row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .mini { grid-column: 1 / -1; height: 48px; }
   .mgrid { grid-template-columns: 1fr; }
   .focus.topic .chart { height: 240px; }

@@ -1,29 +1,22 @@
 """app/static/words.js: сайтын үг ба шошго (ADR 0014). ▲ = өнгөрсөн, "өчигдөр" зөвхөн asof = өчигдөр үед.
 Цэвэр функцүүдийг node-оор дуудна (browser-гүй).  pytest -q"""
-import json
 import re
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import node_js  # noqa: E402
 from src import scoring  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-STATIC = ROOT / "app" / "static"
-NODE = shutil.which("node")
+STATIC = node_js.STATIC
 ASOF = "2026-11-09"   # сайтын огнооны формат: "11/9"
 
 
-def words(fn: str, *args):
-    """Words.<fn>(*args)-ийн утга (fn нь тогтмол бол түүний утга)."""
-    if NODE is None:
-        pytest.skip("node алга")
-    code = f"const W = require({json.dumps(str(STATIC / 'words.js'))}); const v = W[{json.dumps(fn)}]; console.log(JSON.stringify(typeof v === 'function' ? v(...{json.dumps(args)}) : v))"
-    return json.loads(subprocess.run([NODE, "-e", code], capture_output=True, text=True, check=True).stdout)
+def words(name: str, *args):
+    """Words.<name>(*args)-ийн утга (name нь тогтмол бол түүний утга)."""
+    return node_js.call("words.js", name, *args)
 
 
 def test_surge_label_says_yesterday_only_when_asof_is_yesterday():
@@ -117,3 +110,26 @@ def test_category_reason_stays_out_until_mike_fills_it_in_plan():
 
 def test_see_all_link_text():
     assert words("seeAll", 16) == "Бүгдийг харах (16) →"
+
+
+def test_list_lead_explains_the_bars_and_names_the_asof_date():
+    assert words("listLead", ASOF, 1) == (
+        "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. ▲ = өчигдөр ердийнхөөс хэд дахин их. "
+        "Ангилал бүрт 11/9-нд хамгийн их уншигдсанаас нь эхлэн.")
+    stale = words("listLead", ASOF, 4)       # хуучирсан өгөгдөл: "өчигдөр" гэж хэлэхгүй
+    assert "▲ = 11/9 ердийнхөөс хэд дахин их." in stale and "өчигдөр" not in stale
+
+
+def test_expand_button_text_has_the_count_and_no_arrow():
+    assert words("expand", 150) == "Бүгдийг харах (150)"      # товч: холбоос биш тул сумгүй
+    assert words("seeAll", 150) == "Бүгдийг харах (150) →"
+
+
+def test_other_section_note_agrees_with_how_viral_topics_were_picked():
+    """ "Бусад" хэсгийн 2 мөр тайлбар ба tooltip-ийн тоо src/fetch_data.py-тай таарна (ADR 0013, 7-р зүйл)."""
+    from src import fetch_data
+    note, tip = words("OTHER_NOTE"), words("TIP")["other"]
+    assert set(note) == {"how", "why"} and f"{fetch_data.START.year} оноос" in note["how"]
+    assert f"оргил өдөр нь ердийнхөөсөө {fetch_data.VIRAL_MIN_RATIO}+ дахин их" in tip
+    shown = " ".join([note["how"], note["why"], tip]).lower()
+    assert "viral" not in shown and "вирал" not in shown   # ADR 0005

@@ -1,6 +1,6 @@
 // Шуугиан — энгийн hash router + хуудсууд
 (function () {
-  const C = window.Charts, W = window.Words;
+  const C = window.Charts, W = window.Words, L = window.Listing;
   const main = document.getElementById("main");
   const CATS = {
     politics: ["🏛️", "Улс төр"], film_tv: ["🎬", "Кино, цуврал"], true_crime: ["🕯️", "True crime"],
@@ -8,7 +8,8 @@
     games_anime: ["🎮", "Тоглоом, anime"], celebs: ["💅", "Алдартнууд"], society: ["👥", "Нийгэм"],
     mongolia: ["🇲🇳", "Монгол"], "Бусад": ["🌐", "Бусад"],   // вирал сэдвийн ангилал (ADR 0005)
   };
-  const ORDER = Object.keys(CATS).filter((k) => k !== "Бусад");
+  const OTHER = "Бусад";
+  const ORDER = Object.keys(CATS).filter((k) => k !== OTHER);
   const cat = (k) => (CATS[k] || ["", k]).join(" ");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
@@ -126,27 +127,57 @@
     select(0);
   }
 
-  // ═════════ Бүх сэдэв ═════════
-  async function list() {
+  // ═════════ Бүх сэдэв (ADR 0013) ═════════
+  // open: `#/list/<ангилал>`-ийн ангилал; тэр хэсэг дэлгэгдсэн байна. Буцаах утга: router гүйлгэх хэсэг (байхгүй бол undefined).
+  async function list(open) {
     const tr = await api("/api/trending");
     meta(tr);
-    main.innerHTML = `
-      <h1 class="page-h">Бүх сэдэв</h1>
-      <p class="lead">Цэнхэр = бодит уншилт, улаан = таамаг</p>
-      <ol class="rows">${tr.items.map((t, i) => `
+    const secs = L.sections(tr.items, ORDER, OTHER);
+    const row = (t) => `
         <li class="row">
-          <span class="rk">${i + 1}</span>
           <div>
             <h3><a href="${href(t.article)}">${esc(t.title)}</a></h3>
-            <p class="meta">${surge(t.ratio, tr)}<span><b>${C.fmt(t.views)}</b> уншилт</span><span>${esc(t.dates)}: ${pct(t, tr)} ${iv(t)}</span><span>${cat(t.category)}</span></p>
+            <p class="meta">${surge(t.ratio, tr)}<span><b>${C.fmt(t.views)}</b> уншилт</span>${
+              t.measurable ? "" : `<span class="fcl low" title="${esc(W.TIP.lowViews)}">${esc(W.LOW_TAG)}</span>`
+              }<span>${esc(t.dates)}: ${pct(t, tr)} ${iv(t)}</span></p>
           </div>
-          <div class="mini" data-i="${i}"></div>
-        </li>`).join("")}
-      </ol>`;
-    draw(() => main.querySelectorAll(".mini").forEach((b) => {
+          <div class="mini" data-i="${tr.items.indexOf(t)}"></div>
+        </li>`;
+    const rows = (s, all) => s.topics.slice(0, all ? undefined : L.SHOWN).map(row).join("");
+    const moreText = (s, all) => (all ? W.COLLAPSE : W.expand(s.topics.length));
+    main.innerHTML = `
+      <h1 class="page-h">Бүх сэдэв</h1>
+      <p class="lead">${esc(W.listLead(tr.asof, tr.age_days))}</p>
+      <ul class="chips" aria-label="Ангилал руу үсрэх">${secs.map((s) => `
+        <li><a class="pick" href="#/list/${encodeURIComponent(s.key)}"${s.key === open ? ' aria-current="true"' : ""}>${cat(s.key)}</a></li>`).join("")}
+      </ul>${secs.map((s, i) => {
+        const all = s.key === open;   // `#/list/<ангилал>`-аар ирсэн хэсэг дэлгэгдсэн
+        return `
+      <section class="sec lsec" data-k="${esc(s.key)}" aria-labelledby="ls-${i}">
+        <h2 id="ls-${i}">${cat(s.key)} <span class="h-sub">${s.topics.length} сэдэв</span></h2>${
+          s.key === OTHER ? `
+        <p class="lead">${tipped(W.OTHER_NOTE.how, W.TIP.other)} ${esc(W.OTHER_NOTE.why)}</p>` : ""}
+        <ul class="rows">${rows(s, all)}</ul>${s.topics.length > L.SHOWN ? `
+        <button class="more" data-s="${i}" aria-expanded="${all}">${esc(moreText(s, all))}</button>` : ""}
+      </section>`; }).join("")}`;
+
+    const minis = (root) => root.querySelectorAll(".mini").forEach((b) => {
       const t = tr.items[+b.dataset.i];
       C.columns(b, { history: t.history, forecast: t.forecast, label: `${t.title}: 30 хоног ба таамаг` });
+    });
+    draw(() => minis(main));
+    // "Бүгдийг харах (N)" / "Хураах": хэсгийн мөрүүдийг дахин зурна. Хураахад хэсгийн эхэнд буцна (урт жагсаалтын доор үлдэхгүй).
+    main.querySelectorAll("button.more").forEach((b) => b.addEventListener("click", () => {
+      const s = secs[+b.dataset.s], all = b.getAttribute("aria-expanded") !== "true", ul = b.previousElementSibling;
+      b.setAttribute("aria-expanded", all);
+      b.textContent = moreText(s, all);
+      ul.innerHTML = rows(s, all);
+      minis(ul);
+      if (!all) b.closest(".lsec").scrollIntoView();
     }));
+    // Аль хэдийн тэр ангилал дээр байхад чипийг дахин дарвал hashchange гарахгүй: гараар дахин гүйлгэнэ
+    main.querySelectorAll(".chips a").forEach((a) => a.addEventListener("click", () => { if (a.hash === location.hash) route(); }));
+    return [...main.querySelectorAll(".lsec")].find((el) => el.dataset.k === open);
   }
 
   // ═════════ Нэг сэдэв ═════════
@@ -390,8 +421,9 @@
     document.querySelectorAll(".nav a").forEach((a) =>
       a.dataset.route === name ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
     main.innerHTML = `<p class="state">Ачаалж байна…</p>`;
+    let target;   // хуудас дотор гүйлгэх хэсэг (#/list/<ангилал>)
     try {
-      if (name === "list") await list();
+      if (name === "list") target = await list(decodeURIComponent(arg || ""));
       else if (name === "facts") await facts();
       else if (name === "model") await model();
       else if (name === "topic") await topic(decodeURIComponent(arg || ""));
@@ -400,7 +432,7 @@
       main.innerHTML = `<p class="state">Өгөгдөл ачаалж чадсангүй (${esc(e.message)}). Хуудсыг дахин ачаалж үзнэ үү.</p>`;
     }
     if (name !== "home") main.focus({ preventScroll: true });
-    window.scrollTo(0, 0);
+    if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", route);
   route();
