@@ -195,3 +195,9 @@ def test_interval_pct_shifts_prediction_by_quantiles_in_log_scale():
     # x_0 = 0.5, Δ̂ = 0.11, квантил ±0.11 -> Δ [0, 0.22] -> [0%, +74%] (ADR 0003)
     lo, hi = scoring.interval_pct(np.log1p(0.5), 0.11, -0.11, 0.11)
     assert (lo, hi) == pytest.approx((0.0, 0.74), abs=0.005)
+
+
+def test_tuned_threshold_before_floor_is_reported():
+    # T нь 25% хэвээр ч max()-ийн нөгөө тал (өдөрт 1 🔥 гаргах босго = 0.20) харагдах ёстой
+    df = fire_frame({"2025-08-01": [0.40, 0.10], "2025-08-02": [0.20, 0.05]})
+    assert scoring.tuned_threshold(df, target=1.0) == pytest.approx(0.20)

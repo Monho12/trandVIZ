@@ -94,15 +94,19 @@ def fires_per_day(df: pd.DataFrame, T: float, pct_col: str = "pred_pct", measura
     return float(fire.sum() / df["date"].nunique())
 
 
-def tune_threshold(df: pd.DataFrame, target: float = FIRES_PER_DAY_TARGET, pct_col: str = "pred_pct",
-                   measurable_col: str = "measurable") -> float:
-    """T = max(өдөрт дунджаар `target` 🔥 гаргах босго, 25%) (ADR 0004). df нь fires_per_day-тэй ижил.
-    Тааруулсан босго = хэмжигдэх сэдвийн таамгуудаас k = round(target × өдрийн тоо) дахь хамгийн өндөр нь,
-    тэгвэл яг k мөр (тэнцүү утгагүй бол) ≥ босго болно."""
+def tuned_threshold(df: pd.DataFrame, target: float = FIRES_PER_DAY_TARGET, pct_col: str = "pred_pct",
+                    measurable_col: str = "measurable") -> float:
+    """25%-ийн доод хилээс ӨМНӨХ босго: өдөрт дунджаар `target` 🔥 гаргах утга. df нь fires_per_day-тэй ижил.
+    = хэмжигдэх сэдвийн таамгуудаас k = round(target × өдрийн тоо) дахь хамгийн өндөр нь, тэгвэл яг k мөр
+    (тэнцүү утгагүй бол) ≥ босго болно. Таамаг k-аас цөөн бол −inf."""
     vals = df.loc[df[measurable_col].fillna(False).astype(bool), pct_col].dropna().sort_values(ascending=False)
     k = int(round(target * df["date"].nunique()))
-    tuned = float(vals.iloc[k - 1]) if 0 < k <= len(vals) else -np.inf
-    return fire_threshold(tuned)
+    return float(vals.iloc[k - 1]) if 0 < k <= len(vals) else -np.inf
+
+
+def tune_threshold(df: pd.DataFrame, target: float = FIRES_PER_DAY_TARGET, **cols) -> float:
+    """T = max(өдөрт дунджаар `target` 🔥 гаргах босго, 25%) (ADR 0004)."""
+    return fire_threshold(tuned_threshold(df, target, **cols))
 
 
 def is_measurable(df: pd.DataFrame) -> pd.Series:

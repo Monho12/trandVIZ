@@ -3,7 +3,7 @@
 
   - T (ADR 0004): хэмжигдэх сэдвийн таамагласан pct(h3) дээр, T = max(өдөрт ~7.5 🔥 гаргах босго, 25%).
   - 80% интервал (ADR 0003): residual Δ − Δ̂-ийн 10% ба 90%-ийн квантил h бүрт, (в)-гүй valid-ийн БҮХ мөр дээр
-    (сонголт ба T-тэй ижил өгөгдөл; Майк зөвшөөрсөн (Claude санал болгосон), 2026-11-10).
+    (алгоритм сонголттой яг ижил мөрүүд; T нь эдгээрийн хэмжигдэх хэсэг. Майк зөвшөөрсөн (Claude санал болгосон), 2026-11-10).
 Test-ийг энд ОГТ уншихгүй. Model-ийг дахин сургахгүй: app/model/-д экспортлосон ялагчийг ачаална.
 
 Ажиллуулах:  python -m src.calibrate  ->  app/model/meta.json ("fire", "interval" талбар)
@@ -45,21 +45,25 @@ def valid_frame(model: train.LoadedModel) -> pd.DataFrame:
 
 def calibrate(va: pd.DataFrame) -> dict:
     """valid_frame-ийн хүснэгтээс meta.json-д нэмэх "fire", "interval" талбарууд."""
-    m = va[va["measurable"].fillna(False).astype(bool)]
-    T = scoring.tune_threshold(va)
+    meas = va[va["measurable"].fillna(False).astype(bool)]
+    tuned = scoring.tuned_threshold(va)
+    T = scoring.fire_threshold(tuned)
     fire = {
         "T": round(T, 4),
-        "rule": "T = max(өдөрт ~7.5 🔥 гаргах босго, 25%), (в)-гүй valid, хэмжигдэх сэдэв, таамагласан pct(h3) (ADR 0004)",
+        "T_tuned": round(tuned, 4),
+        "rule": f"T = max(өдөрт ~{scoring.FIRES_PER_DAY_TARGET:g} 🔥 гаргах босго (T_tuned), {scoring.T_FLOOR:.0%}), "
+                "(в)-гүй valid, хэмжигдэх сэдэв, таамагласан pct(h3) (ADR 0004)",
         "target_per_day": scoring.FIRES_PER_DAY_TARGET,
         "per_day_at_T": round(scoring.fires_per_day(va, T), 2),
         "per_day_at_25pct": round(scoring.fires_per_day(va, scoring.T_FLOOR), 2),
         "valid_days": int(va["date"].nunique()),
-        "measurable_rows": int(len(m)),
-        "pred_pct_quantiles": {f"{q:.2f}": round(float(v), 4) for q, v in m["pred_pct"].quantile(PCT_QUANTILES).items()},
+        "measurable_rows": int(len(meas)),
+        "pred_pct_quantiles": {f"{q:.2f}": round(float(v), 4) for q, v in meas["pred_pct"].quantile(PCT_QUANTILES).items()},
     }
     interval = {
         "q": list(scoring.INTERVAL_Q),
-        "rule": "Δ̂ + [q10, q90] нь residual Δ − Δ̂-ийн квантил, (в)-гүй valid-ийн бүх мөр; pct руу expm1-ээр (ADR 0003)",
+        "rule": f"Δ̂ + [lo, hi]: residual Δ − Δ̂-ийн {scoring.INTERVAL_Q[0]:.0%}/{scoring.INTERVAL_Q[1]:.0%} квантил, "
+                "(в)-гүй valid-ийн бүх мөр; pct руу expm1-ээр (ADR 0003)",
     }
     for h in HORIZONS:
         lo, hi = scoring.residual_quantiles(va[f"delta_h{h}"], va[f"delta_hat_h{h}"])
@@ -75,7 +79,8 @@ def run(model_dir: Path = MODEL_DIR, log=print) -> dict:
     meta = {**model.meta, **cal}
     (Path(model_dir) / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     f, iv = cal["fire"], cal["interval"]
-    log(f"T = {f['T']:.0%}: өдөрт {f['per_day_at_T']} 🔥 (T = 25% үед {f['per_day_at_25pct']}), {f['valid_days']} өдөр")
+    log(f"T = {f['T']:.0%} (тааруулсан {f['T_tuned']:+.1%}): өдөрт {f['per_day_at_T']} 🔥 "
+        f"(T = 25% үед {f['per_day_at_25pct']}), {f['valid_days']} өдөр")
     for h in HORIZONS:
         log(f"h{h}: 80% интервал Δ̂ + [{iv[f'h{h}']['lo']:+.4f}, {iv[f'h{h}']['hi']:+.4f}]")
     return {"valid": va, **cal}
