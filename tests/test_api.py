@@ -26,8 +26,8 @@ def test_trending_top10_is_ten_measurable_topics_ranked_by_predicted_pct(client)
     assert all(t["measurable"] for t in top)
     assert [t["pct"] for t in top] == sorted((t["pct"] for t in top), reverse=True)
     assert all(t["rank"] is None for t in d["items"][10:])
-    # 🔥 зөвхөн хэмжигдэх сэдэв ба pct ≥ T
-    assert all(t["measurable"] and t["pct"] >= d["T"] - 0.025 for t in d["items"] if t["fire"])
+    # 🔥 зөвхөн хэмжигдэх сэдэв ба pct ≥ T (харагдах pct нь тэг рүү тайрсан тул мөн ≥ T)
+    assert all(t["measurable"] and t["pct"] >= d["T"] for t in d["items"] if t["fire"])
 
 
 def _check_forecast(d):
