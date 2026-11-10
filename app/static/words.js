@@ -36,7 +36,21 @@
   const CAT_REASON = "";
   // Хэмжигдэх сэдвийн босго уншилтаар хөдөлдөг тул тоогүй (ADR 0004)
   const LOW_VIEWS = "Хэт цөөн уншигддаг сэдвийг оруулаагүй.";
-  const seeAll = (n) => `Бүгдийг харах (${n}) →`;
+  // "Бүх сэдэв"-ийн хэсгийг дэлгэх товч (сумгүй) ба нүүрний ангиллын картын холбоос (сумтай). n: хэсгийн бодит сэдвийн тоо
+  const showAll = (n) => `Бүгдийг харах (${n})`;
+  const seeAll = (n) => `${showAll(n)} →`;
+  const COLLAPSE = "Хураах";
+  // Хэмжигдэх биш сэдвийн саарал тэмдэг (ADR 0013, 5-р зүйл); tooltip нь TIP.lowViews
+  const LOW_TAG = "цөөн уншилттай";
+  // "Бусад" хэсгийн гарчгийн доорх 2 мөр (ADR 0013, 7-р зүйл); нарийн тоо нь TIP.other (src/fetch_data.py, test_words шалгана)
+  const OTHER_NOTE = [
+    "Wikipedia-ийн сарын топ жагсаалтад 1–2 сар л гараад алга болсон нийтлэлүүд (2021 оноос, жил бүрээс санамсаргүй сонгосон).",
+    "Сонгосон сэдвүүд ихэвчлэн тогтвортой байдаг тул гэнэт өссөн сэдэв цааш нь үргэлжлэх үү, унтрах уу гэдгийг model сурахын тулд нэмсэн.",
+  ];
+
+  // "Бүх сэдэв" хуудасны тайлбар (ADR 0013): ▲-ийн өдөр нь asof = өчигдөр үед л "өчигдөр", эрэмбийн өдөр үргэлж огноо.
+  const listLead = (asof, age) => "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. "
+    + `▲ = ${day(asof, age)} ердийнхөөс хэд дахин их. Ангилал бүрт ${md(asof)}-нд хамгийн их уншигдсанаас нь эхлэн.`;
 
   const TIP = {
     attention: "Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь",
@@ -45,9 +59,11 @@
     forecastBar: "таамагласан уншилт (Wikipedia-ийн нийт уншилт өөрчлөгдөхгүй гэж үзвэл)",
     lowViews: "сүүлийн 7 хоногт Wikipedia-ийн сая уншилт тутмаас дунджаар 1-ээс бага",
     table: "Доод–Дээд: 10 удаагийн 8-д бодит тоо энэ хооронд байдаг (80% интервал).",
+    other: "Сарын шилдэг 200-д 1–2 сар орсон, оргил өдөр нь ердийнхөөсөө 8+ дахин их",
   };
 
-  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, LOW_VIEWS, TIP };
+  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, showAll, COLLAPSE,
+    listLead, LOW_TAG, OTHER_NOTE, LOW_VIEWS, TIP };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -117,3 +117,25 @@ def test_category_reason_stays_out_until_mike_fills_it_in_plan():
 
 def test_see_all_link_text():
     assert words("seeAll", 16) == "Бүгдийг харах (16) →"
+
+
+def test_list_lead_explains_the_bars_and_names_the_asof_date():
+    assert words("listLead", ASOF, 1) == (
+        "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. ▲ = өчигдөр ердийнхөөс хэд дахин их. "
+        "Ангилал бүрт 11/9-нд хамгийн их уншигдсанаас нь эхлэн.")
+    stale = words("listLead", ASOF, 4)       # хуучирсан өгөгдөл: "өчигдөр" гэж хэлэхгүй
+    assert "▲ = 11/9 ердийнхөөс хэд дахин их." in stale and "өчигдөр" not in stale
+
+
+def test_show_all_button_text_has_the_count_and_no_arrow():
+    assert words("showAll", 150) == "Бүгдийг харах (150)"     # товч: холбоос биш тул сумгүй
+    assert words("seeAll", 150) == "Бүгдийг харах (150) →"
+
+
+def test_other_section_note_agrees_with_how_viral_topics_were_picked():
+    """ "Бусад" хэсгийн 2 мөр тайлбар ба tooltip-ийн тоо src/fetch_data.py-тай таарна (ADR 0013, 7-р зүйл)."""
+    from src import fetch_data
+    note, tip = words("OTHER_NOTE"), words("TIP")["other"]
+    assert len(note) == 2 and f"{fetch_data.START.year} оноос" in note[0]
+    assert f"оргил өдөр нь ердийнхөөсөө {fetch_data.VIRAL_MIN_RATIO}+ дахин их" in tip
+    assert "viral" not in " ".join(note + [tip]).lower() and "вирал" not in " ".join(note + [tip]).lower()   # ADR 0005
