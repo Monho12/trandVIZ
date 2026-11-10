@@ -79,6 +79,11 @@ def predict(model, rows: pd.DataFrame) -> pd.DataFrame:
             delta = scoring.floor_delta(y0, delta)
             r[f"{name or 'pct'}_h{h}"] = scoring.predicted_pct(y0, delta)
             r[f"views{'_' + name if name else ''}_h{h}"] = np.expm1(y0 + delta) * scale
+    # Өнөөдөр 0 уншилттай (x_0 = 0) сэдвийн хувь тодорхойгүй (x̂ / 0): pct-г NaN болгоно -> сумгүй, хувьгүй,
+    # top-10-д орохгүй. Уншилтын таамаг (views_h*) хэвээр.
+    zero = np.expm1(y0) <= 0
+    pcts = [f"{n}_h{h}" for h in meta["horizons"] for n in ("pct", "lo", "hi")]
+    r.loc[zero, pcts] = np.nan
     r["arrow"] = scoring.arrow(r["pct_h3"], meta["fire"]["T"], r["measurable"])
     r["category"] = scoring.display_category(r["category"])
     return r
@@ -86,8 +91,10 @@ def predict(model, rows: pd.DataFrame) -> pd.DataFrame:
 
 # ---------------------------------------------------------------- JSON
 
-def _r(p: float) -> float:
-    """5%-д дугуйлсан pct, JSON-д float-ын шуугиангүй (−0.15000000000000002 биш −0.15)."""
+def _r(p: float) -> float | None:
+    """5%-д дугуйлсан pct, JSON-д float-ын шуугиангүй (−0.15000000000000002 биш −0.15). Тодорхойгүй (NaN) -> None."""
+    if p is None or not np.isfinite(p):
+        return None
     return round(scoring.round_pct(p), 2)
 
 

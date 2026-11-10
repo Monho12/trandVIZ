@@ -19,7 +19,7 @@
   const in3 = (t) => t.forecast[t.forecast.length - 1];
   // Таамгийн шошго (ADR 0003/0004): backend-ийн pct(h3), сум, 🔥. "Уншилт" биш "анхаарал".
   const ANH = `<span class="anh" title="Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь">анхаарал</span>`;
-  const pct = (t) => `${ANH} ${esc(t.label)}`;
+  const pct = (t) => (t.label ? `${ANH} ${esc(t.label)}` : "");   // өнөөдөр 0 уншилт: хувь тодорхойгүй
   const iv = (t) => `<span class="iv">${esc(t.interval_text)}</span>`;
 
   let redraws = [], rt;

@@ -192,6 +192,8 @@ INTERVAL_PREFIX = "80%"
 
 def label(arrow_sym: str, p: float) -> str:
     """Вэбийн сумны текст (ADR 0004): 🔥 +x%, ↗ +x%, ≈ тогтвортой, ↘ −x%, ↓ унаж байна. arrow_sym нь arrow()-ийн утга."""
+    if arrow_sym is None:   # хувь тодорхойгүй (өнөөдөр 0 уншилт)
+        return ""
     if arrow_sym == FLAT:
         return LABEL_FLAT
     if arrow_sym == FALL:
@@ -201,4 +203,6 @@ def label(arrow_sym: str, p: float) -> str:
 
 def interval_text(lo: float, hi: float) -> str:
     """80% интервалыг саарал текстээр (ADR 0003): "80%: −5% … +40%"."""
+    if not (np.isfinite(lo) and np.isfinite(hi)):
+        return ""
     return f"{INTERVAL_PREFIX}: {format_pct(lo)} … {format_pct(hi)}"
