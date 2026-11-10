@@ -108,7 +108,7 @@ def verdict(g: dict) -> dict:
 ALGO_NAME = {"lightgbm": "LightGBM", "xgboost": "XGBoost", "catboost": "CatBoost"}
 
 
-def as_pct(mae_log: float) -> float:
+def mae_as_pct_error(mae_log: float) -> float:
     """Лог MAE-г хувиар: exp(MAE) − 1, "дунджаар хэдэн хувиар зөрдөг вэ" (PLAN, Загвар хуудас; Майк зөвшөөрсөн, 2026-11-10).
     Энэ нь анхаарлын өөрчлөлтийн pct БИШ, зөвхөн алдааны хэмжээг ойлгомжтой болгох хувиргалт."""
     return float(np.expm1(mae_log))
@@ -124,7 +124,7 @@ def model_page(meta: dict, group: str = "а") -> dict:
     return {
         "asof": t["test_end"], "mock": False, "group": group, "winner": algo,
         "keys": keys, "names": {**ALGO_NAME, "naive": "Өчигдрийнх шиг"},
-        "metrics": [{"h": int(h[1:]), **{k: round(as_pct(g["mae"][h][k]) * 100, 1) for k in keys}} for h in g["mae"]],
+        "metrics": [{"h": int(h[1:]), **{k: round(mae_as_pct_error(g["mae"][h][k]) * 100, 1) for k in keys}} for h in g["mae"]],
         "skill": {h: {k: round(v * 100, 1) for k, v in s.items()} for h, s in g["skill"].items()},
         "curve": [{"it": i, "train": tr, "valid": va} for i, tr, va in zip(lc["iteration"], lc["train"], lc["valid"])],
         "best_iter": meta["best_iteration"]["h3"],
@@ -224,15 +224,15 @@ def _round(o, nd=5):
     return o
 
 
-def run(force: bool = False, log=print) -> dict:
+def run(log=print) -> dict:
     """Test-ийг НЭГ удаа үнэлж, meta.json-д "test" талбар, app/mock/model.json-ийг бичнэ.
-    meta.json-д "test" аль хэдийн байвал (force-гүй) ажиллахгүй: test-ийг дахин ажиллуулж тоо "сайжруулахгүй"."""
+    meta.json-д "test" аль хэдийн байвал ажиллахгүй (дахин ажиллуулах сонголт байхгүй): тоог "сайжруулахгүй"."""
     import json
     from src import train
     from src.features import HORIZONS
 
     model = train.load()
-    if "test" in model.meta and not force:
+    if "test" in model.meta:
         raise RuntimeError("Test аль хэдийн үнэлэгдсэн (meta.json: test). Дахин ажиллуулахгүй (ADR 0002).")
 
     # 1. Ялагдсан 2 алгоритмыг сэргээх (test-гүй өгөгдөл дээр)

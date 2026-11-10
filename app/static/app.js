@@ -190,7 +190,7 @@
     const FEAT = { ratio_7: "7 хоногийн дунджаас", roll_std_3: "3 хоногийн хэлбэлзэл", growth_1: "Өчигдрөөс өсөлт",
       vs_level: "Ердийн түвшнээс", dow: "Гараг", growth_3: "3 хоногийн өсөлт", roll_std_7: "7 хоногийн хэлбэлзэл",
       doy_cos: "Жилийн улирал", level_365: "Ердийн түвшин (жил)", roll_std_28: "28 хоногийн хэлбэлзэл", roll_mean_7: "7 хоногийн дундаж",
-      lag_1: "Өчигдрийн уншилт", lag_7: "7 хоногийн өмнөх уншилт", days_since_peak: "Оргилоос хойш хоног" };
+      lag_1: "Өчигдрийн анхаарал", lag_7: "7 хоногийн өмнөх анхаарал", days_since_peak: "Оргилоос хойш хоног" };
     draw(() => C.hbars(document.getElementById("m-imp"), m.importance.map((r) => ({ ...r, f: FEAT[r.f] || r.f })), "Feature importance"));
   }
 
