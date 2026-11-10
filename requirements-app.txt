@@ -1,0 +1,16 @@
+# Docker image / HF Space-д зөвхөн сервер ажиллахад хэрэгтэй сангууд (#9).
+# Notebook, Optuna-ийн сургалт, тест бол requirements.txt. Хувилбарыг local-д тест давсан хувилбараар бэхэлсэн.
+pandas==3.0.5
+numpy==2.5.3
+pyarrow==26.0.1
+requests==2.34.2
+tzdata==2026.6
+
+# src/train.py гурвыг нь import хийдэг (ачаалах нь зөвхөн meta.json-ийн algo).
+catboost==1.2.10
+lightgbm==4.7.0
+xgboost-cpu==3.4.1   # import xgboost; CUDA-гүй (~200 MB бага)
+optuna==5.0.0
+
+fastapi==0.162.2
+uvicorn==0.54.0

@@ -91,12 +91,13 @@
 4. Өөрийн компьютер дээр repo-гийн хавтсанд:
    ```bash
    pip install -U huggingface_hub
-   huggingface-cli login
+   hf auth login                     # (хуучин хувилбарт: huggingface-cli login)
    git remote add space https://huggingface.co/spaces/<нэр>/shuugian
    ```
-   `login` хийхэд token-оо оруулна. Token нь `~/.cache/huggingface/`-д хадгалагддаг бөгөөд repo-д орохгүй.
-5. Space нь `README.md`-ийн эхэнд `sdk: docker`, `app_port: 7860` гэсэн YAML толгой шаарддаг. Үүнийг deploy хийх агент бэлдэнэ.
-   Дараа нь `git push space main` хийнэ.
+   `login` хийхэд token-оо оруулж, "Add token as git credential?" гэхэд **Y**. Token нь `~/.cache/huggingface/`-д хадгалагддаг бөгөөд repo-д орохгүй.
+5. Space нь `README.md`-ийн эхэнд `sdk: docker`, `app_port: 7860` гэсэн YAML толгой шаарддаг (бэлэн, #9).
+   Дараа нь `bash scripts/deploy_space.sh` хийнэ. Энгийн `git push space main` ажиллахгүй: HF нь `app/model/*.cbm` (20+ MB)
+   болон binary файлыг LFS-гүй хүлээж авдаггүй. Скрипт HEAD-ийн LFS-тэй нэг commit-тэй хуулбарыг push хийнэ.
 6. **Хориг:** token-ийг код, `.env`, notebook, commit message, чат зэрэг хаана ч бичихгүй. Санамсаргүй commit хийчихвэл тэр даруй token-ийг revoke хийнэ.
 
 **Майкд хэлэх:** local болон Space-ийн линк, `/api/model`-ийн хариу, слайдын линк.

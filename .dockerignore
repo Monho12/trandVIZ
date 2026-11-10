@@ -1,0 +1,19 @@
+# Image-д хэрэггүй: зөвхөн app/, src/, data/ (app/model + data/processed орно) хэрэгтэй.
+.git
+.claude
+.playwright-mcp
+.venv
+venv
+**/__pycache__
+**/*.pyc
+**/.ipynb_checkpoints
+catboost_info
+notebooks
+tests
+docs
+.env
+# Сервер өөрөө үүсгэнэ / git-д ч байхгүй
+data/live
+data/raw
+data/processed/clean.parquet
+data/processed/features.parquet
