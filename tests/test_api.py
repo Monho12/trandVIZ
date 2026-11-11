@@ -65,9 +65,10 @@ def test_forecast_check_holds_when_some_topics_have_zero_views_on_asof(client, m
     from app.main import state
     rows = state.snapshot.universe.copy()
     rows.loc[rows.index[:3], "y_0"] = 0.0
+    n_zero = int((rows["y_0"] == 0).sum())   # + өгөгдөлд аль хэдийн 0 уншилттай сэдвүүд (жишээ нь 11/10-нд 2 сэдэв)
     monkeypatch.setitem(state.snapshot.__dict__, "universe", rows)
     d = client.get("/api/trending").json()
-    assert sum(x["pct"] is None for x in d["items"]) == 3
+    assert sum(x["pct"] is None for x in d["items"]) == n_zero
     _check_forecast(d)
 
 
