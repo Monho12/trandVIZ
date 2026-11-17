@@ -107,7 +107,7 @@
 
 Хамгаалалтын дараах шат. Бүтээгдэхүүний гол асуулт: **"Огцом өссөн сэдэв үргэлжлэх үү, унтрах уу?"** (ADR 0021).
 Шийдвэрүүд нь ADR 0015–0022, нэр томьёо нь `CONTEXT.md`. Ажлыг `/tdd`-ээр хийнэ. Майк баталсан дараалал:
-**W1 → W2 → W6a → (W3a → W3b → W3c ∥ W4) → W5 → UI grill + prototype → W7.** W3 нь дараалан хуваагдсан (golden файлын merge conflict-оос сэргийлж). W6b нь W7-д нийлсэн.
+**W1 → W2 → W6a → (W3a → W3b → W3c ∥ W4) → W5 → UI grill → давтамжийн скрипт → prototype → W7.** W3 нь дараалан хуваагдсан (golden файлын merge conflict-оос сэргийлж). W6b нь W7-д нийлсэн.
 GitHub issue (native blocked-by холбоостой):
 
 | # | Issue | ADR | Blocked by | Label |
