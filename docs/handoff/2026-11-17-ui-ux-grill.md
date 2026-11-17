@@ -55,6 +55,6 @@
 
 - `grilling` ба `domain-modeling`: UI/UX grill-ийн үндэс (`/grill-with-docs`-ыг Майк өөрөө ажиллуулж болно).
 - `dataviz`: графикийн хэлбэр, өнгө, CVD/contrast шалгалт.
-- `frontend-design`: theme-ийн чиглэл санал болгох.
+- ~~`frontend-design`~~: **хориглосон** (ADR 0025). Оронд нь `impeccable`, `emil-design-eng`.
 - `prototype`: grill-ийн дараа нүүрний 2–3 хувилбар.
 - `run`: сайтыг ажиллуулж screenshot авах.
