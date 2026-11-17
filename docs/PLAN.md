@@ -107,20 +107,22 @@
 
 Хамгаалалтын дараах шат. Бүтээгдэхүүний гол асуулт: **"Огцом өссөн сэдэв үргэлжлэх үү, унтрах уу?"** (ADR 0021).
 Шийдвэрүүд нь ADR 0015–0022, нэр томьёо нь `CONTEXT.md`. Ажлыг `/tdd`-ээр хийнэ. Майк баталсан дараалал:
-**W1 → W2 → W6a → (W3 ∥ W4) → W5 → UI grill + prototype → W6b + W7.**
+**W1 → W2 → W6a → (W3a → W3b → W3c ∥ W4) → W5 → UI grill + prototype → W7.** W3 нь дараалан хуваагдсан (golden файлын merge conflict-оос сэргийлж). W6b нь W7-д нийлсэн.
+GitHub issue (native blocked-by холбоостой):
 
-| # | Ажил | ADR | Хамаарал | Өртөг |
+| # | Issue | ADR | Blocked by | Label |
 |---|---|---|---|---|
-| W1 | Model хувилбарын hash (model файлууд + `meta.json`) | 0015 | — | XS |
-| W2 | Хадгалсан таамгийн log: GitHub Actions (06:41/09:41 UTC), `forecast-log` branch, түүхий delta CSV, Render-тэй best-effort харьцуулалт | 0016 | W1 | M |
-| W6a | Үг: `<title>`, meta description, README, Загвар хуудасны h1 | 0022 | — | XS |
-| W3 | API batch: огноо "11.09", anomaly z + ratio анхаарал дээр + `normal` талбар + нийт уншилтын тэмдэглэл, мөчлөг/илүүдэл/Давж өсөх жагсаалт. Golden-ийг нэг удаа шинэчилнэ | 0017, 0018, 0019 | — | M |
-| W4 | Сэргээж тооцсон backtest (as-of replay, asof ≥ 2026-04-01, offline, background) | 0015 | W1 | M |
-| W5 | Нөхцөл байдлын код + track record + "Хэр найдвартай вэ?" хүснэгт (backtest/log-оос, test-ээс биш) | 0020 | W3, W4 | M |
-| W6b | Үг: нүүрний h1/h2, цэс ("Сонирхолтой" → "Хэв маяг") | 0022 | W7-той хамт | XS |
-| W7 | Нүүрний шинэ бүтэц: Anomaly + үргэлжлэх/унтрах (гол), Давж өсөх жагсаалт (хоёрдогч), хураасан Мөчлөгийн өсөлт | 0021 | W3, W5, W6b, UI grill | L |
+| W1 | [#44](https://github.com/Monho12/trandVIZ/issues/44) Model хувилбарын hash | 0015 | — | ready-for-agent |
+| W6a | [#45](https://github.com/Monho12/trandVIZ/issues/45) Үг: title, meta, README, Загвар h1 | 0022 | — | ready-for-agent |
+| W2 | [#46](https://github.com/Monho12/trandVIZ/issues/46) Хадгалсан таамгийн log (Actions) | 0016 | #44 | ready-for-agent |
+| W3a | [#47](https://github.com/Monho12/trandVIZ/issues/47) Огнооны стандарт | 0018 | — | ready-for-agent |
+| W3b | [#48](https://github.com/Monho12/trandVIZ/issues/48) Anomaly (z ≥ 3, анхаарал), `normal` талбар | 0017 | #47 | ready-for-agent |
+| W3c | [#49](https://github.com/Monho12/trandVIZ/issues/49) Мөчлөг, илүүдэл, Давж өсөх жагсаалт | 0019 | #48 | ready-for-agent |
+| W4 | [#50](https://github.com/Monho12/trandVIZ/issues/50) Сэргээж тооцсон backtest | 0015 | #44 | ready-for-agent |
+| W5 | [#51](https://github.com/Monho12/trandVIZ/issues/51) Нөхцөл байдлын код + track record (API) | 0020, 0021 | #48, #49, #50 | ready-for-agent |
+| W7 | [#52](https://github.com/Monho12/trandVIZ/issues/52) Нүүрний шинэ бүтэц + сэдвийн хуудас + гарчиг, цэс | 0021, 0022 | #49, #51, UI grill | needs-info |
 | — | Wikidata "нас баралт" (зөвхөн баталгаатай огноогоор) | 0022 | — | ирээдүйд |
-| — | (в) дараагийн anomaly-г таамаглах | 0021 | W2-ын log ≥ 2 сар | хойшлогдсон |
+| — | (в) дараагийн anomaly-г таамаглах | 0021 | #46-ийн log ≥ 2 сар | хойшлогдсон |
 
 **W2-ын хүлээн авах шалгуур (нэмэлт):**
 - GitHub-ийн "public repo 60 хоног идэвхгүй бол scheduled workflow унтрана" дүрэм bot-ын commit-д хамаарах эсэхийг баримт бичгээр баталгаажуулах.
