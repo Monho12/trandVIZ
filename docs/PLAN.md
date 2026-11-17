@@ -113,7 +113,7 @@ GitHub issue (native blocked-by холбоостой):
 | # | Issue | ADR | Blocked by | Label |
 |---|---|---|---|---|
 | W1 | [#44](https://github.com/Monho12/trandVIZ/issues/44) Model хувилбарын hash | 0015 | — | ready-for-agent |
-| W6a | [#45](https://github.com/Monho12/trandVIZ/issues/45) Үг: title, meta, README, Загвар h1 | 0022 | — | ready-for-agent |
+| W6a | [#45](https://github.com/Monho12/trandVIZ/issues/45) Үг: title, meta, README, Загвар h1 | 0022, 0027 | ADR 0023–0027 `main`-д орох | ⏸️ шошгогүй (UI grill-ийн PR merge болсны дараа `ready-for-agent` буцаана) |
 | W2 | [#46](https://github.com/Monho12/trandVIZ/issues/46) Хадгалсан таамгийн log (Actions) | 0016 | #44 | ready-for-agent |
 | W3a | [#47](https://github.com/Monho12/trandVIZ/issues/47) Огнооны стандарт | 0018 | — | ready-for-agent |
 | W3b | [#48](https://github.com/Monho12/trandVIZ/issues/48) Anomaly (z ≥ 3, анхаарал), `normal` талбар | 0017 | #47 | ready-for-agent |
@@ -171,6 +171,7 @@ Grill-ийн үед Claude урьдчилж анзаарсан зүйлс (ша�
 - Тод үг + тод тоо давхцал ("**үргэлжлэх** ↗ **+40%**", ADR 0026) хэт хүнд эсэх.
 - Карт (ADR 0027): зөвхөн нэр холбоос / stretched link (товч `<a>`-аас гадна); tap ≥ 44×44px. 3а: зэрэг дэлгэгдэх / accordion.
 - Цэс (ADR 0027): Onest font, text zoom 150% / 200%, ~375px; багтахгүй бол хоёр мөр / scroll / товчилсон нэр.
+- "Бүх сэдэв" (ADR 0013): "Бууралтаар" эрэмбийг Баасан гарагийн бодит asof-оор; мөчлөгийн мөр дээд хэсгийг эзэлбэл тэр үед шийднэ.
 - Spark (ADR 0027): band ~375px картанд ялгарах уу; үгүй бол текст нөөц "+5…+20%". Spark бүр `aria-label`-тэй.
 - Зааг (ADR 0026): нимгэн тасралтгүй босоо шугам / таамгийн хэсгийн дэвсгэр өөр.
 - Хүч (ADR 0026): `↗ +40%` тод / `↗ +15%` энгийн, эсвэл `↗ +40% · хүчтэй` / `↗ +15%` энгийн.
