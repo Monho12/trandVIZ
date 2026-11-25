@@ -1,0 +1,5 @@
+# forecast-log Action (ADR 0016, #46): сервертэй (Render, Dockerfile) ИЖИЛ pin + golden test-ийн хэрэгсэл.
+# requirements.txt (>=) ашиглахгүй: хувилбар хөвбөл хадгалсан таамаг Render-ийнхээс зөрнө.
+-r requirements-app.txt
+pytest==9.1.1
+httpx==0.28.1
