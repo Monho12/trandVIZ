@@ -1,0 +1,589 @@
+{
+ "script": "scripts/frequency_numbers.py",
+ "issue": 54,
+ "model": {
+  "model_hash": "82e4bf3a2c14a8156b570b5cc931270cc1949610c23286ce6742b14d73d24cfc",
+  "version": "v82e4bf3",
+  "trained_at": "2026-11-09T19:09:10+00:00",
+  "files_sha256": {
+   "h1.cbm": "374162ff401acfdc05a8cba2b5c50f3cf4946169775254c334f3247e8c4a852b",
+   "h2.cbm": "9f1bf533b265a9d592a9e70741c11eeafa5e39458cdb15e31bc6f9bb6603fafb",
+   "h3.cbm": "67668fea0b3151e8aa085ea8e549588cf80296f8802a440e175ef9197463a094"
+  }
+ },
+ "data": {
+  "processed_through": "2026-11-10",
+  "source": "data/processed/ (git)"
+ },
+ "results": {
+  "rows": {
+   "population": "(в)-гүй valid, хэмжигдэх сэдэв (src/calibrate.valid_frame)",
+   "from": "2025-07-01",
+   "through": "2026-03-28",
+   "days": 271,
+   "rows": 63413
+  },
+  "verdict": {
+   "days": 271,
+   "anomalies": 5302,
+   "continue": 1030,
+   "anomalies_per_day": 19.564576,
+   "faded_share": 0.694644,
+   "continue_per_day": 3.800738,
+   "continue_share": 0.194266,
+   "continue_held": 0.607767,
+   "base_held": 0.305356,
+   "days_zero_continue": 8,
+   "days_one_continue": 31,
+   "auc_fade_model": 0.744314,
+   "auc_fade_z": 0.591363,
+   "mae_h3_model": 0.268426,
+   "mae_h3_naive": 0.446031
+  },
+  "strong": {
+   "T": 0.25,
+   "days": 271,
+   "rows": 63413,
+   "pct_ge_T": 1018,
+   "strong": 422,
+   "pct_ge_T_per_day": 3.756458,
+   "pct_ge_T_share": 0.016053,
+   "strong_per_day": 1.557196,
+   "strong_share": 0.006655,
+   "days_zero_strong": 123,
+   "days_nothing_bold": 4
+  },
+  "decline": {
+   "share_le_-20": 0.104868,
+   "per_day_le_-20": 24.538745,
+   "n": 6650
+  },
+  "beyond": {
+   "rows": 2241,
+   "excess_hit": 0.589023,
+   "base_all": 0.292984,
+   "base_not_cyclical_rise": 0.295824,
+   "base_same_n_random_not_cyclical_rise": 0.298645,
+   "rebound_share_of_list": 0.9527
+  },
+  "quiet": {
+   "min_per_day": 8,
+   "days_zero": 0,
+   "min_day": "2026-01-07",
+   "site_min_per_day": 10,
+   "site_days_zero": 0,
+   "site_min_day": "2025-12-02",
+   "site_mean_per_day": 24.195572,
+   "site_topics": 301
+  },
+  "interval": {
+   "rows": 63413,
+   "share_widening": 0.972592,
+   "share_h1_le_h2": 0.991957,
+   "share_h2_le_h3": 0.975257,
+   "log_width": {
+    "h1": 0.25598,
+    "h2": 0.35129,
+    "h3": 0.39548
+   }
+  },
+  "rebound": {
+   "rows": 19004,
+   "per_day": 70.125461,
+   "base_excess_hit": 0.388287,
+   "mae_h3_model": 0.152155,
+   "mae_h3_naive": 0.166201,
+   "model_list_excess_hit": 0.589023,
+   "model_list_rows": 2241,
+   "model_within_rebound_rows": 2135,
+   "model_within_rebound_excess_hit": 0.590632,
+   "reversion": {
+    "level_28": {
+     "mae_h3_rebound": 0.223517,
+     "undefined_rows": 0,
+     "within_rebound_rows": 2135,
+     "within_rebound_excess_hit": 0.543326,
+     "diff_within_rebound": {
+      "diff": 0.047307,
+      "lo": 0.019542,
+      "hi": 0.07331,
+      "n_boot": 2000,
+      "seed": 54
+     },
+     "list_rows": 2241,
+     "list_excess_hit": 0.518072,
+     "list_rebound_share": 0.734047,
+     "diff_list": {
+      "diff": 0.07095,
+      "lo": 0.041592,
+      "hi": 0.099283,
+      "n_boot": 2000,
+      "seed": 54
+     }
+    },
+    "level_0017": {
+     "mae_h3_rebound": 0.255891,
+     "undefined_rows": 0,
+     "within_rebound_rows": 2135,
+     "within_rebound_excess_hit": 0.560187,
+     "diff_within_rebound": {
+      "diff": 0.030445,
+      "lo": 0.004202,
+      "hi": 0.056154,
+      "n_boot": 2000,
+      "seed": 54
+     },
+     "list_rows": 2241,
+     "list_excess_hit": 0.516287,
+     "list_rebound_share": 0.624721,
+     "diff_list": {
+      "diff": 0.072735,
+      "lo": 0.047516,
+      "hi": 0.099826,
+      "n_boot": 2000,
+      "seed": 54
+     }
+    }
+   }
+  },
+  "recheck": {
+   "X": 0.015,
+   "direction": "up",
+   "max_flips_per_day": 0.978229,
+   "flips": {
+    "0.005": {
+     "down": 0.265683,
+     "up": 0.346863
+    },
+    "0.010": {
+     "down": 0.523985,
+     "up": 0.612546
+    },
+    "0.015": {
+     "down": 0.815498,
+     "up": 0.918819
+    },
+    "0.020": {
+     "down": 1.107011,
+     "up": 1.225092
+    },
+    "0.025": {
+     "down": 1.380074,
+     "up": 1.512915
+    },
+    "0.030": {
+     "down": 1.616236,
+     "up": 1.826568
+    },
+    "0.035": {
+     "down": 1.904059,
+     "up": 2.147601
+    },
+    "0.040": {
+     "down": 2.188192,
+     "up": 2.531365
+    },
+    "0.045": {
+     "down": 2.461255,
+     "up": 2.99262
+    },
+    "0.050": {
+     "down": 2.690037,
+     "up": 3.361624
+    },
+    "0.055": {
+     "down": 2.900369,
+     "up": 3.782288
+    },
+    "0.060": {
+     "down": 3.121771,
+     "up": 4.158672
+    },
+    "0.065": {
+     "down": 3.328413,
+     "up": 4.575646
+    },
+    "0.070": {
+     "down": 3.560886,
+     "up": 5.02583
+    },
+    "0.075": {
+     "down": 3.752768,
+     "up": 5.428044
+    },
+    "0.080": {
+     "down": 3.918819,
+     "up": 5.859779
+    },
+    "0.085": {
+     "down": 4.121771,
+     "up": 6.276753
+    },
+    "0.090": {
+     "down": 4.317343,
+     "up": 6.704797
+    },
+    "0.095": {
+     "down": 4.476015,
+     "up": 7.184502
+    },
+    "0.100": {
+     "down": 4.682657,
+     "up": 7.653137
+    }
+   }
+  },
+  "incomplete": {
+   "total": {
+    "from": "2021-01-29",
+    "through": "2026-11-10",
+    "days": 2112,
+    "quantiles": {
+     "0": 0.886159,
+     "0.001": 0.906417,
+     "0.01": 0.926309,
+     "0.05": 0.944276,
+     "0.5": 0.998081,
+     "0.95": 1.079785,
+     "0.99": 1.119384,
+     "1": 1.188247
+    },
+    "lowest": {
+     "2025-04-04": 0.886159,
+     "2024-02-15": 0.905365,
+     "2025-04-03": 0.906225,
+     "2024-02-09": 0.907952,
+     "2022-12-16": 0.908563
+    },
+    "threshold": 0.85,
+    "current": 0.5
+   },
+   "article": {
+    "from": "2021-01-02",
+    "through": "2026-11-10",
+    "days": 2139,
+    "quantiles": {
+     "0": 0.979757,
+     "0.001": 0.983579,
+     "0.01": 0.987873,
+     "0.05": 0.991628,
+     "0.5": 0.996678,
+     "0.95": 1.003846,
+     "0.99": 1.007759,
+     "1": 1.016129
+    },
+    "lowest": {
+     "2021-08-22": 0.979757,
+     "2021-12-27": 0.980237,
+     "2021-05-10": 0.983471,
+     "2021-12-22": 0.984252,
+     "2022-03-21": 0.984314
+    },
+    "threshold": 0.95,
+    "current": 0.5
+   }
+  }
+ },
+ "claims": [
+  {
+   "number": 1,
+   "label": "Anomaly өдөрт",
+   "path": "verdict.anomalies_per_day",
+   "adr": "0021",
+   "documented": 19.6,
+   "previously": null,
+   "value": 19.564576,
+   "matches": true
+  },
+  {
+   "number": 2,
+   "label": "h3-т унтарсан",
+   "path": "verdict.faded_share",
+   "adr": "0021",
+   "documented": 0.695,
+   "previously": null,
+   "value": 0.694644,
+   "matches": true
+  },
+  {
+   "number": 3,
+   "label": "\"үргэлжлэх\" өдөрт",
+   "path": "verdict.continue_per_day",
+   "adr": "0021, 0026",
+   "documented": 3.8,
+   "previously": null,
+   "value": 3.800738,
+   "matches": true
+  },
+  {
+   "number": 3,
+   "label": "\"үргэлжлэх\" / Anomaly",
+   "path": "verdict.continue_share",
+   "adr": "0026",
+   "documented": 0.19,
+   "previously": null,
+   "value": 0.194266,
+   "matches": true
+  },
+  {
+   "number": 4,
+   "label": "\"үргэлжлэх\"-ийн унтраагүй хувь",
+   "path": "verdict.continue_held",
+   "adr": "0020, 0021",
+   "documented": 0.608,
+   "previously": null,
+   "value": 0.607767,
+   "matches": true
+  },
+  {
+   "number": 4,
+   "label": "үндсэн хувь (бүх Anomaly)",
+   "path": "verdict.base_held",
+   "adr": "0020, 0021",
+   "documented": 0.305,
+   "previously": null,
+   "value": 0.305356,
+   "matches": true
+  },
+  {
+   "number": 5,
+   "label": "\"үргэлжлэх\" 0-тэй өдөр",
+   "path": "verdict.days_zero_continue",
+   "adr": "0021",
+   "documented": 8,
+   "previously": null,
+   "value": 8,
+   "matches": true
+  },
+  {
+   "number": 5,
+   "label": "\"үргэлжлэх\" 1-тэй өдөр",
+   "path": "verdict.days_one_continue",
+   "adr": "0021",
+   "documented": 31,
+   "previously": null,
+   "value": 31,
+   "matches": true
+  },
+  {
+   "number": 6,
+   "label": "pct ≥ T өдөрт (мөчлөгийн өсөлт орсон)",
+   "path": "strong.pct_ge_T_per_day",
+   "adr": "0026",
+   "documented": 3.8,
+   "previously": null,
+   "value": 3.756458,
+   "matches": true
+  },
+  {
+   "number": 6,
+   "label": "pct ≥ T хувь",
+   "path": "strong.pct_ge_T_share",
+   "adr": "0026",
+   "documented": 0.016,
+   "previously": null,
+   "value": 0.016053,
+   "matches": true
+  },
+  {
+   "number": 7,
+   "label": "Хүчтэй өсөлтийн таамаг өдөрт",
+   "path": "strong.strong_per_day",
+   "adr": "0026",
+   "documented": 1.56,
+   "previously": 3.8,
+   "value": 1.557196,
+   "matches": true
+  },
+  {
+   "number": 7,
+   "label": "тод зүйлгүй өдөр",
+   "path": "strong.days_nothing_bold",
+   "adr": "0026",
+   "documented": 4,
+   "previously": null,
+   "value": 4,
+   "matches": true
+  },
+  {
+   "number": 8,
+   "label": "pct ≤ −20% хувь",
+   "path": "decline.share_le_-20",
+   "adr": "0026",
+   "documented": 0.105,
+   "previously": 0.1,
+   "value": 0.104868,
+   "matches": true
+  },
+  {
+   "number": 8,
+   "label": "pct ≤ −20% өдөрт",
+   "path": "decline.per_day_le_-20",
+   "adr": "0026",
+   "documented": 24.5,
+   "previously": 23,
+   "value": 24.538745,
+   "matches": true
+  },
+  {
+   "number": 9,
+   "label": "бодит илүүдэл ≥ +10%",
+   "path": "beyond.excess_hit",
+   "adr": "0019, 0020",
+   "documented": 0.589,
+   "previously": null,
+   "value": 0.589023,
+   "matches": true
+  },
+  {
+   "number": 9,
+   "label": "үндсэн хувь",
+   "path": "beyond.base_all",
+   "adr": "0019, 0020",
+   "documented": 0.293,
+   "previously": 0.301,
+   "value": 0.292984,
+   "matches": true
+  },
+  {
+   "number": 10,
+   "label": "Anomaly-ийн хамгийн бага (нүүр)",
+   "path": "quiet.site_min_per_day",
+   "adr": "0022",
+   "documented": 10,
+   "previously": null,
+   "value": 10,
+   "matches": true
+  },
+  {
+   "number": 10,
+   "label": "Anomaly 0-тэй өдөр (нүүр)",
+   "path": "quiet.site_days_zero",
+   "adr": "0022",
+   "documented": 0,
+   "previously": null,
+   "value": 0,
+   "matches": true
+  },
+  {
+   "number": 11,
+   "label": "h1 ≤ h2 ≤ h3",
+   "path": "interval.share_widening",
+   "adr": "0027",
+   "documented": 0.973,
+   "previously": null,
+   "value": 0.972592,
+   "matches": true
+  },
+  {
+   "number": 12,
+   "label": "Буцалт доторх үндсэн хувь",
+   "path": "rebound.base_excess_hit",
+   "adr": "0020",
+   "documented": 0.388,
+   "previously": null,
+   "value": 0.388287,
+   "matches": true
+  },
+  {
+   "number": 12,
+   "label": "Буцалт: CatBoost жагсаалт",
+   "path": "rebound.model_within_rebound_excess_hit",
+   "adr": "0020",
+   "documented": 0.591,
+   "previously": null,
+   "value": 0.590632,
+   "matches": true
+  },
+  {
+   "number": 12,
+   "label": "Буцалт: буцах дүрэм (28 өдөр)",
+   "path": "rebound.reversion.level_28.within_rebound_excess_hit",
+   "adr": "0020",
+   "documented": 0.543,
+   "previously": null,
+   "value": 0.543326,
+   "matches": true
+  },
+  {
+   "number": 12,
+   "label": "Буцалт: буцах дүрэм (ADR 0017)",
+   "path": "rebound.reversion.level_0017.within_rebound_excess_hit",
+   "adr": "0020",
+   "documented": 0.56,
+   "previously": null,
+   "value": 0.560187,
+   "matches": true
+  },
+  {
+   "number": 13,
+   "label": "X",
+   "path": "recheck.X",
+   "adr": "0016",
+   "documented": 0.015,
+   "previously": null,
+   "value": 0.015,
+   "matches": true
+  },
+  {
+   "number": 14,
+   "label": "TOTAL_MIN_SHARE санал",
+   "path": "incomplete.total.threshold",
+   "adr": "0022",
+   "documented": 0.85,
+   "previously": null,
+   "value": 0.85,
+   "matches": true
+  },
+  {
+   "number": 14,
+   "label": "ARTICLE_MIN_SHARE санал",
+   "path": "incomplete.article.threshold",
+   "adr": "0022",
+   "documented": 0.95,
+   "previously": null,
+   "value": 0.95,
+   "matches": true
+  },
+  {
+   "number": 15,
+   "label": "\"унтрах\" эрэмбийн AUC",
+   "path": "verdict.auc_fade_model",
+   "adr": "0021",
+   "documented": 0.744,
+   "previously": null,
+   "value": 0.744314,
+   "matches": true
+  },
+  {
+   "number": 15,
+   "label": "z ганцаараа AUC",
+   "path": "verdict.auc_fade_z",
+   "adr": "0021",
+   "documented": 0.591,
+   "previously": null,
+   "value": 0.591363,
+   "matches": true
+  },
+  {
+   "number": 15,
+   "label": "MAE (h3, Anomaly)",
+   "path": "verdict.mae_h3_model",
+   "adr": "0021",
+   "documented": 0.268,
+   "previously": null,
+   "value": 0.268426,
+   "matches": true
+  },
+  {
+   "number": 15,
+   "label": "naive MAE (h3, Anomaly)",
+   "path": "verdict.mae_h3_naive",
+   "adr": "0021",
+   "documented": 0.446,
+   "previously": null,
+   "value": 0.446031,
+   "matches": true
+  }
+ ]
+}
