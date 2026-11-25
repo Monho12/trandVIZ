@@ -25,14 +25,16 @@ MODEL_DIR = train.MODEL_DIR
 PCT_QUANTILES = (0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99)
 
 
-def valid_frame(model: train.LoadedModel) -> pd.DataFrame:
-    """(в)-гүй valid мөрүүд + measurable + h бүрийн Δ, Δ̂ ба h3-ын таамагласан pct (`pred_pct`)."""
-    feats = pd.read_parquet(P / "features.parquet")
+def valid_frame(model: train.LoadedModel, feats: pd.DataFrame | None = None, cl: pd.DataFrame | None = None) -> pd.DataFrame:
+    """(в)-гүй valid мөрүүд + measurable + h бүрийн Δ, Δ̂ ба h3-ын таамагласан pct (`pred_pct`).
+    feats, cl: features.parquet ба clean.parquet-ийн оронд санах ойн хүснэгт (тест); None бол файлаас."""
+    if feats is None:
+        feats = pd.read_parquet(P / "features.parquet")
     feats = feats[feats["split"] == "valid"]
     va = feats[train.row_sets(feats, train.load_groups())["valid"]].copy()
 
     # Хэмжигдэх эсэх: дутуугүй өдөр тутмын цувралаас (features.parquet-д purge-ийн цоорхой бий)
-    cl = pd.read_parquet(P / "clean.parquet", columns=["date", "article", "y"])
+    cl = pd.read_parquet(P / "clean.parquet", columns=["date", "article", "y"]) if cl is None else cl[["date", "article", "y"]].copy()
     cl["measurable"] = scoring.is_measurable(cl)
     va = va.merge(cl[["article", "date", "measurable"]], on=["article", "date"], how="left")
 

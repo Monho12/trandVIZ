@@ -18,16 +18,58 @@ def client():
         yield c
 
 
-def test_trending_top10_is_ten_measurable_topics_ranked_by_predicted_pct(client):
+def _cyclical_rise(t) -> bool:
+    """ADR 0019 JSON-ийн тоогоор: Rising, мөчлөг ≥ +10%, илүүдэл < +10% (5%-ийн алхмаар тэг рүү тайрсан тул хил хадгалагдана)."""
+    return t["pct"] is not None and t["cycle"] is not None and t["pct"] >= 0.10 and t["cycle"] >= 0.10 and t["excess"] < 0.10
+
+
+def test_trending_rank_is_the_beyond_list_at_most_10_without_cyclical_rises(client):
+    """Давж өсөх жагсаалт (ADR 0019): хэмжигдэх, мөчлөгийн өсөлт биш Rising, pct-ээр, дээд тал нь 10, цөөн бол цөөн.
+    `rank` нь энэ жагсаалтын байр, `beyond` нь дарааллаараа сэдвийн нэрс, items-ийн эхэнд."""
     d = client.get("/api/trending").json()
     assert d["mock"] is False
-    top = d["items"][:10]
-    assert [t["rank"] for t in top] == list(range(1, 11))
-    assert all(t["measurable"] for t in top)
+    top = [t for t in d["items"] if t["rank"] is not None]
+    assert [t["article"] for t in top] == d["beyond"] == [t["article"] for t in d["items"][:len(top)]]
+    assert [t["rank"] for t in top] == list(range(1, len(top) + 1)) and len(top) <= d["top_n"] == 10
+    assert all(t["measurable"] and t["pct"] >= 0.10 and not t["cyclical"] for t in top)
     assert [t["pct"] for t in top] == sorted((t["pct"] for t in top), reverse=True)
-    assert all(t["rank"] is None for t in d["items"][10:])
+    # Stable-аар нөхөхгүй: жагсаалт 10-аас цөөн бол үлдсэн хэмжигдэх Rising бүгд мөчлөгийн өсөлт
+    if len(top) < 10:
+        rest = [t for t in d["items"] if t["rank"] is None and t["measurable"] and t["pct"] is not None and t["pct"] >= 0.10]
+        assert all(_cyclical_rise(t) for t in rest), [t["article"] for t in rest if not _cyclical_rise(t)]
     # 🔥 зөвхөн хэмжигдэх сэдэв ба pct ≥ T (харагдах pct нь тэг рүү тайрсан тул мөн ≥ T)
     assert all(t["measurable"] and t["pct"] >= d["T"] for t in d["items"] if t["fire"])
+
+
+def test_trending_has_a_separate_cyclical_rise_list(client):
+    """Мөчлөгийн өсөлтийн тусдаа жагсаалт: хэмжигдэх мөчлөгийн өсөлт бүгд, pct-ээр; Давж өсөх жагсаалттай давхцахгүй."""
+    d = client.get("/api/trending").json()
+    by = {t["article"]: t for t in d["items"]}
+    cyc = [by[a] for a in d["cyclical_rise"]]
+    assert all(t["measurable"] and t["cyclical"] and _cyclical_rise(t) for t in cyc)
+    assert {t["article"] for t in d["items"] if t["measurable"] and _cyclical_rise(t)} == set(d["cyclical_rise"])
+    assert [t["pct"] for t in cyc] == sorted((t["pct"] for t in cyc), reverse=True)
+    assert not set(d["cyclical_rise"]) & set(d["beyond"])
+
+
+def test_every_topic_has_cycle_excess_and_cyclical_flag(client):
+    """ADR 0019: сэдэв бүрт мөчлөг, илүүдэл (5%-ийн алхмаар), мөчлөгийн өсөлт/бууралт эсэх."""
+    items = client.get("/api/trending").json()["items"]
+    for t in items:
+        assert {"cycle", "excess", "cyclical"} <= set(t), t["article"]
+        fall = (t["pct"] is not None and t["cycle"] is not None
+                and t["pct"] <= -0.10 and t["cycle"] <= -0.10 and t["excess"] > -0.10)
+        assert t["cyclical"] == (_cyclical_rise(t) or fall), t["article"]
+    assert sum(t["cycle"] is not None for t in items) > 250       # 28+ хоногийн түүхтэй бараг бүх сэдэв
+    assert any(t["cyclical"] for t in items)
+
+
+def test_topic_page_cycle_matches_the_list(client):
+    """/api/topic нь сэдвийн feature-ийг тусад нь тооцдог: мөчлөг, илүүдэл нь жагсаалтынхтай ижил."""
+    t = client.get("/api/topic/ChatGPT").json()
+    row = next(x for x in client.get("/api/trending").json()["items"] if x["article"] == "ChatGPT")
+    assert (t["cycle"], t["excess"], t["cyclical"]) == (row["cycle"], row["excess"], row["cyclical"])
+    assert t["cycle"] is not None
 
 
 def test_home_chip_label_agrees_with_arrow_and_fires_count(client):
@@ -37,7 +79,7 @@ def test_home_chip_label_agrees_with_arrow_and_fires_count(client):
         if t["pct"] is not None:
             assert t["label"].startswith(t["arrow"]), (t["article"], t["arrow"], t["label"])
             assert t["label"].startswith("🔥") == t["fire"]
-    assert d["fires"] == sum(t["fire"] for t in d["items"][:d["top_n"]])
+    assert d["fires"] == sum(t["fire"] for t in d["items"] if t["rank"] is not None)   # тайлбар нь жагсаалтын 🔥
 
 
 def _check_forecast(d):

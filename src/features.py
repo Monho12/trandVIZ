@@ -108,16 +108,21 @@ def purge_split_boundary(f: pd.DataFrame) -> pd.DataFrame:
 P = Path(__file__).resolve().parents[1] / "data" / "processed"
 
 
-def build() -> pd.DataFrame:
-    """clean.parquet -> features.parquet. Түүх хүрэлцэхгүй (эхний 28+ өдөр) ба target-гүй мөрийг хасна."""
-    cl = pd.read_parquet(P / "clean.parquet", columns=["date", "article", "category", "y"])
+def frame(cl: pd.DataFrame) -> pd.DataFrame:
+    """Цэвэр түүх ([date, article, category, y, ...]) -> features.parquet-ийн хүснэгт (файл бичихгүй).
+    Түүх хүрэлцэхгүй (эхний 28+ өдөр) ба target-гүй мөрийг хасна."""
     final = json.loads((P / "feature_list.json").read_text(encoding="utf-8"))["features"]
-    f = make_features(cl)
+    f = make_features(cl[["date", "article", "category", "y"]])
     f["split"] = split_of(f["date"])
     num = [c for c in FEATURES_BASE if c != "category"]
     f = f.dropna(subset=num + [f"y_h{h}" for h in HORIZONS])
     f = purge_split_boundary(f)
-    out = f[["date", "article", "split", "y_0"] + [f"y_h{h}" for h in HORIZONS] + final]
+    return f[["date", "article", "split", "y_0"] + [f"y_h{h}" for h in HORIZONS] + final]
+
+
+def build() -> pd.DataFrame:
+    """clean.parquet -> features.parquet."""
+    out = frame(pd.read_parquet(P / "clean.parquet", columns=["date", "article", "category", "y"]))
     out.to_parquet(P / "features.parquet", index=False, compression="zstd")
     return out
 
