@@ -55,7 +55,7 @@
 
 - `.github/workflows/forecast-log.yml` (`main`) → `python -m src.forecast_log run` → `forecast-log` branch. Сангууд нь
   `requirements-ci.txt` = `requirements-app.txt` + golden test-ийн pytest/httpx (бүгд `==`).
-- Branch-ийн бүтэц: `forecasts/YYYY-MM-DD.json` (asof бүрт нэг, дахин бичихгүй), `deltas/YYYY-MM-DD.csv` (тэр ажиллагаа
+- Branch-ийн бүтэц: `forecasts/YYYY-MM-DD.json` (asof бүрт нэг, дахин бичихгүй), `deltas/YYYY-MM-DD.csv` (нэр = delta-ийн сүүлийн өдөр; тэр ажиллагаа
   шинээр татсан түүхий мөр, `table` баганаар pageviews/alias/total), `attempts.jsonl` (оролдлого бүр: цаг, статус
   `logged`/`already_logged`/`not_published`/`error`, Wikimedia-ийн статус, татсан өдрүүд).
 - `was_missing` = asof өдөр сэдвийн **үндсэн нэрийн** мөр API-аас ирээгүй (alias-ийн мөрийг тооцохгүй: alias-ийн уншилт бага,

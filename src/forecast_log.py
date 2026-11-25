@@ -14,7 +14,7 @@ model нь `app/model/` (`src/train.load`). Энд шинэ дүрэм зохи�
 
 Log-ын хавтас (`forecast-log` branch-ийн үндэс):
     forecasts/YYYY-MM-DD.json   asof D-ийн хадгалсан таамаг (нэг удаа бичигдэнэ, хэзээ ч засахгүй)
-    deltas/YYYY-MM-DD.csv       тэр ажиллагаа шинээр татсан түүхий мөрүүд (pageviews, alias, total)
+    deltas/YYYY-MM-DD.csv       тэр ажиллагаа шинээр татсан түүхий мөрүүд (pageviews, alias, total), нэр = сүүлийн өдөр
     attempts.jsonl              оролдлого бүрийн цаг ба статус (Wikimedia-ийн гаргалтын цагийг хожим тохируулахад)
 """
 from __future__ import annotations
@@ -36,7 +36,8 @@ from src import live, serve, train, wiki
 ROOT = Path(__file__).resolve().parents[1]
 APP_REQUIREMENTS = ROOT / "requirements-app.txt"
 
-LOGGED, ALREADY_LOGGED, NOT_PUBLISHED, ERROR = "logged", "already_logged", "not_published", "error"
+# Оролдлогын статус. not_published, error нь src/live.py-ийнхтэй ижил утгатай.
+LOGGED, ALREADY_LOGGED, NOT_PUBLISHED, ERROR = "logged", "already_logged", live.NOT_PUBLISHED, live.ERROR
 DELTA_COLS = ["table", "date", "article", "category", "old_title", "views"]   # total-ийн мөрөнд views = total_views
 
 
@@ -79,12 +80,14 @@ def load_raw(base: live.RawCache, log_dir: Path) -> live.RawCache:
     pv = part.get("pageviews", empty)[["date", "article", "category", "views"]]
     al = part.get("alias", empty)[["date", "views", "old_title", "article"]]
     tot = part.get("total", empty)[["date", "views"]].rename(columns={"views": "total_views"})
-    return live.RawCache(live._concat([base.pageviews, pv]), live._concat([base.alias, al]),
-                         live._concat([base.total, tot]).astype({"total_views": "int64"}))
+    cat = lambda a, b, col: pd.concat([a, b], ignore_index=True).astype({col: "int64"})   # noqa: E731
+    return live.RawCache(cat(base.pageviews, pv, "views"), cat(base.alias, al, "views"), cat(base.total, tot, "total_views"))
 
 
-def save_delta(log_dir: Path, name: pd.Timestamp, old: live.RawCache, new: live.RawCache) -> Path | None:
-    """`new`-д `old`-оос хойш нэмэгдсэн түүхий мөрүүд (old.end-ээс хойшхи огноо) -> deltas/<name>.csv. Шинэ мөргүй бол None."""
+def save_delta(log_dir: Path, old: live.RawCache, new: live.RawCache) -> Path | None:
+    """`new`-д `old`-оос хойш нэмэгдсэн түүхий мөрүүд (old.end-ээс хойшхи огноо) -> deltas/<new.end>.csv. Шинэ мөргүй бол None.
+    Нэр нь delta-ийн сүүлийн өдөр: татах хугацаа бүр өмнөхийнхөө дараагийн өдрөөс эхэлдэг тул нэр давхцахгүй
+    (06:41-д partial -> 09:41-д D гэсэн ч)."""
     after = lambda df: df[df["date"] > old.end]   # noqa: E731
     d = pd.concat([after(new.pageviews).assign(table="pageviews"), after(new.alias).assign(table="alias"),
                    after(new.total).rename(columns={"total_views": "views"}).assign(table="total")],
@@ -92,7 +95,7 @@ def save_delta(log_dir: Path, name: pd.Timestamp, old: live.RawCache, new: live.
     if d.empty:
         return None
     d["date"] = pd.to_datetime(d["date"]).dt.strftime("%Y-%m-%d")
-    path = Path(log_dir) / "deltas" / f"{_day(name)}.csv"
+    path = Path(log_dir) / "deltas" / f"{_day(new.end)}.csv"
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         raise FileExistsError(f"{path}: delta-г дахин бичихгүй")
@@ -184,11 +187,20 @@ def run_day(log_dir: Path, base: live.RawCache, fetcher: live.Fetcher, model, no
 
     if forecast_path(log_dir, asof).exists():
         return done(ALREADY_LOGGED)
+    try:
+        return _compute(log_dir, base, fetcher, model, now, asof, render, golden, done)
+    except Exception as e:   # код/өгөгдлийн алдаа: оролдлогыг бичээд workflow-д дамжуулна (issue нээгдэнэ)
+        done(ERROR, message=f"унасан: {type(e).__name__}: {e}")
+        raise
+
+
+def _compute(log_dir: Path, base, fetcher, model, now: pd.Timestamp, asof: pd.Timestamp, render, golden, done) -> dict:
+    """run_day-ийн их бие: татах -> D бэлэн үү -> таамаг -> Render -> бичих. Буцаахдаа done(статус, ...)-аар л."""
     raw = load_raw(base, log_dir)
     res = live.update_cache(raw, fetcher, now.normalize())
     cache = res.cache
     new_days = sorted({_day(d) for d in cache.total["date"] if d > raw.end})
-    save_delta(log_dir, asof, raw, cache)   # D бэлэн биш ч өмнөх дутуу өдрүүд нэмэгдсэн байж болно (PARTIAL)
+    save_delta(log_dir, raw, cache)   # D бэлэн биш ч өмнөх дутуу өдрүүд нэмэгдсэн байж болно (PARTIAL)
     info = {"wikimedia": res.status, "message": res.message, "fetched_days": new_days}
     if res.status == live.ERROR:
         return done(ERROR, **info)
@@ -274,7 +286,7 @@ def render_client(url: str, timeout: float = RENDER_TIMEOUT, wait: float = RENDE
             r.raise_for_status()
             data = r.json()
             if i == 1 or str(data.get("asof", "")) >= _day(asof):
-                return data
+                break
             sleep(wait)
         return data
     return fetch
@@ -287,7 +299,7 @@ LOG_README = """# forecast-log
 
 - `forecasts/YYYY-MM-DD.json`: asof өдрийн хадгалсан таамаг (model хувилбар, сэдэв бүрийн h1–h3 Δ̂/pct/80% интервал/уншилт,
   `was_missing`, сангийн хувилбар, Render-тэй харьцуулалт). Нэг удаа бичигдэнэ.
-- `deltas/YYYY-MM-DD.csv`: тэр ажиллагаа Wikimedia-аас шинээр татсан түүхий мөрүүд. Дараагийн ажиллагаа
+- `deltas/YYYY-MM-DD.csv`: тэр ажиллагаа Wikimedia-аас шинээр татсан түүхий мөрүүд (нэр = delta-ийн сүүлийн өдөр). Дараагийн ажиллагаа
   `main`-ийн `data/processed/` + эдгээрээс эхэлнэ.
 - `attempts.jsonl`: оролдлого бүрийн цаг ба статус (`logged`, `already_logged`, `not_published`, `error`).
 """

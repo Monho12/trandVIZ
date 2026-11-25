@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: forecast-log branch (байхгүй бол orphan)
+        id: branch
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -59,12 +60,15 @@ jobs:
           python -m src.forecast_log run --log-dir log --render-url "$RENDER_URL" --golden "${{ steps.golden.outcome }}" | tee run.txt
           echo "summary=$(tail -n 1 run.txt)" >> "$GITHUB_OUTPUT"
 
+      # Таамаг тооцох алхам унасан ч (оролдлого error статустай бичигдсэн) push хийнэ: оролдлого бүр log-д үлдэнэ.
       - name: Commit + push (зөвхөн forecast-log)
+        if: always() && steps.branch.outcome == 'success'
         env:
-          SUMMARY: ${{ steps.run.outputs.summary }}
+          SUMMARY: ${{ steps.run.outputs.summary || 'таамаг тооцох алхам бүтэлгүйтэв' }}
         run: |
           cd log
           git add -A
+          git diff --cached --quiet && exit 0
           git commit -q -m "forecast-log: $SUMMARY"
           git push origin "HEAD:$LOG_BRANCH"
 

@@ -1,17 +1,21 @@
 """Хадгалсан таамгийн өдөр тутмын log (ADR 0016, #46): src/forecast_log.run_day-ийг бодит data/processed + app/model дээр,
 хуурамч Wikimedia ба Render-ээр (сүлжээгүй) end-to-end шалгана.  pytest -q"""
+import copy
 import json
+import os
 import sys
 from pathlib import Path
 
 import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from src import forecast_log, live, train  # noqa: E402
+import app.main as m  # noqa: E402
+from src import forecast_log, live, serve, train  # noqa: E402
 
-BASE_END = pd.Timestamp("2026-11-10")      # data/processed-ийн сүүлийн өдөр
+BASE_END = pd.Timestamp("2026-11-10")      # суурь = data/processed-ийг энэ өдрөөр тайрсан (өгөгдөл шинэчлэгдсэн ч тест хэвээр)
 D = pd.Timestamp("2026-11-11")             # 2026-11-12-нд ажиллахад asof = өчигдөр
 RUN = pd.Timestamp("2026-11-12 06:41")     # эхний cron (UTC)
 RETRY = pd.Timestamp("2026-11-12 09:41")   # дахин оролдлого
@@ -20,6 +24,8 @@ RETRY = pd.Timestamp("2026-11-12 09:41")   # дахин оролдлого
 @pytest.fixture(scope="module")
 def base() -> live.RawCache:
     raw = live.RawCache.load(ROOT / "data" / "processed")
+    upto = lambda df: df[df["date"] <= BASE_END].reset_index(drop=True)   # noqa: E731
+    raw = live.RawCache(upto(raw.pageviews), upto(raw.alias), upto(raw.total))
     assert raw.end == BASE_END
     return raw
 
@@ -114,7 +120,6 @@ def test_next_run_replays_base_plus_deltas_and_fetches_only_new_days(tmp_path, b
 
     server = live.update_cache(base, FakeWikimedia(base, published_through=d2), nxt.normalize()).cache
     assert server.end == d2
-    from src import serve
     want = serve.predict(model, serve.Snapshot.from_raw(server).universe).set_index("article")
     got = {t["article"]: t for t in read_json(tmp_path / "forecasts" / "2026-11-12.json")["topics"]}
     for h in (1, 2, 3):
@@ -134,18 +139,19 @@ def test_retry_after_logged_day_fetches_nothing_and_keeps_the_record(tmp_path, b
 @pytest.fixture(scope="module")
 def render_response(base, tmp_path_factory):
     """Render-ийн /api/trending: жинхэнэ сервер (app.main) ижил өгөгдөл дээр (D хүртэл татсан cache нь data/live/-д)."""
-    import os
-    from fastapi.testclient import TestClient
-    os.environ["SHUUGIAN_REFRESH"] = "0"
-    import app.main as m
     live_dir = tmp_path_factory.mktemp("render_live")
     live.update_cache(base, FakeWikimedia(base, published_through=D, missing={"ChatGPT"}), RUN.normalize()).cache.save(live_dir)
-    old, m.LIVE_DIR = m.LIVE_DIR, live_dir
+    old_dir, old_env = m.LIVE_DIR, os.environ.get("SHUUGIAN_REFRESH")
+    m.LIVE_DIR, os.environ["SHUUGIAN_REFRESH"] = live_dir, "0"
     try:
         with TestClient(m.app) as c:
             return c.get("/api/trending").json()
     finally:
-        m.LIVE_DIR = old
+        m.LIVE_DIR = old_dir
+        if old_env is None:
+            os.environ.pop("SHUUGIAN_REFRESH", None)
+        else:
+            os.environ["SHUUGIAN_REFRESH"] = old_env
 
 
 def run_with_render(tmp_path, base, model, render):
@@ -166,7 +172,6 @@ def test_render_with_same_asof_matches_exactly(tmp_path, base, model, render_res
 def test_render_difference_is_counted_with_largest_gap_and_missing_flag(tmp_path, base, model, render_response):
     """Render хоёр сэдвийг өөрөөр харуулсан: ChatGPT-ийн D өдрийн мөр log-д ирээгүй (was_missing, Render-д ирсэн байж болно),
     Taylor_Swift-ийн h2 нь +15 п.п. Хоёулаа тоологдож, хамгийн их зөрүү бичигдэнэ."""
-    import copy
     theirs = copy.deepcopy(render_response)
     items = {i["article"]: i for i in theirs["items"]}
     items["ChatGPT"]["forecast"][0]["y"] += 40
@@ -239,3 +244,32 @@ def test_days_before_the_log_started_are_not_gaps(tmp_path):
     log = fake_log(tmp_path, [], {"2026-11-11": ["not_published", "not_published"]})
     assert forecast_log.gap_alert(log, RETRY) is None
     assert forecast_log.gap_alert(tmp_path / "empty", RETRY) is None
+
+
+def test_partial_catch_up_then_retry_logs_the_day(tmp_path, base, model):
+    """Цоорхой өдрийн (11-11) дараа: 06:41-д 11-11 ирсэн ч 11-12 хараахан алга (partial) -> 11-11-ийн delta хадгалагдана,
+    таамаггүй. 09:41-ийн дахин оролдлого зөвхөн 11-12-ыг татаж бичнэ (delta-ууд мөргөлдөхгүй)."""
+    d2 = pd.Timestamp("2026-11-12")
+    att = forecast_log.run_day(tmp_path, base, FakeWikimedia(base, published_through=D), model, d2 + pd.Timedelta(hours=30, minutes=41))
+    assert att["status"] == forecast_log.NOT_PUBLISHED and att["fetched_days"] == ["2026-11-11"]
+    wiki = FakeWikimedia(base, published_through=d2)
+    att = forecast_log.run_day(tmp_path, base, wiki, model, d2 + pd.Timedelta(hours=33, minutes=41))
+    assert att["status"] == forecast_log.LOGGED and att["fetched_days"] == ["2026-11-12"]
+    assert {(s, e) for _, _, s, e in wiki.calls} == {(d2, d2)}
+    assert [p.name for p in sorted(tmp_path.glob("deltas/*.csv"))] == ["2026-11-11.csv", "2026-11-12.csv"]
+    assert [p.name for p in tmp_path.glob("forecasts/*.json")] == ["2026-11-12.json"]
+
+
+def test_crashing_attempt_is_still_recorded(tmp_path, base, model):
+    """Тооцоолол унавал (код/өгөгдлийн алдаа): оролдлого error статустай бичигдэж, алдаа workflow-д дамжина (issue)."""
+    class Broken:
+        meta, model_hash = model.meta, model.model_hash
+
+        def predict(self, X, h):
+            raise RuntimeError("model эвдэрсэн")
+
+    with pytest.raises(RuntimeError):
+        forecast_log.run_day(tmp_path, base, FakeWikimedia(base, published_through=D), Broken(), RUN)
+    last = attempts(tmp_path)[-1]
+    assert last["status"] == forecast_log.ERROR and "эвдэрсэн" in last["message"]
+    assert not (tmp_path / "forecasts").exists()
