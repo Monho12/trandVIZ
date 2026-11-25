@@ -51,7 +51,38 @@
 - Model сургасан орчны CatBoost хувилбар `meta.json`-д бичигдээгүй. `tests/test_golden.py` нь `requirements-app.txt`-ийн орчинд
   `/api/*`-ийн хариуг шалгадаг тул Action-д мөн ажиллуулна. Сангийн хувилбарыг мөр бүрт бичдэг тул зөрүү гарвал харагдана.
 
+## Хэрэгжүүлэлт (#46, 2026-11-25)
+
+- `.github/workflows/forecast-log.yml` (`main`) → `python -m src.forecast_log run` → `forecast-log` branch. Сангууд нь
+  `requirements-ci.txt` = `requirements-app.txt` + golden test-ийн pytest/httpx (бүгд `==`).
+- Branch-ийн бүтэц: `forecasts/YYYY-MM-DD.json` (asof бүрт нэг, дахин бичихгүй), `deltas/YYYY-MM-DD.csv` (тэр ажиллагаа
+  шинээр татсан түүхий мөр, `table` баганаар pageviews/alias/total), `attempts.jsonl` (оролдлого бүр: цаг, статус
+  `logged`/`already_logged`/`not_published`/`error`, Wikimedia-ийн статус, татсан өдрүүд).
+- `was_missing` = asof өдөр сэдвийн **үндсэн нэрийн** мөр API-аас ирээгүй (alias-ийн мөрийг тооцохгүй: alias-ийн уншилт бага,
+  0 байх нь хэвийн).
+- D бэлэн биш ч өмнөх дутуу өдрүүд нэмэгдсэн бол (`partial`) тэдний delta-г хадгална (дахин татахгүй, тэр үед бэлэн
+  байсан өгөгдөл хэвээр). Таамгийг зөвхөн D-д л бичнэ.
+- Render-тэй харьцуулалт: манай талын `/api/trending`-ийг ижил кодоор (`serve.trending`) тооцоод сэдэв бүрийн h1–h3 `pct`, `y`-г
+  жишнэ (тайралт, бүхэлчлэл нь өөрөө ижил). Render free унтдаг тул сэрээд эхний хариу нь хуучин asof-той бол 5 минут хүлээж
+  нэг удаа дахин асууна (сэрсэн Render дутуу өдрүүдээ ~3 минут татдаг).
+- Golden test Action дотор ажиллана. Бүтэлгүйтвэл таамаг хадгалагдана (үр дүн нь `golden_test` талбарт), дараа нь workflow
+  бүтэлгүйтэж issue нээгдэнэ.
+- Мэдэгдэл: workflow бүтэлгүйтвэл, эсвэл өчигдөр ба уржигдар хоёулаа цоорхой (хадгалсан таамаггүй, D+1-ний 09:41 UTC өнгөрсөн)
+  бол GitHub issue. Ижил гарчигтай нээлттэй issue байвал шинийг нээхгүй, comment нэмнэ (`src/gh_issue.py`).
+- 8-р зүйл (`incomplete_at_publish`) энд хийгдээгүй: X% нь давтамжийн скриптээр (#54) тогтоогдоогүй. Хадгалах үеийн
+  `total_views` нь бичлэг бүрийн `data.total_views`-д байгаа тул хожим харьцуулж болно.
+
 ## Эрсдэл
 
-- Public repo 60 хоног идэвхгүй бол GitHub scheduled workflow-ийг унтраадаг. Bot-ын commit үүнийг тооцогдох эсэхийг шалгах. Цоорхой
-  олон хоног үргэлжилбэл анзаарах арга хэрэгтэй.
+- **60 хоногийн дүрэм (шалгасан 2026-11-25, GitHub Docs-ийн эх `github/docs` repo-ийн markdown-аас; docs.github.com энэ
+  session-оос хаалттай байсан).** Docs: *"In a public repository, scheduled workflows are automatically disabled when no
+  repository activity has occurred in 60 days."* мөн *"Scheduled workflows will only run on the default branch."*
+  ("events-that-trigger-workflows", `schedule`; "disable-and-enable-workflows"). **"Repository activity" гэж юуг хэлэхийг docs
+  тодорхойлоогүй**, workflow-ийн өөрийн (`GITHUB_TOKEN`, github-actions[bot]) commit эсвэл default биш branch-ийн commit
+  тооцогдох эсэхийн талаар юу ч хэлээгүй. Тиймээс **bot-ын `forecast-log` commit-д найдахгүй**: тооцогдоно гэж үзэх баримт алга.
+  - Үр дагавар: `main`-д 60 хоног хүний идэвх (push г.м.) байхгүй бол workflow чимээгүй унтарч, цоорхойн issue ч нээгдэхгүй
+    (мэдэгдэл нь тэр workflow дотор ажилладаг).
+  - Сэргээх: Actions таб → forecast-log → "Enable workflow", эсвэл `gh workflow enable forecast-log.yml`, эсвэл REST API
+    (docs: "You can also disable and enable a workflow using the REST API"). Docs-ийн дагуу write эрхтэй хэрэглэгч `cron`-ийг
+    өөрчилсөн commit хийвэл мөн идэвхжинэ. Унтарсан хугацаа log-д цоорхой хэвээр үлдэнэ (нөхөхгүй).
+- Цоорхой олон хоног үргэлжилбэл: workflow ажиллаж байгаа л бол 2 дахь өдрөөс issue нээгдэнэ (дээрх).
