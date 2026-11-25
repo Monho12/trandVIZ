@@ -37,10 +37,10 @@
   const cache = {};
   const api = (p) => (cache[p] ||= fetch(p).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }));
   function meta(d) {
-    document.getElementById("asof").textContent = `Өгөгдөл: ${C.longDate(d.asof)} хүртэл`;
+    document.getElementById("asof").textContent = `Өгөгдөл: ${W.longDate(d.asof)} хүртэл`;
     const s = document.getElementById("stale-note");
     s.hidden = !d.stale;
-    if (d.stale) s.textContent = `Өгөгдөл ${d.age_days} өдрийн өмнөх (${C.md(d.asof)} хүртэл): Wikimedia-аас шинэчилж амжаагүй байна.`;
+    if (d.stale) s.textContent = `Өгөгдөл ${d.age_days} өдрийн өмнөх (${W.longDate(d.asof)} хүртэл): Wikimedia-аас шинэчилж амжаагүй байна.`;
   }
 
   // Сэдвийн дэлгэрэнгүй хэсэг (нүүр болон сэдвийн хуудсанд хоёуланд)
@@ -55,7 +55,7 @@
       <dl class="tiles">
         <div class="tile t-blue"><dt>${W.dayTile(d.asof, d.age_days)}</dt><dd>${C.fmt(t.views)}<small>уншилт</small></dd></div>
         <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `×${t.ratio}` : ""}</small></dd></div>
-        <div class="tile t-forecast"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>уншилт</small><small class="sub">${pct(t, d)}</small><small class="iv">${iv(t)}</small></dd></div>
+        <div class="tile t-forecast"><dt>${W.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>уншилт</small><small class="sub">${pct(t, d)}</small><small class="iv">${iv(t)}</small></dd></div>
       </dl>
       <p class="chart-h">Өдөр бүрийн уншилт</p>
       <div class="chart" id="chart"></div>
@@ -108,7 +108,7 @@
         </div>
       </section>`;
 
-    draw(() => C.treemap(document.getElementById("tmap"), mp.items, { emoji: EMO, label: `Уншилтын газрын зураг, ${C.md(mp.asof)}` }));
+    draw(() => C.treemap(document.getElementById("tmap"), mp.items, { emoji: EMO, label: `Уншилтын газрын зураг, ${W.longDate(mp.asof)}` }));
     const byKey = Object.fromEntries(cs.categories.map((c) => [c.key, c.topics]));
     draw(() => main.querySelectorAll(".sp").forEach((b) => {
       const t = byKey[b.dataset.k].find((x) => x.article === b.dataset.a);
@@ -190,7 +190,7 @@
         <table class="fc">
           <caption>Ирэх 3 өдрийн таамагласан уншилт. ${W.TIP.table}</caption>
           <thead><tr><th>Өдөр</th><th>Доод</th><th>Таамаг</th><th>Дээд</th></tr></thead>
-          <tbody>${t.forecast.map((f) => `<tr><td>${C.longDate(f.d)}</td><td>${C.fmt(f.lo)}</td><td class="y">${C.fmt(f.y)}</td><td>${C.fmt(f.hi)}</td></tr>`).join("")}</tbody>
+          <tbody>${t.forecast.map((f) => `<tr><td>${W.longDate(f.d, t.asof)}</td><td>${C.fmt(f.lo)}</td><td class="y">${C.fmt(f.y)}</td><td>${C.fmt(f.hi)}</td></tr>`).join("")}</tbody>
         </table>
       </section>`;
     draw(drawFocus(t, t));
@@ -218,8 +218,8 @@
     main.innerHTML = `
       <h1 class="page-h">Загвар хэр сайн таамагладаг вэ?</h1>
       <p class="lead">Энгийн аргаас илүү зөв үү?</p>
-      <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b> ${esc(m.live.version)}, сургасан ${C.md(m.live.trained_at.slice(0, 10))},
-        өгөгдөл ${C.md(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
+      <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b> ${esc(m.live.version)}, сургасан ${W.longDate(m.live.trained_at, m.live.data_asof)},
+        өгөгдөл ${W.longDate(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
       <div class="mgrid">
         <div class="mcard">
           <h3>Таамаг хэр зөрдөг вэ?</h3>

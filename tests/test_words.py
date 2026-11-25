@@ -11,7 +11,7 @@ from src import scoring  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = node_js.STATIC
-ASOF = "2026-11-09"   # сайтын огнооны формат: "11/9"
+ASOF = "2026-11-09"   # сайтын огноо (ADR 0018): өгүүлбэрт "11-р сарын 9", карт/тэнхлэгт "11.09"
 
 
 def words(name: str, *args):
@@ -19,11 +19,28 @@ def words(name: str, *args):
     return node_js.call("words.js", name, *args)
 
 
+def test_short_date_is_month_dot_day_zero_padded():
+    """Карт, графикийн тэнхлэг, шошго (ADR 0018): "11.09", "11/9" биш."""
+    assert words("md", ASOF) == "11.09"
+    assert words("md", "2026-01-05") == "01.05"
+    assert words("md", "2026-12-31") == "12.31"
+
+
+def test_long_date_for_sentences_names_the_month_and_adds_the_year_only_when_it_differs():
+    """Өгүүлбэр, tooltip, гарчиг (ADR 0018): "11-р сарын 9"; жил нь ref-ийнхээс өөр бол "2025 оны 11-р сарын 9"."""
+    assert words("longDate", ASOF) == "11-р сарын 9"
+    assert words("longDate", "2026-01-05") == "1-р сарын 5"
+    assert words("longDate", ASOF, "2026-11-12") == "11-р сарын 9"
+    assert words("longDate", "2025-12-31", "2026-01-02") == "2025 оны 12-р сарын 31"
+    assert words("longDate", "2027-01-01", "2026-12-31") == "2027 оны 1-р сарын 1"
+    assert words("longDate", "2026-11-10T03:15:00+08:00") == "11-р сарын 10"    # /api/model-ийн trained_at
+
+
 def test_surge_label_says_yesterday_only_when_asof_is_yesterday():
     assert words("surgeText", 3, ASOF, 1) == "өчигдөр ×3"
-    assert words("surgeText", 3, ASOF, 4) == "11/9 ×3"       # хуучирсан өгөгдөл: огноо
-    assert words("surgeText", 3, ASOF, 0) == "11/9 ×3"       # asof = өнөөдөр ч "өчигдөр" биш
-    assert words("surgeText", 2.4, "2026-01-05", 2) == "1/5 ×2.4"
+    assert words("surgeText", 3, ASOF, 4) == "11.09 ×3"     # хуучирсан өгөгдөл: огноо
+    assert words("surgeText", 3, ASOF, 0) == "11.09 ×3"     # asof = өнөөдөр ч "өчигдөр" биш
+    assert words("surgeText", 2.4, "2026-01-05", 2) == "01.05 ×2.4"
 
 
 def test_short_surge_label_has_no_day():
@@ -32,16 +49,16 @@ def test_short_surge_label_has_no_day():
 
 
 def test_surge_tooltip_always_has_the_date():
-    assert words("surgeTip", 3, ASOF) == "11/9-нд ердийн өдрөөс 3 дахин их уншигдсан"
+    assert words("surgeTip", 3, ASOF) == "11-р сарын 9-нд ердийн өдрөөс 3 дахин их уншигдсан"
 
 
 def test_day_word_for_titles_and_tiles():
     assert words("day", ASOF, 1) == "өчигдөр"
-    assert words("day", ASOF, 3) == "11/9"
+    assert words("day", ASOF, 3) == "11.09"
     assert words("dayTile", ASOF, 1) == "Өчигдөр"
-    assert words("dayTile", ASOF, 3) == "11/9"
+    assert words("dayTile", ASOF, 3) == "11.09"
     assert words("homeTitle", ASOF, 1) == "Өчигдөр дэлхий юуг уншив?"
-    assert words("homeTitle", ASOF, 3) == "11/9-нд дэлхий юуг уншив?"
+    assert words("homeTitle", ASOF, 3) == "11-р сарын 9-нд дэлхий юуг уншив?"
 
 
 def test_interval_reads_as_8_of_10_times():
@@ -52,7 +69,7 @@ def test_interval_reads_as_8_of_10_times():
 def test_no_views_label_does_not_hardcode_yesterday():
     na = scoring.LABEL_NA                   # "— (өчигдөр уншилтгүй)": API хэвээр
     assert words("forecastLabel", na, ASOF, 1) == na
-    assert words("forecastLabel", na, ASOF, 4) == "— (11/9-нд уншилтгүй)"
+    assert words("forecastLabel", na, ASOF, 4) == "— (11.09-нд уншилтгүй)"
     assert words("forecastLabel", "🔥 +35%", ASOF, 4) == "🔥 +35%"
 
 
@@ -68,21 +85,21 @@ def test_static_files_have_no_banned_words_or_old_colour_name():
     assert "--forecast: #e63946" in (STATIC / "styles.css").read_text(encoding="utf-8")
 
 
-DATES = "11/11–11/13"
+DATES = "11.11–11.13"   # /api/*-ийн dates (src/serve.py: dates_text)
 
 
 def test_trend_lead_with_fires_names_dates_and_threshold_in_percent():
     s = words("trendLead", DATES, 3, 0.25, 10)
-    assert s == ("11/11–11/13-нд анхаарал нь хамгийн их өсөх 10 сэдэв (model-ийн таамаг). "
+    assert s == ("11.11–11.13-нд анхаарал нь хамгийн их өсөх 10 сэдэв (model-ийн таамаг). "
                  "🔥 = 25% ба түүнээс их өсөлт.")
     assert "0.25" not in s
-    assert words("trendLead", DATES, 1, 0.3, 8).startswith("11/11–11/13-нд анхаарал нь хамгийн их өсөх 8 сэдэв")
+    assert words("trendLead", DATES, 1, 0.3, 8).startswith("11.11–11.13-нд анхаарал нь хамгийн их өсөх 8 сэдэв")
     assert "🔥 = 30% ба" in words("trendLead", DATES, 1, 0.3, 8)
 
 
 def test_trend_lead_without_fires_does_not_mention_a_threshold():
     s = words("trendLead", DATES, 0, 0.25, 10)
-    assert s == "11/11–11/13: онцгой өсөлт (🔥) таамаглагдаагүй. Хамгийн өндөр таамагтай 10 сэдэв."
+    assert s == "11.11–11.13: онцгой өсөлт (🔥) таамаглагдаагүй. Хамгийн өндөр таамагтай 10 сэдэв."
     assert "ба түүнээс их" not in s and "хамгийн их өсөх" not in s
 
 
@@ -95,7 +112,7 @@ def test_category_lead_counts_from_data_and_skips_empty_reason():
         "10 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Карт бүрт өчигдөр хамгийн их уншигдсан 4 нь. "
         "▲ ×2 = ердийн өдрөөс 2 дахин их.")
     assert words("catLead", 9, 14.6, 3, ASOF, 4, "Учир нь X.") == (
-        "9 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Учир нь X. Карт бүрт 11/9-нд хамгийн их уншигдсан 3 нь. "
+        "9 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Учир нь X. Карт бүрт 11-р сарын 9-нд хамгийн их уншигдсан 3 нь. "
         "▲ ×2 = ердийн өдрөөс 2 дахин их.")
 
 
@@ -115,9 +132,9 @@ def test_see_all_link_text():
 def test_list_lead_explains_the_bars_and_names_the_asof_date():
     assert words("listLead", ASOF, 1) == (
         "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. ▲ = өчигдөр ердийнхөөс хэд дахин их. "
-        "Ангилал бүрт 11/9-нд хамгийн их уншигдсанаас нь эхлэн.")
+        "Ангилал бүрт 11-р сарын 9-нд хамгийн их уншигдсанаас нь эхлэн.")
     stale = words("listLead", ASOF, 4)       # хуучирсан өгөгдөл: "өчигдөр" гэж хэлэхгүй
-    assert "▲ = 11/9 ердийнхөөс хэд дахин их." in stale and "өчигдөр" not in stale
+    assert "▲ = 11-р сарын 9 ердийнхөөс хэд дахин их." in stale and "өчигдөр" not in stale
 
 
 def test_expand_button_text_has_the_count_and_no_arrow():
@@ -190,3 +207,29 @@ def test_facts_page_has_no_stale_window_words_or_red():
     css = (STATIC / "styles.css").read_text(encoding="utf-8")
     line_rules = "\n".join(ln for ln in css.splitlines() if ".l-c" in ln)
     assert line_rules and not re.search(r"#e63946|#b5222e", line_rules)
+
+
+# ── ADR 0018: сайтад "11/9" маягийн налуу зураастай огноо үлдээгүй, огноо бүр words.js-ээр дамжина ──
+SLASH_DATE = re.compile(r"(?<![\d/])\d{1,2}/\d{1,2}(?![\d/])|\$\{[^}]*\}/\$\{")   # "11/9", "11/11–11/13", `${m}/${d}`
+
+
+def test_static_files_have_no_slash_dates():
+    for f in [*STATIC.glob("*.js"), *STATIC.glob("*.html"), *STATIC.glob("*.css")]:
+        hits = SLASH_DATE.findall(f.read_text(encoding="utf-8"))
+        assert not hits, f"{f.name}: {hits}"
+
+
+def test_only_words_js_formats_dates():
+    """charts.js, app.js нь огноог өөрсдөө задалж, бичихгүй: Words.md / Words.longDate / Words.span-ийг дуудна."""
+    own = re.compile(r'split\("-"\)|сарын|-р сар|padStart|getMonth|getDate|toLocale(Date)?String|\.slice\(5')
+    for f in STATIC.glob("*.js"):
+        if f.name == "words.js":
+            continue
+        code = re.sub(r"/\*.*?\*/|(?<!:)//[^\n]*", "", f.read_text(encoding="utf-8"), flags=re.S)   # тайлбарыг алгасна
+        hits = [m.group(0) for m in own.finditer(code)]
+        assert not hits, f"{f.name}: огноог өөрөө бичсэн {hits}"
+
+
+def test_insights_text_has_no_slash_dates():
+    text = (ROOT / "app" / "data" / "insights.json").read_text(encoding="utf-8")
+    assert not SLASH_DATE.findall(text)
