@@ -90,8 +90,17 @@ def test_typical_swing_is_expm1_of_sigma():
 
 @pytest.mark.parametrize("y_t,want", [(1.1, 18), (1.2, 18), (1.21, 0), (2.0, 0)])
 def test_similar_days_counts_window_days_at_least_as_high_as_t(y_t, want):
-    """"Сүүлийн 2 сард ийм өдөр хэдэн удаа": t−59 … t−7-д y ≥ y_t өдрийн тоо. Цонхонд 1.2 нь 18 удаа (k = 8, 11, …, 59)."""
+    """"Сүүлийн 2 сард ийм өдөр хэдэн удаа": t−59 … t−1-д y ≥ y_t өдрийн тоо. t−59 … t−7-д 1.2 нь 18 удаа (k = 8, 11, …, 59),
+    t−6 … t−1 нь 1.0."""
     assert at_t(frame({**cycle_window(), 0: y_t}))["similar_days"] == want
+
+
+def test_similar_days_includes_the_last_week_unlike_z():
+    """Огцом өсөлт 3 өдрийн өмнө эхэлсэн бол (t−3 … t−1 нь y = 5) "ийм өдөр нэг ч удаа гараагүй" гэвэл худал: 3 удаа.
+    z нь сүүлийн 7 хоноггүй цонхоор хэвээр (3.372)."""
+    r = at_t(frame({**cycle_window(), 1: 5.0, 2: 5.0, 3: 5.0, 0: 2.0}))
+    assert r["similar_days"] == 3
+    assert r["z"] == pytest.approx(3.372, abs=1e-3)
 
 
 def totals(t_value: float, values=(0.98, 1.0, 1.02), base: float = 2e8) -> pd.DataFrame:

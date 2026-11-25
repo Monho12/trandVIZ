@@ -16,16 +16,19 @@ import pandas as pd
 from numpy.lib.stride_tricks import sliding_window_view
 
 WINDOW_FROM, WINDOW_TO = 59, 7        # t−59 … t−7
-WINDOW = WINDOW_FROM - WINDOW_TO + 1  # 53 өдөр
 MIN_POINTS = 28
 MAD_K, MAD_FLOOR = 1.4826, 0.05
 Z_ANOMALY = 3.0
+RECENT_FROM = 59                      # "сүүлийн 2 сард ийм өдөр хэдэн удаа": t−59 … t−1 (сүүлийн 7 хоног ОРНО)
+# Нийт уншилт (ADR 0017, "Хуваагчийн эрсдэл"): z = log(нийт) дээр, ижил цонх, MAD floor-гүй
+# (нийт уншилт өдөрт ±3%-иар л хэлбэлздэг тул 0.05 floor бол 2024-11-06-ний +13%-ийг ч барихгүй). |z| ≥ 4 бол өдрийн мөр.
+Z_TOTAL = 4.0
 
 
-def _windows(a: np.ndarray) -> np.ndarray:
-    """a: нэг сэдвийн өдөр тутмын цуваа. Мөр i = a-ийн i−59 … i−7 (эхэнд нь NaN)."""
-    pad = np.concatenate([np.full(WINDOW_FROM, np.nan), a.astype(float)])
-    return sliding_window_view(pad, WINDOW)[:len(a)]
+def _windows(a: np.ndarray, start: int = WINDOW_FROM, end: int = WINDOW_TO) -> np.ndarray:
+    """a: нэг сэдвийн өдөр тутмын цуваа. Мөр i = a-ийн i−start … i−end (эхэнд нь NaN)."""
+    pad = np.concatenate([np.full(start, np.nan), a.astype(float)])
+    return sliding_window_view(pad, start - end + 1)[:len(a)]
 
 
 def _nanmedian(w: np.ndarray) -> np.ndarray:
@@ -48,7 +51,8 @@ def score(df: pd.DataFrame) -> pd.DataFrame:
       views_ratio   уншилт ÷ цонхны медиан уншилт (хаалтанд харуулах түүхий харьцаа)
       normal        "ердийн өдөр" = цонхны медиан уншилт
       typical_pct   сэдвийн ердийн хэлбэлзэл ±: expm1(1.4826 · max(MAD, 0.05))
-      similar_days  "сүүлийн 2 сард ийм өдөр хэдэн удаа": цонхны y ≥ y_t өдрийн тоо"""
+      similar_days  "сүүлийн 2 сард ийм өдөр хэдэн удаа": t−59 … t−1-ийн y ≥ y_t өдрийн тоо. z-ийн цонхноос ялгаатай нь
+                    сүүлийн 7 хоног орно: 3 өдрийн өмнө эхэлсэн өсөлтийг "нэг ч удаа гараагүй" гэвэл худал."""
     d = df.sort_values(["article", "date"])
     parts = []
     for _, g in d.groupby("article", observed=True, sort=False):
@@ -62,14 +66,10 @@ def score(df: pd.DataFrame) -> pd.DataFrame:
         parts.append(pd.DataFrame({
             "z": z, "anomaly": z >= Z_ANOMALY,
             "ratio": _ratio(x, _nanmedian(_windows(x))), "views_ratio": _ratio(v, normal), "normal": normal,
-            "typical_pct": np.expm1(sigma), "similar_days": np.count_nonzero(w >= y[:, None], axis=1),
+            "typical_pct": np.expm1(sigma), "similar_days": np.count_nonzero(_windows(y, RECENT_FROM, 1) >= y[:, None], axis=1),
         }, index=g.index))
     return pd.concat(parts).reindex(df.index)
 
-
-# Нийт уншилт (ADR 0017, "Хуваагчийн эрсдэл"): z = log(нийт) дээр, ижил цонх, MAD floor-гүй
-# (нийт уншилт өдөрт ±3%-иар л хэлбэлздэг тул 0.05 floor бол 2024-11-06-ний +13%-ийг ч барихгүй). |z| ≥ 4 бол өдрийн мөр.
-Z_TOTAL = 4.0
 
 
 def total_note(total: pd.DataFrame, asof: pd.Timestamp) -> dict | None:

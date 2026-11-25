@@ -15,7 +15,7 @@
   const href = (a) => "#/topic/" + encodeURIComponent(a);
   // ▲ = өнгөрсөн (ADR 0014). Anomaly ⇔ анхаарлын robust z ≥ 3, ×N нь анхаарал дээр (ADR 0017, API-ийн t.anomaly, t.ratio).
   // t: /api/*-ийн сэдэв, d: asof ба age_days-тэй хариу (meta_block)
-  const surge = (t, d, short) => t.anomaly
+  const surge = (t, d, short) => t.anomaly && t.ratio != null   // ×N тодорхойгүй (ердийн өдөр 0 анхаарал) бол тэмдэггүй
     ? `<span class="surge" title="${esc(W.surgeTip(t, d.asof))}">${esc(W.surgeText(t.ratio, d.asof, d.age_days, short))}</span>`
     : `<span class="surge calm">ердийн</span>`;
   const last = (t) => t.history[t.history.length - 1].v;
@@ -54,7 +54,7 @@
       </div>
       <dl class="tiles">
         <div class="tile t-blue"><dt>${W.dayTile(d.asof, d.age_days)}</dt><dd>${C.fmt(t.views)}<small>уншилт</small></dd></div>
-        <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${t.normal == null ? "—" : C.fmt(t.normal)}<small>${t.anomaly
+        <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${t.normal == null ? "—" : C.fmt(t.normal)}<small>${t.anomaly && t.ratio != null
           ? tipped(`анхаарал ×${t.ratio}`, W.surgeTip(t, d.asof)) : ""}</small></dd></div>
         <div class="tile t-forecast"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>уншилт</small><small class="sub">${pct(t, d)}</small><small class="iv">${iv(t)}</small></dd></div>
       </dl>

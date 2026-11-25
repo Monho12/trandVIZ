@@ -321,7 +321,7 @@
       a.setAttribute("aria-label", `${r.title}: ${fmt(r.views)} уншилт, анхаарал ердийнхөөс ×${r.ratio}${raw}`);
       const big = r.w > 120 && r.h > 70, mid = r.w > 56 && r.h > 34;
       if (mid) a.innerHTML = `<span class="tm-t${big ? " tm-big" : ""}">${emoji[r.category] || ""} ${r.title}</span>` +
-        (big ? `<span class="tm-v">${fmt(r.views)}, ×${r.ratio}</span>` : "");
+        (big ? `<span class="tm-v">${fmt(r.views)}, анхаарал ×${r.ratio}</span>` : "");   // ×N нь анхаарал (ADR 0017)
       a.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Анхаарал ердийнхөөс ×${r.ratio}${raw}</span>`));
       a.addEventListener("pointerleave", hideTip);
       box.appendChild(a);
