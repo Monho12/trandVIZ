@@ -19,13 +19,12 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src import cycle, scoring, situation  # noqa: E402
 from src.features import HORIZONS  # noqa: E402
-from src.scoring import DECLINING  # noqa: E402
 
 
 def faded(actual_pct_h3) -> np.ndarray:
     """Бодит үр дүн (ADR 0021): h3 өдрийн бодит pct ≤ −10% → унтарсан. "3 өдрийн дотор аль нэг өдөр" биш."""
     with np.errstate(invalid="ignore"):
-        return np.asarray(actual_pct_h3, dtype=float) <= DECLINING
+        return situation.HELD["fade"](np.asarray(actual_pct_h3, dtype=float))
 
 
 def per_day(mask, dates: pd.Series, days: pd.Index) -> pd.Series:
@@ -48,19 +47,21 @@ def verdict_numbers(df: pd.DataFrame) -> dict:
             "days_zero_continue": int((k == 0).sum()), "days_one_continue": int((k == 1).sum())}
 
 
-def bold_numbers(df: pd.DataFrame, T: float) -> dict:
-    """#6, #7 (ADR 0026). df: [date, anomaly, pred_pct, cycle]. Хүчтэй өсөлтийн таамаг = pct ≥ T; тод тоо = хүчтэй ба
-    мөчлөгийн өсөлт биш (ADR 0019); тод үг = Anomaly-ийн "үргэлжлэх". "Тод зүйлгүй өдөр" = тод тоо ч, тод үг ч 0."""
+def strong_numbers(df: pd.DataFrame, T: float) -> dict:
+    """#6, #7 (ADR 0026). df: [date, anomaly, pred_pct, cycle].
+      pct_ge_T  таамагласан pct ≥ T, мөчлөгийн өсөлт ОРСОН (#6, ADR 0026-ийн хуучин "~3.8")
+      strong    **Хүчтэй өсөлтийн таамаг** (CONTEXT.md) = pct ≥ T ба мөчлөгийн өсөлт биш (ADR 0019): сайтын тод тоо
+    "Тод зүйлгүй өдөр" = Хүчтэй өсөлтийн таамаг ч, Anomaly-ийн "үргэлжлэх" (тод үг) ч 0."""
     days = pd.Index(df["date"].unique())
     p, c = df["pred_pct"].to_numpy(float), df["cycle"].to_numpy(float)
-    strong = p >= T
-    bold = strong & ~cycle.is_cyclical_rise(p, c)
+    ge_T = p >= T
+    strong = ge_T & ~cycle.is_cyclical_rise(p, c)
     cont = situation.verdict(p, df["anomaly"].fillna(False).astype(bool)) == "continue"
-    nb, nc = per_day(bold, df["date"], days), per_day(cont, df["date"], days)
-    return {"days": len(days), "rows": len(df), "strong": int(strong.sum()), "bold": int(bold.sum()),
+    ns, nc = per_day(strong, df["date"], days), per_day(cont, df["date"], days)
+    return {"days": len(days), "rows": len(df), "pct_ge_T": int(ge_T.sum()), "strong": int(strong.sum()),
+            "pct_ge_T_per_day": ge_T.sum() / len(days), "pct_ge_T_share": float(ge_T.mean()),
             "strong_per_day": strong.sum() / len(days), "strong_share": float(strong.mean()),
-            "bold_per_day": bold.sum() / len(days), "bold_share": float(bold.mean()),
-            "days_zero_bold_number": int((nb == 0).sum()), "days_nothing_bold": int(((nb == 0) & (nc == 0)).sum())}
+            "days_zero_strong": int((ns == 0).sum()), "days_nothing_bold": int(((ns == 0) & (nc == 0)).sum())}
 
 
 def excess_hit(actual_pct, cyc) -> np.ndarray:
@@ -146,7 +147,8 @@ def article_coverage(pv: pd.DataFrame) -> pd.Series:
 
 
 def share_threshold(ratios, step: float = SHARE_STEP) -> float:
-    """Бүх бүрэн өдрийн харьцаанаас ХАТУУ доор байх step-ийн хамгийн их үржвэр (сервер "> босго" бол бүрэн гэж үздэг)."""
+    """Бүх бүрэн өдрийн харьцаанаас ХАТУУ доор байх step-ийн хамгийн их үржвэр. Хатуу: нийт уншилтын шалгалт
+    (`live.complete_days`) "> босго" бол бүрэн гэж үздэг (сэдвийн шалгалт `last_covered_day` нь "≥ босго")."""
     lo = float(np.min(ratios))
     k = np.ceil(round(lo / step, 9)) - 1
     return round(float(k * step), 4)
@@ -171,9 +173,10 @@ def partial_day_flips(df: pd.DataFrame, x: float) -> dict:
     return out
 
 
-def tolerated_shortfall(flips: dict, max_flips: float) -> float | None:
-    """flips: {x: partial_day_flips}. Муу чиглэлийн (их) тоо нь max_flips-ээс хэтрэхгүй хамгийн их x. Байхгүй бол None."""
-    ok = [x for x, f in flips.items() if max(f.values()) <= max_flips]
+def tolerated_shortfall(flips: dict, max_flips: float, direction: str = "up") -> float | None:
+    """flips: {x: partial_day_flips}. `direction`-ийн тоо max_flips-ээс хэтрэхгүй хамгийн их x. Байхгүй бол None.
+    ADR 0016-ийн 8-р зүйл НИЙТ уншилтын өсөлтийг шалгадаг тул "up" (нийт уншилт дутуу байсан) чиглэл."""
+    ok = [x for x, f in flips.items() if f[direction] <= max_flips]
     return max(ok) if ok else None
 
 
@@ -208,6 +211,7 @@ class Frames:
     model: object                 # train.LoadedModel
     raw: object                   # live.RawCache (data/processed)
     cl: pd.DataFrame              # clean.clean_frame (бүх сэдэв, бүх өдөр)
+    cl_anomaly: pd.Series         # cl-ийн index-тэй Anomaly (z ≥ 3), бүх сэдэв (нүүрний тоолол, #10)
     valid: pd.DataFrame           # calibrate.valid_frame + Anomaly, мөчлөг, код, бодит pct (h3); хэмжигдэх ба хэмжигдэхгүй
 
 
@@ -234,7 +238,7 @@ def load() -> Frames:
     va["situation"] = situation.code(va)
     va["actual_pct"] = scoring.pct(va["y_0"], va["y_h3"])
     va["anomaly"] = va["anomaly"].fillna(False).astype(bool)
-    return Frames(model, raw, cl, va)
+    return Frames(model, raw, cl, an["anomaly"].fillna(False).astype(bool), va)
 
 
 def _span(dates) -> dict:
@@ -242,14 +246,10 @@ def _span(dates) -> dict:
     return {"from": d.min().strftime("%Y-%m-%d"), "through": d.max().strftime("%Y-%m-%d"), "days": int(d.nunique())}
 
 
-def _r(x, k: int = 4):
-    return None if x is None else round(float(x), k)
-
-
-def model_version(model_dir: Path | None = None) -> dict:
+def model_version() -> dict:
     from src import train
 
-    d = Path(model_dir or train.MODEL_DIR)
+    d = Path(train.MODEL_DIR)
     meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
     return {"model_hash": train.model_hash(d), "version": train.short_version(train.model_hash(d)),
             "trained_at": meta["trained_at"],
@@ -275,10 +275,10 @@ def compute(f: Frames) -> dict:
     out["verdict"] = v
 
     # #6, #7 хүчтэй өсөлт ба тод зүйл (ADR 0026)
-    out["bold"] = {"T": T, **bold_numbers(m, T)}
+    out["strong"] = {"T": T, **strong_numbers(m, T)}
 
     # #8 бууралтын quantile
-    le20 = m["pred_pct"].to_numpy(float) <= -0.20
+    le20 = m["pred_pct"].to_numpy(float) <= situation.BAND_EDGES[0]   # ↓ ≤ −20% (сайтын сумтай нэг хил)
     out["decline"] = {"share_le_-20": float(le20.mean()), "per_day_le_-20": le20.sum() / span["days"], "n": int(le20.sum())}
 
     # #9 Давж өсөх жагсаалт ба үндсэн хувь (ADR 0019, 0020)
@@ -298,8 +298,7 @@ def compute(f: Frames) -> dict:
     # #10 Anomaly-ийн хамгийн бага тоо (ADR 0022). Нүүр БҮХ сэдвийн Anomaly-г тоолдог (хэмжигдэхгүй, (в) ч орно) тул хоёуланг.
     k = per_day(m["anomaly"], m["date"], pd.Index(m["date"].unique()))
     site = f.cl[f.cl["date"].isin(m["date"].unique())][["article", "date"]].copy()
-    from src import anomaly as anomaly_mod
-    site["anomaly"] = anomaly_mod.score(f.cl)["anomaly"].reindex(site.index).fillna(False).astype(bool).to_numpy()
+    site["anomaly"] = f.cl_anomaly.reindex(site.index).to_numpy()
     ks = per_day(site["anomaly"], site["date"], pd.Index(m["date"].unique()))
     out["quiet"] = {"min_per_day": int(k.min()), "days_zero": int((k == 0).sum()), "min_day": k.idxmin().strftime("%Y-%m-%d"),
                     "site_min_per_day": int(ks.min()), "site_days_zero": int((ks == 0).sum()),
@@ -309,36 +308,33 @@ def compute(f: Frames) -> dict:
     # #11 интервал тэлэх эсэх (ADR 0027)
     out["interval"] = interval_widening(m, meta["interval"])
 
-    # #12 Буцалтын naive дүрэм
+    # #12 Буцалтын "ердийн түвшин рүүгээ буцна" дүрэм (issue-д "naive"; CONTEXT.md-ийн naive = Δ̂ = 0 тул энд "буцах дүрэм")
     reb = m[m["situation"] == "rebound"]
-    naive = {}
-    for lvl in ("level_28", "level_0017"):
-        nd = m[lvl] - m["y_0"]
-        mm = m.assign(naive_pct=scoring.predicted_pct(m["y_0"], nd))
-        nl = same_n_list(mm, "naive_pct", N)
-        lr = lst[lst["situation"] == "rebound"]
-        nr = same_n_list(mm[mm["situation"] == "rebound"], "naive_pct", lr.groupby("date").size())
-        rd = (reb[lvl] - reb["y_0"])
-        naive[lvl] = {"mae_h3_rebound": float((reb["delta_h3"] - rd).abs().mean()), "undefined_rows": int(rd.isna().sum()),
-                      "list_rows": len(nl), "list_excess_hit": float(nl["hit"].mean()),
-                      "list_rebound_share": float((nl["situation"] == "rebound").mean()),
-                      "diff_list": day_bootstrap_diff(lst[["date", "hit"]], nl[["date", "hit"]]),
-                      "within_rebound_rows": len(nr), "within_rebound_excess_hit": float(nr["hit"].mean()),
-                      "diff_within_rebound": day_bootstrap_diff(lr[["date", "hit"]], nr[["date", "hit"]])}
     lr = lst[lst["situation"] == "rebound"]
+    mae = lambda d, pred: float((d["delta_h3"] - pred).abs().mean())   # noqa: E731
+    reversion = {}
+    for lvl in ("level_28", "level_0017"):
+        mm = m.assign(rev_pct=scoring.predicted_pct(m["y_0"], m[lvl] - m["y_0"]))
+        rl = same_n_list(mm, "rev_pct", N)
+        rr = same_n_list(mm[mm["situation"] == "rebound"], "rev_pct", lr.groupby("date").size())
+        reversion[lvl] = {"mae_h3_rebound": mae(reb, reb[lvl] - reb["y_0"]), "undefined_rows": int(reb[lvl].isna().sum()),
+                          "within_rebound_rows": len(rr), "within_rebound_excess_hit": float(rr["hit"].mean()),
+                          "diff_within_rebound": day_bootstrap_diff(lr[["date", "hit"]], rr[["date", "hit"]]),
+                          "list_rows": len(rl), "list_excess_hit": float(rl["hit"].mean()),
+                          "list_rebound_share": float((rl["situation"] == "rebound").mean()),
+                          "diff_list": day_bootstrap_diff(lst[["date", "hit"]], rl[["date", "hit"]])}
     out["rebound"] = {"rows": len(reb), "per_day": len(reb) / span["days"],
                       "base_excess_hit": excess_hit_rate(reb["actual_pct"], reb["cycle"]),
-                      "mae_h3_model": float((reb["delta_h3"] - reb["delta_hat_h3"]).abs().mean()),
-                      "mae_h3_persistence": float(reb["delta_h3"].abs().mean()),
+                      "mae_h3_model": mae(reb, reb["delta_hat_h3"]), "mae_h3_naive": mae(reb, 0.0),
                       "model_list_excess_hit": float(lst["hit"].mean()), "model_list_rows": len(lst),
                       "model_within_rebound_rows": len(lr), "model_within_rebound_excess_hit": float(lr["hit"].mean()),
-                      "naive": naive}
+                      "reversion": reversion}
 
     # #13 X% (ADR 0016, 8-р зүйл)
     flips = {x: partial_day_flips(m, x) for x in SHORTFALL_GRID}
     limit = MAX_FLIP_SHARE * v["anomalies_per_day"]
-    X = tolerated_shortfall(flips, limit)
-    out["recheck"] = {"X": X, "max_flips_per_day": limit, "flips": {f"{x:.3f}": fl for x, fl in flips.items()}}
+    X = tolerated_shortfall(flips, limit, "up")
+    out["recheck"] = {"X": X, "direction": "up", "max_flips_per_day": limit, "flips": {f"{x:.3f}": fl for x, fl in flips.items()}}
 
     # #14 "Өгөгдөл дутуу"-гийн хоёр босго (ADR 0022). Бүх түүх (model-ийн үнэлгээ биш, нийт уншилтын тархалт).
     from src import live
@@ -363,7 +359,7 @@ def _get(res: dict, path: str):
 
 
 # (тайлбар, results-ийн зам, ADR-д ОДОО бичигдсэн утга, зөвшөөрөх зөрүү, ADR, өмнө бичигдсэн утга эсвэл None).
-# Зөрүү = бичигдсэн тооны нарийвчлалын хагас. Утга нь "@зам" бол results-ээс (жишээ нь src/live.py-ийн одоогийн тогтмол).
+# Зөрүү = бичигдсэн тооны нарийвчлалын хагас.
 # Тоо зөрвөл ADR-ийг шинэчилж (хуучин тоо, шалтгаантай), энд бичигдсэн утгыг шинэчилнэ, хуучныг нь "өмнө" баганад үлдээнэ.
 CLAIMS = {
     1: [("Anomaly өдөрт", "verdict.anomalies_per_day", 19.6, 0.05, "0021", None)],
@@ -374,10 +370,10 @@ CLAIMS = {
         ("үндсэн хувь (бүх Anomaly)", "verdict.base_held", 0.305, 0.0005, "0020, 0021", None)],
     5: [("\"үргэлжлэх\" 0-тэй өдөр", "verdict.days_zero_continue", 8, 0, "0021", None),
         ("\"үргэлжлэх\" 1-тэй өдөр", "verdict.days_one_continue", 31, 0, "0021", None)],
-    6: [("pct ≥ T өдөрт", "bold.strong_per_day", 3.8, 0.05, "0026", None),
-        ("pct ≥ T хувь", "bold.strong_share", 0.016, 0.0005, "0026", None)],
-    7: [("тод тоо өдөрт", "bold.bold_per_day", 1.56, 0.005, "0026", None),
-        ("тод зүйлгүй өдөр", "bold.days_nothing_bold", 4, 0, "0026", None)],
+    6: [("pct ≥ T өдөрт (мөчлөгийн өсөлт орсон)", "strong.pct_ge_T_per_day", 3.8, 0.05, "0026", None),
+        ("pct ≥ T хувь", "strong.pct_ge_T_share", 0.016, 0.0005, "0026", None)],
+    7: [("Хүчтэй өсөлтийн таамаг өдөрт", "strong.strong_per_day", 1.56, 0.005, "0026", 3.8),
+        ("тод зүйлгүй өдөр", "strong.days_nothing_bold", 4, 0, "0026", None)],
     8: [("pct ≤ −20% хувь", "decline.share_le_-20", 0.105, 0.0005, "0026", 0.10),
         ("pct ≤ −20% өдөрт", "decline.per_day_le_-20", 24.5, 0.05, "0026", 23)],
     9: [("бодит илүүдэл ≥ +10%", "beyond.excess_hit", 0.589, 0.0005, "0019, 0020", None),
@@ -386,10 +382,12 @@ CLAIMS = {
          ("Anomaly 0-тэй өдөр (нүүр)", "quiet.site_days_zero", 0, 0, "0022", None)],
     11: [("h1 ≤ h2 ≤ h3", "interval.share_widening", 0.973, 0.0005, "0027", None)],
     12: [("Буцалт доторх үндсэн хувь", "rebound.base_excess_hit", 0.388, 0.0005, "0020", None),
-         ("naive (28 өдөр) жагсаалт", "rebound.naive.level_28.list_excess_hit", 0.518, 0.0005, "0020", None)],
+         ("Буцалт: CatBoost жагсаалт", "rebound.model_within_rebound_excess_hit", 0.591, 0.0005, "0020", None),
+         ("Буцалт: буцах дүрэм (28 өдөр)", "rebound.reversion.level_28.within_rebound_excess_hit", 0.543, 0.0005, "0020", None),
+         ("Буцалт: буцах дүрэм (ADR 0017)", "rebound.reversion.level_0017.within_rebound_excess_hit", 0.560, 0.0005, "0020", None)],
     13: [("X", "recheck.X", 0.015, 0, "0016", None)],
-    14: [("TOTAL_MIN_SHARE (src/live.py)", "incomplete.total.threshold", "@incomplete.total.current", 0, "0022", 0.5),
-         ("ARTICLE_MIN_SHARE (src/live.py)", "incomplete.article.threshold", "@incomplete.article.current", 0, "0022", 0.5)],
+    14: [("TOTAL_MIN_SHARE санал", "incomplete.total.threshold", 0.85, 0, "0022", None),
+         ("ARTICLE_MIN_SHARE санал", "incomplete.article.threshold", 0.95, 0, "0022", None)],
     15: [("\"унтрах\" эрэмбийн AUC", "verdict.auc_fade_model", 0.744, 0.0005, "0021", None),
          ("z ганцаараа AUC", "verdict.auc_fade_z", 0.591, 0.0005, "0021", None),
          ("MAE (h3, Anomaly)", "verdict.mae_h3_model", 0.268, 0.0005, "0021", None),
@@ -419,10 +417,10 @@ def claims(res: dict) -> list[dict]:
     out = []
     for num, items in CLAIMS.items():
         for label, path, want, tol, adr, before in items:
-            want = _get(res, want[1:]) if isinstance(want, str) else want
             got = _get(res, path)
+            ok = got is not None and abs(got - want) <= tol + 1e-12
             out.append({"number": num, "label": label, "path": path, "adr": adr, "documented": want, "previously": before,
-                        "value": got, "matches": bool(abs(got - want) <= tol + 1e-12)})
+                        "value": got, "matches": bool(ok)})
     return out
 
 
@@ -470,8 +468,12 @@ def _claim_fmt(c: dict):
 def render_md(r: dict) -> str:
     """docs/numbers/frequency.md: хүнд уншигдах хувилбар. Бүх тоо frequency.json-оос (энэ функц шинэ тоо тооцохгүй)."""
     R, mv, rows = r["results"], r["model"], r["results"]["rows"]
-    v, b, dc, bl, q, iv, rb = (R[k] for k in ("verdict", "bold", "decline", "beyond", "quiet", "interval", "rebound"))
-    n28, n17 = rb["naive"]["level_28"], rb["naive"]["level_0017"]
+    v, b, dc, bl, q, iv, rb = (R[k] for k in ("verdict", "strong", "decline", "beyond", "quiet", "interval", "rebound"))
+    n28, n17 = rb["reversion"]["level_28"], rb["reversion"]["level_0017"]
+    # ADR 0020-ийн өмнөх 30.1%-ийг (0.1%-ийн нарийвчлалаар) давтах үндсэн хувийн хувилбар байгаа эсэх
+    bases = {"бүх хэмжигдэх мөр": bl["base_all"], "мөчлөгийн өсөлт биш мөр": bl["base_not_cyclical_rise"],
+             "мөчлөгийн өсөлт биш мөрөөс өдөр бүр жагсаалттай ижил N санамсаргүй авахын хүлээгдэх утга": bl["base_same_n_random_not_cyclical_rise"]}
+    hits301 = [k for k, x in bases.items() if abs(x - 0.301) <= 0.0005]
     rc, inc = R["recheck"], R["incomplete"]
     span = f"{rows['from']} … {rows['through']}, {rows['days']} өдөр"
     L = [
@@ -516,10 +518,11 @@ def render_md(r: dict) -> str:
         "",
         f"### 6–7. {TITLES[6]}; {TITLES[7]} (ADR 0026)",
         "",
-        f"- T = {b['T']:.0%} (`meta.json`). Хүчтэй өсөлт (pct ≥ T): {b['strong']:,} мөр, өдөрт **{b['strong_per_day']:.2f}** (мөрийн **{_p(b['strong_share'])}**).",
-        f"- **Мөчлөгийн өсөлтийг хассаны дараа** (тод тоо = pct ≥ T ба мөчлөгийн өсөлт биш, ADR 0019): {b['bold']:,} мөр, "
-        f"өдөрт **{b['bold_per_day']:.2f}** (**{_p(b['bold_share'], 2)}**). Тод тоо 0-тэй өдөр **{b['days_zero_bold_number']}** ({b['days']}-ээс).",
-        f"- Тод зүйлгүй өдөр (тод тоо ч, \"үргэлжлэх\" ч 0): **{b['days_nothing_bold']}** ({b['days']}-ээс).",
+        f"- T = {b['T']:.0%} (`meta.json`). Таамагласан pct ≥ T (мөчлөгийн өсөлт орсон): {b['pct_ge_T']:,} мөр, "
+        f"өдөрт **{b['pct_ge_T_per_day']:.2f}** (мөрийн **{_p(b['pct_ge_T_share'])}**).",
+        f"- **Хүчтэй өсөлтийн таамаг** (CONTEXT.md: pct ≥ T ба мөчлөгийн өсөлт биш, ADR 0019; сайтын тод тоо): {b['strong']:,} мөр, "
+        f"өдөрт **{b['strong_per_day']:.2f}** (**{_p(b['strong_share'], 2)}**). 0-тэй өдөр **{b['days_zero_strong']}** ({b['days']}-ээс).",
+        f"- Тод зүйлгүй өдөр (Хүчтэй өсөлтийн таамаг ч, \"үргэлжлэх\" ч 0): **{b['days_nothing_bold']}** ({b['days']}-ээс).",
         "",
         f"### 8. {TITLES[8]} (ADR 0026)",
         "",
@@ -528,17 +531,16 @@ def render_md(r: dict) -> str:
         f"### 9. {TITLES[9]} (ADR 0019, 0020)",
         "",
         f"- Жагсаалт: {bl['rows']:,} мөр, бодит илүүдэл ≥ +10% **{_p(bl['excess_hit'])}** (Буцалт {_p(bl['rebound_share_of_list'])}).",
-        f"- **Үндсэн хувь = бүх хэмжигдэх мөр: {_p(bl['base_all'])}** (`evaluate.beyond_list_metrics`-ийн `base_rate`-тэй ижил). ADR 0019-ийн \"29%\" зөв.",
-        f"- ADR 0020-ийн **30.1% давтагдахгүй.** Хамгийн ойр хувилбарууд: мөчлөгийн өсөлт биш мөр {_p(bl['base_not_cyclical_rise'])}, "
-        f"тэдгээрээс өдөр бүр жагсаалттай ижил N санамсаргүй авахын хүлээгдэх утга {_p(bl['base_same_n_random_not_cyclical_rise'])}. "
-        "30.1% нь нэг удаагийн санамсаргүй сонголтын үр дүн байсан байж магадгүй (скрипт нь repo-д байгаагүй).",
+        "- Үндсэн хувь (бодит илүүдэл ≥ +10%), хүрээний хувилбар бүрээр: "
+        + "; ".join(f"{k} **{_p(x)}**" for k, x in bases.items()) + ".",
+        "- ADR 0020-ийн өмнөх 30.1%-ийг давтах хувилбар: " + (", ".join(hits301) if hits301 else "**алга**") + ".",
         "",
         f"### 10. {TITLES[10]} (ADR 0022)",
         "",
         f"- Хэмжигдэх, (в)-гүй: хамгийн бага **{q['min_per_day']}** ({q['min_day']}), 0-тэй өдөр **{q['days_zero']}**.",
         f"- Нүүрний тоолол (бүх {q['site_topics']} сэдэв, хэмжигдэхгүй ба (в) орно, `serve.anomaly_summary`): хамгийн бага **{q['site_min_per_day']}** "
         f"({q['site_min_day']}), 0-тэй өдөр **{q['site_days_zero']}**, дундаж {q['site_mean_per_day']:.1f}.",
-        "- \"Нам гүм\" төлөв valid-ийн 271 өдөрт нэг ч удаа гараагүй.",
+        f"- \"Нам гүм\" төлөв (нүүрний Anomaly 0) valid-ийн {rows['days']} өдрийн **{q['site_days_zero']}**-д гарсан.",
         "",
         f"### 11. {TITLES[11]} (ADR 0027)",
         "",
@@ -551,30 +553,31 @@ def render_md(r: dict) -> str:
         "",
         f"- Буцалт нөхцөл (ADR 0020, `situation.code`): {rb['rows']:,} мөр (өдөрт {rb['per_day']:.1f}). "
         f"**Буцалт доторх үндсэн хувь** (бодит илүүдэл ≥ +10%): **{_p(rb['base_excess_hit'])}** (бүх мөрийнх {_p(bl['base_all'])}).",
-        "- Naive \"ердийн түвшин рүүгээ буцна\": Δ̂ (h3) = түвшин − y_0, y = log1p(анхаарал). Хоёр түвшин: 28 өдрийн медиан (t−27 … t), "
-        "ADR 0017-ийн ердийн түвшин (t−59 … t−7-ийн медиан).",
+        "- **Буцах дүрэм** (issue-д \"naive\"; CONTEXT.md-ийн naive нь Δ̂ = 0): \"сэдэв ердийн түвшин рүүгээ буцна\", Δ̂ (h3) = түвшин − y_0, "
+        "y = log1p(анхаарал). Хоёр түвшин: 28 өдрийн медиан (t−27 … t, asof өдөр орно), ADR 0017-ийн ердийн түвшин (t−59 … t−7-ийн медиан).",
+        "- Жагсаалт: Давж өсөх жагсаалтын дүрэм (Rising, мөчлөгийн өсөлт биш, pct-ээр) буцах дүрмийн pct-ээр, өдөр бүр CatBoost-ийн жагсаалттай "
+        "ижил N (ADR 0020). Model − дүрэм = нийлүүлсэн хувийн зөрүү, 95% CI нь өдрөөр хос bootstrap.",
         "",
-        "| Буцалт мөрүүд дээр | MAE (Δ, h3) |",
-        "|---|---|",
-        f"| CatBoost | **{rb['mae_h3_model']:.3f}** |",
-        f"| Naive, 28 өдрийн медиан | {n28['mae_h3_rebound']:.3f} |",
-        f"| Naive, ADR 0017-ийн түвшин | {n17['mae_h3_rebound']:.3f} |",
-        f"| Persistence (Δ̂ = 0) | {rb['mae_h3_persistence']:.3f} |",
+        "| **Буцалт мөрүүд дээр** (spec-ийн хүрээ) | MAE (Δ, h3) | Жагсаалт: бодит илүүдэл ≥ +10% | CatBoost − дүрэм |",
+        "|---|---|---|---|",
+        f"| CatBoost ({rb['model_within_rebound_rows']:,} мөр) | **{rb['mae_h3_model']:.3f}** | **{_p(rb['model_within_rebound_excess_hit'])}** | |",
+        f"| Буцах дүрэм, 28 өдрийн медиан | {n28['mae_h3_rebound']:.3f} | {_p(n28['within_rebound_excess_hit'])} | {_ci(n28['diff_within_rebound'])} |",
+        f"| Буцах дүрэм, ADR 0017-ийн түвшин | {n17['mae_h3_rebound']:.3f} | {_p(n17['within_rebound_excess_hit'])} | {_ci(n17['diff_within_rebound'])} |",
+        f"| Naive (Δ̂ = 0) | {rb['mae_h3_naive']:.3f} | | |",
+        f"| Үндсэн хувь (Буцалт доторх) | | {_p(rb['base_excess_hit'])} | |",
         "",
-        "| Жагсаалт, өдөр бүр model-ийн жагсаалттай ижил N | бодит илүүдэл ≥ +10% | Model − naive (өдрөөр bootstrap) |",
+        "| Бүх хэмжигдэх мөр (нүүрний жагсаалт шиг) | Жагсаалт: бодит илүүдэл ≥ +10% | CatBoost − дүрэм |",
         "|---|---|---|",
         f"| CatBoost (Давж өсөх жагсаалт, {rb['model_list_rows']:,}) | **{_p(rb['model_list_excess_hit'])}** | |",
-        f"| Naive 28 өдрийн медиан (Буцалт {_p(n28['list_rebound_share'], 0)}) | {_p(n28['list_excess_hit'])} | {_ci(n28['diff_list'])} |",
-        f"| Naive ADR 0017 (Буцалт {_p(n17['list_rebound_share'], 0)}) | {_p(n17['list_excess_hit'])} | {_ci(n17['diff_list'])} |",
-        f"| *Зөвхөн Буцалт мөрүүд:* CatBoost ({rb['model_within_rebound_rows']:,}) | **{_p(rb['model_within_rebound_excess_hit'])}** | |",
-        f"| *Зөвхөн Буцалт:* naive 28 өдрийн медиан | {_p(n28['within_rebound_excess_hit'])} | {_ci(n28['diff_within_rebound'])} |",
-        f"| *Зөвхөн Буцалт:* naive ADR 0017 | {_p(n17['within_rebound_excess_hit'])} | {_ci(n17['diff_within_rebound'])} |",
-        f"| Үндсэн хувь: Буцалт доторх / бүх мөр | {_p(rb['base_excess_hit'])} / {_p(bl['base_all'])} | |",
+        f"| Буцах дүрэм, 28 өдөр (жагсаалтын Буцалт {_p(n28['list_rebound_share'], 0)}) | {_p(n28['list_excess_hit'])} | {_ci(n28['diff_list'])} |",
+        f"| Буцах дүрэм, ADR 0017 (Буцалт {_p(n17['list_rebound_share'], 0)}) | {_p(n17['list_excess_hit'])} | {_ci(n17['diff_list'])} |",
+        f"| Үндсэн хувь (бүх мөр) | {_p(bl['base_all'])} | |",
         "",
         f"### 13. {TITLES[13]} (ADR 0016)",
         "",
         f"- Дүрэм (Claude-ийн санал): нэг өдрийн өгөгдөл X-ээр дутуу байх нь тэр өдрийн Anomaly-ийн ≤ {MAX_FLIP_SHARE:.0%}-ийг "
-        f"(өдөрт ≤ {rc['max_flips_per_day']:.2f}) өөрчлөх хамгийн их X, 0.5%-ийн алхмаар. Муу чиглэлээр (сэдвийн эсвэл нийт уншилт дутуу) тооцно.",
+        f"(өдөрт ≤ {rc['max_flips_per_day']:.2f}) өөрчлөх хамгийн их X, 0.5%-ийн алхмаар. Шалгалт нь НИЙТ уншилтын өсөлтийг хардаг тул "
+        "\"нийт уншилт дутуу\" чиглэлээр (худал Anomaly). Сэдвийн уншилт дутуугийн чиглэлийг (Anomaly алга болох) нийт уншилт илрүүлэхгүй: зөвхөн мэдээлэлд.",
         f"- **X = {_p(rc['X'])}**: хадгалснаас хойш нийт уншилт ≥ {_p(rc['X'])} өсвөл `incomplete_at_publish`.",
         "",
         "| X | Anomaly алга болох / өдөр | худал Anomaly / өдөр |",
@@ -588,7 +591,8 @@ def render_md(r: dict) -> str:
         "",
         f"### 14. {TITLES[14]} (ADR 0022)",
         "",
-        "Бүх түүх (model-ийн үнэлгээ биш, өгөгдлийн бүрэн байдлын тархалт). Дүрэм: бүх бүрэн өдрөөс хатуу доор байх 5%-ийн хамгийн их үржвэр.",
+        "Бүх түүх, test-ийн хугацаа орно: энэ нь model-ийн үнэлгээ биш, Wikimedia-ийн өгөгдлийн бүрэн байдлын тархалт (ADR 0002 хамаарахгүй). "
+        "Дүрэм: бүх бүрэн өдрөөс хатуу доор байх 5%-ийн хамгийн их үржвэр. **Санал**, `src/live.py`-д хэрэгжүүлээгүй (Майк батлах).",
         "",
         "| | Хүрээ | min | 0.1% | 1% | медиан | Санал | Одоо |",
         "|---|---|---|---|---|---|---|---|",

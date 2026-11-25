@@ -44,7 +44,7 @@ def test_verdict_numbers_use_the_h3_prediction_for_the_verdict_and_the_h3_day_fo
 D = pd.Timestamp("2025-07-04")
 
 
-def test_strong_rises_with_and_without_cyclical_rises_and_days_with_nothing_bold():
+def test_strong_rise_forecasts_exclude_cyclical_rises_and_days_with_nothing_bold_are_counted():
     d = pd.DataFrame([
         (A, False, 0.40, 0.30),     # хүчтэй, гэхдээ мөчлөгийн өсөлт (илүүдэл 1.4/1.3 − 1 ≈ +7.7% < +10%): тод биш
         (A, False, 0.30, 0.00),     # хүчтэй, тод
@@ -54,11 +54,12 @@ def test_strong_rises_with_and_without_cyclical_rises_and_days_with_nothing_bold
         (D, True, 0.00, 0.00),      # Anomaly, "үргэлжлэх": тод үг
         (D, False, 0.2499, 0.00),   # T-ээс доош
     ], columns=["date", "anomaly", "pred_pct", "cycle"])
-    got = fn.bold_numbers(d, T=0.25)
-    assert got["strong_per_day"] == pytest.approx(1.0) and got["strong_share"] == pytest.approx(4 / 7)
-    assert got["bold_per_day"] == pytest.approx(0.5) and got["bold_share"] == pytest.approx(2 / 7)
-    assert got["days_zero_bold_number"] == 2       # C, D
-    assert got["days_nothing_bold"] == 1           # C: тод тоо ч, "үргэлжлэх" ч алга
+    got = fn.strong_numbers(d, T=0.25)
+    assert got["pct_ge_T_per_day"] == pytest.approx(1.0) and got["pct_ge_T_share"] == pytest.approx(4 / 7)
+    # Хүчтэй өсөлтийн таамаг (CONTEXT.md) = pct ≥ T ба мөчлөгийн өсөлт биш
+    assert got["strong_per_day"] == pytest.approx(0.5) and got["strong_share"] == pytest.approx(2 / 7)
+    assert got["days_zero_strong"] == 2           # C, D
+    assert got["days_nothing_bold"] == 1          # C: Хүчтэй өсөлтийн таамаг ч, "үргэлжлэх" ч алга
 
 
 # ---------------------------------------------------------------- үндсэн хувь (#9, #12, ADR 0019, 0020)
@@ -146,9 +147,11 @@ def test_partial_day_flips_count_anomaly_flags_that_change_when_one_day_is_x_pct
     assert fn.partial_day_flips(d, 0.01) == pytest.approx({"down": 0.0, "up": 0.0})   # z ±0.098: хил давахгүй
 
 
-def test_tolerated_shortfall_is_the_largest_x_whose_worse_direction_stays_within_the_limit():
-    flips = {0.005: {"down": 0.2, "up": 0.3}, 0.01: {"down": 0.5, "up": 0.9}, 0.015: {"down": 0.8, "up": 1.1}}
-    assert fn.tolerated_shortfall(flips, max_flips=1.0) == 0.01
+def test_tolerated_shortfall_is_the_largest_x_whose_total_views_direction_stays_within_the_limit():
+    """ADR 0016-ийн 8-р зүйл нийт уншилтын өсөлтийг шалгадаг тул "up" (нийт уншилт дутуу -> худал Anomaly) чиглэл."""
+    flips = {0.005: {"down": 0.2, "up": 0.3}, 0.01: {"down": 1.5, "up": 0.9}, 0.015: {"down": 0.8, "up": 1.1}}
+    assert fn.tolerated_shortfall(flips, max_flips=1.0) == 0.01          # "down" 1.5 > 1 боловч тоологдохгүй
+    assert fn.tolerated_shortfall(flips, max_flips=1.0, direction="down") == 0.015
     assert fn.tolerated_shortfall(flips, max_flips=0.1) is None
 
 

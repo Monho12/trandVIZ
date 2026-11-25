@@ -40,17 +40,17 @@
    "mae_h3_model": 0.268426,
    "mae_h3_naive": 0.446031
   },
-  "bold": {
+  "strong": {
    "T": 0.25,
    "days": 271,
    "rows": 63413,
-   "strong": 1018,
-   "bold": 422,
-   "strong_per_day": 3.756458,
-   "strong_share": 0.016053,
-   "bold_per_day": 1.557196,
-   "bold_share": 0.006655,
-   "days_zero_bold_number": 123,
+   "pct_ge_T": 1018,
+   "strong": 422,
+   "pct_ge_T_per_day": 3.756458,
+   "pct_ge_T_share": 0.016053,
+   "strong_per_day": 1.557196,
+   "strong_share": 0.006655,
+   "days_zero_strong": 123,
    "days_nothing_bold": 4
   },
   "decline": {
@@ -92,15 +92,24 @@
    "per_day": 70.125461,
    "base_excess_hit": 0.388287,
    "mae_h3_model": 0.152155,
-   "mae_h3_persistence": 0.166201,
+   "mae_h3_naive": 0.166201,
    "model_list_excess_hit": 0.589023,
    "model_list_rows": 2241,
    "model_within_rebound_rows": 2135,
    "model_within_rebound_excess_hit": 0.590632,
-   "naive": {
+   "reversion": {
     "level_28": {
      "mae_h3_rebound": 0.223517,
      "undefined_rows": 0,
+     "within_rebound_rows": 2135,
+     "within_rebound_excess_hit": 0.543326,
+     "diff_within_rebound": {
+      "diff": 0.047307,
+      "lo": 0.019542,
+      "hi": 0.07331,
+      "n_boot": 2000,
+      "seed": 54
+     },
      "list_rows": 2241,
      "list_excess_hit": 0.518072,
      "list_rebound_share": 0.734047,
@@ -110,20 +119,20 @@
       "hi": 0.099283,
       "n_boot": 2000,
       "seed": 54
-     },
-     "within_rebound_rows": 2135,
-     "within_rebound_excess_hit": 0.543326,
-     "diff_within_rebound": {
-      "diff": 0.047307,
-      "lo": 0.019542,
-      "hi": 0.07331,
-      "n_boot": 2000,
-      "seed": 54
      }
     },
     "level_0017": {
      "mae_h3_rebound": 0.255891,
      "undefined_rows": 0,
+     "within_rebound_rows": 2135,
+     "within_rebound_excess_hit": 0.560187,
+     "diff_within_rebound": {
+      "diff": 0.030445,
+      "lo": 0.004202,
+      "hi": 0.056154,
+      "n_boot": 2000,
+      "seed": 54
+     },
      "list_rows": 2241,
      "list_excess_hit": 0.516287,
      "list_rebound_share": 0.624721,
@@ -133,21 +142,13 @@
       "hi": 0.099826,
       "n_boot": 2000,
       "seed": 54
-     },
-     "within_rebound_rows": 2135,
-     "within_rebound_excess_hit": 0.560187,
-     "diff_within_rebound": {
-      "diff": 0.030445,
-      "lo": 0.004202,
-      "hi": 0.056154,
-      "n_boot": 2000,
-      "seed": 54
      }
     }
    }
   },
   "recheck": {
    "X": 0.015,
+   "direction": "up",
    "max_flips_per_day": 0.978229,
    "flips": {
     "0.005": {
@@ -255,7 +256,7 @@
      "2022-12-16": 0.908563
     },
     "threshold": 0.85,
-    "current": 0.85
+    "current": 0.5
    },
    "article": {
     "from": "2021-01-02",
@@ -279,7 +280,7 @@
      "2022-03-21": 0.984314
     },
     "threshold": 0.95,
-    "current": 0.95
+    "current": 0.5
    }
   }
  },
@@ -366,8 +367,8 @@
   },
   {
    "number": 6,
-   "label": "pct ≥ T өдөрт",
-   "path": "bold.strong_per_day",
+   "label": "pct ≥ T өдөрт (мөчлөгийн өсөлт орсон)",
+   "path": "strong.pct_ge_T_per_day",
    "adr": "0026",
    "documented": 3.8,
    "previously": null,
@@ -377,7 +378,7 @@
   {
    "number": 6,
    "label": "pct ≥ T хувь",
-   "path": "bold.strong_share",
+   "path": "strong.pct_ge_T_share",
    "adr": "0026",
    "documented": 0.016,
    "previously": null,
@@ -386,18 +387,18 @@
   },
   {
    "number": 7,
-   "label": "тод тоо өдөрт",
-   "path": "bold.bold_per_day",
+   "label": "Хүчтэй өсөлтийн таамаг өдөрт",
+   "path": "strong.strong_per_day",
    "adr": "0026",
    "documented": 1.56,
-   "previously": null,
+   "previously": 3.8,
    "value": 1.557196,
    "matches": true
   },
   {
    "number": 7,
    "label": "тод зүйлгүй өдөр",
-   "path": "bold.days_nothing_bold",
+   "path": "strong.days_nothing_bold",
    "adr": "0026",
    "documented": 4,
    "previously": null,
@@ -486,12 +487,32 @@
   },
   {
    "number": 12,
-   "label": "naive (28 өдөр) жагсаалт",
-   "path": "rebound.naive.level_28.list_excess_hit",
+   "label": "Буцалт: CatBoost жагсаалт",
+   "path": "rebound.model_within_rebound_excess_hit",
    "adr": "0020",
-   "documented": 0.518,
+   "documented": 0.591,
    "previously": null,
-   "value": 0.518072,
+   "value": 0.590632,
+   "matches": true
+  },
+  {
+   "number": 12,
+   "label": "Буцалт: буцах дүрэм (28 өдөр)",
+   "path": "rebound.reversion.level_28.within_rebound_excess_hit",
+   "adr": "0020",
+   "documented": 0.543,
+   "previously": null,
+   "value": 0.543326,
+   "matches": true
+  },
+  {
+   "number": 12,
+   "label": "Буцалт: буцах дүрэм (ADR 0017)",
+   "path": "rebound.reversion.level_0017.within_rebound_excess_hit",
+   "adr": "0020",
+   "documented": 0.56,
+   "previously": null,
+   "value": 0.560187,
    "matches": true
   },
   {
@@ -506,21 +527,21 @@
   },
   {
    "number": 14,
-   "label": "TOTAL_MIN_SHARE (src/live.py)",
+   "label": "TOTAL_MIN_SHARE санал",
    "path": "incomplete.total.threshold",
    "adr": "0022",
    "documented": 0.85,
-   "previously": 0.5,
+   "previously": null,
    "value": 0.85,
    "matches": true
   },
   {
    "number": 14,
-   "label": "ARTICLE_MIN_SHARE (src/live.py)",
+   "label": "ARTICLE_MIN_SHARE санал",
    "path": "incomplete.article.threshold",
    "adr": "0022",
    "documented": 0.95,
-   "previously": 0.5,
+   "previously": null,
    "value": 0.95,
    "matches": true
   },
