@@ -60,6 +60,23 @@ def base_rate(df: pd.DataFrame) -> float:
     return float(_is_up(m["actual_pct"]).groupby(m["date"]).mean().mean())
 
 
+def beyond_list_metrics(df: pd.DataFrame, pct_col: str = "pred_pct") -> dict:
+    """Давж өсөх жагсаалтын хэмжүүр (ADR 0019). df: [date, article, measurable, pct_col, cycle, actual_pct (h3)].
+      excess_hit   жагсаалтын мөрүүдийн хэдэн хувь нь бодит илүүдэл ≥ +10% болсон бэ (бүх өдрийн мөрийг нийлүүлж)
+      precision    мөн мөрүүд дээр бодит pct ≥ +25% (үнэн trend ↑)
+      base_rate    бүх хэмжигдэх мөрийн бодит илүүдэл ≥ +10% хувь (харьцуулах үндсэн хувь)
+      days_short / days_empty   жагсаалт 10-аас цөөн / 0 өдрийн тоо (df-д байгаа өдрөөс)"""
+    from src import cycle
+
+    m = df[df["measurable"].fillna(False).astype(bool)]
+    hit = lambda d: cycle.excess(d["actual_pct"], d["cycle"]) >= cycle.EXCESS_BAND   # noqa: E731
+    lst = cycle.beyond_list(m, pct_col)
+    n = lst.groupby("date").size().reindex(pd.Index(df["date"].unique()), fill_value=0)
+    return {"excess_hit": float(hit(lst).mean()), "precision": float(_is_up(lst["actual_pct"]).mean()),
+            "base_rate": float(hit(m).mean()), "rows": int(len(lst)), "days": int(len(n)),
+            "days_short": int((n < scoring.TOP_N).sum()), "days_empty": int((n == 0).sum())}
+
+
 def direction_accuracy(actual_pct: pd.Series, pred_dir: pd.Series) -> dict:
     """Чиглэлийн нарийвчлал (ADR 0002): ӨСӨХ (бодит pct ≥ +25%) мөрүүдийн хэдэн хувьд pred_dir > 0, БУУРАХ (≤ −20%)
     мөрүүдийн хэдэн хувьд pred_dir < 0 байсан бэ, ТУСАД НЬ. Тогтвортой мөр тоологдохгүй, таамаг 0 бол буруу.

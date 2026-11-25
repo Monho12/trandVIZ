@@ -21,16 +21,17 @@ from functools import cached_property
 import numpy as np
 import pandas as pd
 
-from src import anomaly, clean, evaluate, features, scoring
+from src import anomaly, clean, cycle, evaluate, features, scoring
 from src.live import RawCache
 
 FEATURE_DAYS = 366          # level_365-ийн цонх + asof
 LIST_DAYS, TOPIC_DAYS = 30, 180
 MAP_N, CATEGORY_N = 40, 4
 STALE_DAYS = 2                   # asof нь өнөөдрөөс 2-оос олон өдрийн өмнөх бол шар анхааруулга (ADR 0008)
-# Snapshot-д барих өдөр: feature (level_365 + asof), /api/topic-ийн history, жагсаалт, anomaly-ийн цонх (t−59 … t−7)-ийн хамгийн урт нь.
+# Snapshot-д барих өдөр: feature (level_365 + asof), /api/topic-ийн history, жагсаалт, anomaly-ийн цонх (t−59 … t−7),
+# мөчлөг (t−28 … t−4)-ийн хамгийн урт нь.
 # Нөөц хэрэггүй: цэвэрлэгээ тайрахаас ӨМНӨ бүтэн түүхээр хийгдсэн тул тайрсан мөрийн утга өөрчлөгдөхгүй.
-KEEP_DAYS = max(FEATURE_DAYS, TOPIC_DAYS, LIST_DAYS, anomaly.WINDOW_FROM + 1)
+KEEP_DAYS = max(FEATURE_DAYS, TOPIC_DAYS, LIST_DAYS, anomaly.WINDOW_FROM + 1, cycle.HISTORY_DAYS + 1)
 CHUNK_ARTICLES = 40              # нэг удаа цэвэрлэх сэдвийн тоо (~70k мөр): Snapshot барих үеийн санах ойн оргил
 
 
@@ -100,6 +101,10 @@ def feature_rows(tail: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
     an = an.set_index(recent.loc[an.index, "article"].astype(object))
     for c in an.columns:
         f[c] = f["article"].astype(object).map(an[c])
+    # Мөчлөг (ADR 0019): asof өдрийнхөд t−28 … t−4 хангалттай
+    weeks = tail[tail["date"] >= asof - pd.Timedelta(days=cycle.HISTORY_DAYS)]
+    cyc = cycle.cycle(weeks)[(weeks["date"] == asof).to_numpy()]
+    f["cycle"] = f["article"].astype(object).map(pd.Series(cyc.to_numpy(), index=weeks.loc[cyc.index, "article"].astype(object)))
     f["article"] = f["article"].astype(object)
     return f.reset_index(drop=True)
 
@@ -124,6 +129,9 @@ def predict(model, rows: pd.DataFrame) -> pd.DataFrame:
             r[f"{name or 'pct'}_h{h}"] = np.where(np.isfinite(p), p, np.nan)
             r[f"views{'_' + name if name else ''}_h{h}"] = np.expm1(y0 + delta) * scale
     r["arrow"] = scoring.arrow(r["pct_h3"], meta["fire"]["T"], r["measurable"])
+    # Илүүдэл ба мөчлөгийн өсөлт/бууралт (ADR 0019), таамагласан pct (h3) дээр
+    r["excess"] = cycle.excess(r["pct_h3"], r["cycle"])
+    r["cyclical"] = cycle.is_cyclical_rise(r["pct_h3"], r["cycle"]) | cycle.is_cyclical_fall(r["pct_h3"], r["cycle"])
     r["category"] = scoring.display_category(r["category"])
     return r
 
@@ -173,7 +181,9 @@ def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None) 
     дээр нь pct (h3, 5%-д дугуйлсан), 80% интервал, сум, 🔥, хэмжигдэх эсэх, огноо нэмэгдэнэ.
     Anomaly (ADR 0017, src/anomaly.py): `ratio` = ▲ ×N АНХААРАЛ дээр, `views_ratio` = түүхий уншилтын ×N (хаалтанд),
     `normal` = ердийн өдрийн уншилт, `z`/`anomaly` (z ≥ 3), `typical_pct` = ердийн хэлбэлзэл ±, `similar_days` = сүүлийн
-    2 сард (t−59 … t−7) ийм өндөр өдрийн тоо."""
+    2 сард (t−59 … t−7) ийм өндөр өдрийн тоо.
+    Мөчлөг (ADR 0019, src/cycle.py): `cycle` = долоо хоногийн мөчлөг (h3), `excess` = таамгийн илүүдэл (хоёулаа pct шиг
+    5%-ийн алхмаар тэг рүү тайрсан тул ±10%-ийн хил хадгалагдана), `cyclical` = мөчлөгийн өсөлт эсвэл бууралт."""
     normal = _num(r.normal, 0)
     return {
         "article": r.article, "title": r.article.replace("_", " "), "category": r.category,
@@ -181,6 +191,7 @@ def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None) 
         "normal": None if normal is None else int(normal),
         "z": _num(r.z, 2), "anomaly": bool(r.anomaly), "typical_pct": _num(r.typical_pct, 2),
         "similar_days": int(r.similar_days),
+        "cycle": _r(r.cycle), "excess": _r(r.excess), "cyclical": bool(r.cyclical),
         "history": [{"d": d.strftime("%Y-%m-%d"), "v": int(v)} for d, v in zip(history["date"], history["views"])],
         "forecast": [{"d": d.strftime("%Y-%m-%d"), "y": round(getattr(r, f"views_h{h}")),
                       "lo": round(getattr(r, f"views_lo_h{h}")), "hi": round(getattr(r, f"views_hi_h{h}")),
@@ -201,20 +212,24 @@ def _histories(snap: Snapshot, articles, days: int) -> dict[str, pd.DataFrame]:
 
 
 def ranked(pred: pd.DataFrame) -> pd.DataFrame:
-    """Top-10 (ADR 0004: хэмжигдэх сэдэв, таамагласан pct(h3)-ээр, үргэлж 10) эхэнд rank-тай, дараа нь бусад нь pct-ээр."""
-    top = scoring.top10(pred, "pct_h3")
-    rank = dict(zip(top["article"], top["rank"]))
-    out = pred.assign(rank=pred["article"].map(rank))
-    return out.sort_values(["rank", "pct_h3", "article"], ascending=[True, False, True], na_position="last")
+    """Давж өсөх жагсаалт (ADR 0019: хэмжигдэх, мөчлөгийн өсөлт биш Rising, pct(h3)-ээр, ≤ 10) эхэнд rank-тай,
+    дараа нь мөчлөгийн өсөлтүүд (`cyclical_rank`), дараа нь бусад нь pct-ээр."""
+    rank = lambda lst: pred["article"].map(dict(zip(lst["article"], lst["rank"])))   # noqa: E731
+    out = pred.assign(rank=rank(cycle.beyond_list(pred, "pct_h3")), cyclical_rank=rank(cycle.cyclical_rise_list(pred, "pct_h3")))
+    return out.sort_values(["rank", "cyclical_rank", "pct_h3", "article"], ascending=[True, True, False, True], na_position="last")
 
 
 def trending(model, snap: Snapshot, today) -> dict:
-    """Нүүрний top-10 (эхний 10, rank 1…10) + "Бүх сэдэв" хуудасны бусад сэдвүүд."""
+    """Нүүрний Давж өсөх жагсаалт (эхэнд, rank 1…≤10; `beyond`), Мөчлөгийн өсөлтийн жагсаалт (`cyclical_rise`)
+    + "Бүх сэдэв" хуудасны бусад сэдвүүд. `fires` нь Давж өсөх жагсаалтын 🔥."""
     p = ranked(predict(model, snap.universe))
     hist = _histories(snap, p["article"], LIST_DAYS)
     items = [item(r, hist[r.article], snap.asof, None if pd.isna(r.rank) else int(r.rank)) for r in p.itertuples()]
+    beyond = [i for i in items if i["rank"] is not None]
     return {**day_block(snap, today), "T": model.meta["fire"]["T"],
-            "fires": sum(i["fire"] for i in items), "top_n": scoring.TOP_N, "items": items}
+            "fires": sum(i["fire"] for i in beyond), "top_n": scoring.TOP_N,
+            "beyond": [i["article"] for i in beyond],
+            "cyclical_rise": p.loc[p["cyclical_rank"].notna(), "article"].tolist(), "items": items}
 
 
 def categories(model, snap: Snapshot, today) -> dict:

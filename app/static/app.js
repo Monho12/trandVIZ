@@ -75,7 +75,7 @@
   async function home() {
     const [tr, cs, mp] = await Promise.all([api("/api/trending"), api("/api/categories"), api("/api/map")]);
     meta(tr);
-    const top = tr.items.slice(0, tr.top_n);
+    const beyond = tr.items.filter((t) => t.rank != null);   // Давж өсөх жагсаалт (ADR 0019): ≤ 10, цөөн бол цөөн, 0 байж болно
     const count = (k) => tr.items.filter((t) => t.category === k).length;   // ангиллын бодит сэдвийн тоо
     const chans = ORDER.map((k) => cs.categories.find((c) => c.key === k)).filter(Boolean);
     const EMO = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, v[0]]));
@@ -91,11 +91,11 @@
       </div>
       <div class="tmap" id="tmap"></div>
       <h2 class="sub-h">Ирэх 3 өдөрт юу өсөх вэ?</h2>
-      <p class="lead">${esc(W.trendLead(tr.dates, tr.fires, tr.T, tr.top_n))} ${tipped(W.LOW_VIEWS, W.TIP.lowViews)}</p>
-      <ul class="picker" aria-label="Сэдэв сонгох">${top.map((t, i) => `
+      <p class="lead">${esc(W.trendLead(tr.dates, tr.fires, tr.T, beyond.length))}${beyond.length ? ` ${tipped(W.LOW_VIEWS, W.TIP.lowViews)}` : ""}</p>${beyond.length ? `
+      <ul class="picker" aria-label="Сэдэв сонгох">${beyond.map((t, i) => `
         <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${chip(t, tr)}</button></li>`).join("")}
       </ul>
-      <section class="focus" id="focus" aria-live="polite"></section>
+      <section class="focus" id="focus" aria-live="polite"></section>` : ""}
       <section class="sec" aria-labelledby="cat-h">
         <h2 id="cat-h">Ангилал бүрт юу уншигдав?</h2>
         <p class="lead">${esc(W.catLead(chans.length, chans.reduce((n, c) => n + count(c.key), 0) / chans.length, Math.max(...chans.map((c) => c.topics.length)),
@@ -119,13 +119,13 @@
     let fn = null;
     function select(i) {
       btns.forEach((b, j) => b.setAttribute("aria-pressed", j === i));
-      const t = top[i];
+      const t = beyond[i];
       document.getElementById("focus").innerHTML = focusHTML(t, tr);
       redraws = redraws.filter((f) => f !== fn);
       fn = draw(drawFocus(t, tr));
     }
     btns.forEach((b) => b.addEventListener("click", () => select(+b.dataset.i)));
-    select(0);
+    if (beyond.length) select(0);
   }
 
   // ═════════ Бүх сэдэв (ADR 0013) ═════════

@@ -21,6 +21,8 @@ UP, DOWN, STABLE = "↑ өсөж байна", "↓ унаж байна", "тог
 T_FLOOR = 0.25
 FIRES_PER_DAY_TARGET = 7.5   # "өдөрт ~5–10 🔥"-ийн дунд (ADR 0004), valid дээр T-г үүгээр тааруулна
 FIRE, RISE, FLAT, DIP, FALL = "🔥", "↗", "≈", "↘", "↓"
+# Таамгийн чиглэл (CONTEXT.md): таамагласан pct (h3) ≥ +10% Rising (↗, 🔥), ≤ −10% Declining (↘, ↓). src/cycle.py ч үүнийг ашиглана.
+RISING, DECLINING = 0.10, -0.10
 
 # Хэмжигдэх сэдэв (ADR 0004): сүүлийн 7 хоногийн дундаж анхаарал (x хуваарьт) ≥ 1
 MEASURABLE_MIN, MEASURABLE_DAYS = 1.0, 7
@@ -90,7 +92,7 @@ def arrow(pred_pct: pd.Series, tuned_T: float, measurable: pd.Series) -> pd.Seri
     T = fire_threshold(tuned_T)
     p = pd.Series(pred_pct)
     m = pd.Series(measurable, index=p.index).fillna(False).astype(bool)
-    conds = [((p >= T) & m).to_numpy(), (p >= 0.10).to_numpy(), (p > -0.10).to_numpy(), (p > -0.20).to_numpy()]
+    conds = [((p >= T) & m).to_numpy(), (p >= RISING).to_numpy(), (p > DECLINING).to_numpy(), (p > -0.20).to_numpy()]
     out = pd.Series(np.select(conds, [FIRE, RISE, FLAT, DIP], default=FALL), index=p.index, dtype=object)
     return out.where(p.notna(), None)
 
