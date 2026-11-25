@@ -9,6 +9,7 @@
   Арын thread өдөрт нэг удаа зөвхөн дутуу сүүлийн өдрүүдийг Wikimedia-аас татна (src/live.py).
   D гараагүй / алдаа бол ~3 цагийн дараа нэг удаа дахин оролдоно, тэгээд ч болохгүй бол сүүлийн cache.
 - /api/topic, /api/categories, /api/trending, /api/map: хүсэлт бүрт model -> scoring (src/serve.py).
+- /api/track-record: нөхцөл байдал ба дүгнэлтийн track record (app/data/track_record.json, src/track_record.py).
 - /api/model: ачаалагдсан алгоритм, model хувилбар (hash), сургасан огноо, өгөгдлийн asof + Загвар хуудасны үнэлгээ.
 - /api/health: санах ой (cgroup + процессын RSS), uptime, refresh-ийн төлөв (Render free санах ойн график харуулдаггүй).
 
@@ -222,6 +223,13 @@ def topic(article: str):
 def attention_map():
     """Анхаарлын газрын зураг: asof өдрийн хамгийн их уншигдсан 40 сэдэв."""
     return serve.attention_map(state.model, state.snapshot, local_today())
+
+
+@app.get("/api/track-record")
+def track_record():
+    """"Хэр найдвартай вэ?" (ADR 0020, 0021): нөхцөл байдлын код, таамгийн зурвас, "үргэлжлэх/унтрах" дүгнэлт бүрийн
+    track record. Эх сурвалж (сэргээж тооцсон / хадгалсан) ба model хувилбар бүр тусдаа (app/data/track_record.json)."""
+    return serve.track_records(state.model)
 
 
 @lru_cache(maxsize=1)

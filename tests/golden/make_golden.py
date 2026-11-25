@@ -1,5 +1,5 @@
 """API-ийн "golden" хариуг бичнэ: санах ойн оновчлол (ADR 0012) /api/*-ийн хариуг ЯГ хэвээр үлдээж буйг
-tests/test_golden.py шалгадаг. Model, data/processed эсвэл scoring-ийг ЗОРИУДААР өөрчилбөл дахин үүсгэнэ:
+tests/test_golden.py шалгадаг. Model, data/processed, scoring эсвэл app/data/track_record.json-ийг ЗОРИУДААР өөрчилбөл дахин үүсгэнэ:
 
     python tests/golden/make_golden.py            # api_sha256.json-ийг шинэчилнэ
     python tests/golden/make_golden.py --dump     # + бүтэн JSON-ийг tests/golden/_dump/-д (зөрүү хайхад, git-д орохгүй)
@@ -18,7 +18,7 @@ sys.path.insert(0, str(HERE.parents[1]))
 GOLDEN = HERE / "api_sha256.json"
 TODAY = "2026-11-10"
 ENDPOINTS = {"trending": "/api/trending", "topic_ChatGPT": "/api/topic/ChatGPT", "map": "/api/map",
-             "categories": "/api/categories", "model": "/api/model"}
+             "categories": "/api/categories", "model": "/api/model", "track_record": "/api/track-record"}
 VOLATILE = {"loaded_at", "snapshot_built_at", "refresh"}   # /api/model["live"]: процесс эхэлсэн цаг
 
 

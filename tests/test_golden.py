@@ -1,6 +1,6 @@
 """Санах ойн оновчлол (ADR 0012) /api/*-ийн хариуг ЯГ хэвээр үлдээсэн эсэх: data/processed + app/model дээрх
 хариуны sha256 нь оновчлолоос ӨМНӨХ кодоор бичсэн tests/golden/api_sha256.json-тэй ижил байх ёстой.
-Model, data/processed, scoring-ийг зориудаар өөрчилбөл `python tests/golden/make_golden.py`-аар шинэчилнэ.  pytest -q"""
+Model, data/processed, scoring, app/data/track_record.json-ийг зориудаар өөрчилбөл `python tests/golden/make_golden.py`-аар шинэчилнэ.  pytest -q"""
 import json
 import subprocess
 import sys
@@ -22,7 +22,7 @@ def digests() -> dict:
     return json.loads(out.strip().splitlines()[-1])
 
 
-@pytest.mark.parametrize("endpoint", ["trending", "topic_ChatGPT", "map", "categories", "model"])
+@pytest.mark.parametrize("endpoint", ["trending", "topic_ChatGPT", "map", "categories", "model", "track_record"])
 def test_api_response_is_identical_to_golden(digests, endpoint):
     want = json.loads((GOLDEN / "api_sha256.json").read_text(encoding="utf-8"))["sha256"]
     assert digests[endpoint] == want[endpoint], (

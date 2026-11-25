@@ -99,11 +99,17 @@ def test_replay_of_last_day_equals_the_servers_forecast_that_day(raw, model):
         for col in ("delta_hat", "pct", "lo", "hi", "views"):
             np.testing.assert_array_equal(ours[f"{col}_h{h}"].to_numpy(), srv[f"{col}_h{h}"].to_numpy(dtype=float))
     assert ours["arrow"].tolist() == srv["arrow"].tolist()   # None (x_0 = 0) == None
+    # Нөхцөл байдал ба дүгнэлт (ADR 0020, 0021, #51): track record-д хэрэгтэй тул мөр бүрт, сервертэй ижил
+    assert ours["situation"].tolist() == srv["situation"].tolist()
+    assert ours["verdict"].tolist() == srv["verdict"].tolist() and ours["verdict"].notna().any()
+    assert ours["anomaly"].tolist() == srv["anomaly"].astype(bool).tolist()
+    np.testing.assert_array_equal(ours["cycle"].to_numpy(), srv["cycle"].to_numpy(dtype=float))
 
     for it in api["items"]:
         r = ours.loc[it["article"]]
         assert [f["pct"] for f in it["forecast"]] == [serve._r(r[f"pct_h{h}"]) for h in backtest.HORIZONS]
         assert [f["y"] for f in it["forecast"]] == [round(r[f"views_h{h}"]) for h in backtest.HORIZONS]
+        assert (it["situation"], it["verdict"]) == (r["situation"], r["verdict"])
 
 
 def test_boundary_is_the_first_test_day_and_is_pinned_to_the_model_version(model):
@@ -180,3 +186,12 @@ def test_rows_of_another_model_version_are_never_mixed_in(tmp_path, raw, model):
     other.to_parquet(path, index=False)
     with pytest.raises(ValueError, match="хувилбар"):
         backtest.run(small, model, tmp_path)
+
+
+def test_cached_rows_without_situation_columns_are_recomputed(tmp_path, raw, model):
+    """#51-ээс өмнөх backtest.parquet (код, дүгнэлтгүй) дахин ашиглагдахгүй: track record-д бүх мөр код/дүгнэлттэй байна."""
+    small = backtest.truncate(subset(raw, SAMPLE[:1]), backtest.FROM + pd.Timedelta(days=1))
+    path = backtest.run(small, model, tmp_path)["path"]
+    pd.read_parquet(path).drop(columns=["situation", "verdict"]).to_parquet(path, index=False)
+    again = backtest.run(small, model, tmp_path)
+    assert again["computed"] == 2 and pd.read_parquet(path)["situation"].notna().all()
