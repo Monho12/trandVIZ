@@ -1,0 +1,97 @@
+# Хадгалсан таамгийн өдөр тутмын log (ADR 0016, #46).
+# asof = ажиллаж буй UTC өдрийн өчигдөр. Сервертэй ижил кодоор (src/live, src/serve, app/model) тооцоод `forecast-log`
+# branch-д commit хийнэ, `main` дээр хэзээ ч биш. D бэлэн биш бол зөвхөн not_published статус. Өдрийг хожим нөхөхгүй.
+name: forecast-log
+
+on:
+  schedule:
+    - cron: "41 6 * * *"   # УБ 14:41. Render 03:00 UTC-д шинэчилж, 06:00-д дахин оролддог (src/live.py)
+    - cron: "41 9 * * *"   # дахин оролдлого (D гараагүй/дутуу бол). :00-оос зайлсхийсэн (GitHub-ийн ачаалал)
+  workflow_dispatch:
+
+permissions:
+  contents: write   # forecast-log branch-д push
+  issues: write     # мэдэгдэл
+
+concurrency:
+  group: forecast-log
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      LOG_BRANCH: forecast-log
+      RENDER_URL: https://trandviz.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: forecast-log branch (байхгүй бол orphan)
+        id: branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin "$LOG_BRANCH"; then
+            git worktree add -B "$LOG_BRANCH" log FETCH_HEAD
+          else
+            git worktree add --orphan -b "$LOG_BRANCH" log
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Render-тэй ижил сангууд
+        run: pip install -r requirements-ci.txt
+
+      - name: Golden test (Render-тэй ижил /api/* хариу)
+        id: golden
+        continue-on-error: true
+        run: python -m pytest -q tests/test_golden.py
+
+      - name: Өчигдрийн таамаг
+        id: run
+        run: |
+          python -m src.forecast_log run --log-dir log --render-url "$RENDER_URL" --golden "${{ steps.golden.outcome }}" | tee run.txt
+          echo "summary=$(tail -n 1 run.txt)" >> "$GITHUB_OUTPUT"
+
+      # Таамаг тооцох алхам унасан ч (оролдлого error статустай бичигдсэн) push хийнэ: оролдлого бүр log-д үлдэнэ.
+      - name: Commit + push (зөвхөн forecast-log)
+        if: always() && steps.branch.outcome == 'success'
+        env:
+          SUMMARY: ${{ steps.run.outputs.summary || 'таамаг тооцох алхам бүтэлгүйтэв' }}
+        run: |
+          cd log
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -q -m "forecast-log: $SUMMARY"
+          git push origin "HEAD:$LOG_BRANCH"
+
+      - name: 2 өдөр дараалан цоорхой бол issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m src.forecast_log alert --log-dir log --out alert.md
+          if [ -s alert.md ]; then
+            python -m src.gh_issue --title "forecast-log: 2 өдөр дараалан цоорхой" --body-file alert.md
+          fi
+
+      - name: Golden test бүтэлгүйтсэн бол workflow бүтэлгүйтнэ (таамаг аль хэдийн хадгалагдсан)
+        if: steps.golden.outcome == 'failure'
+        run: |
+          echo "tests/test_golden.py бүтэлгүйтсэн: Action-ийн орчин Render-ээс зөрж байж болно" >&2
+          exit 1
+
+      - name: Бүтэлгүйтсэн бол issue
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 -m src.gh_issue --title "forecast-log: workflow бүтэлгүйтлээ" \
+            --body "$(date -u +%FT%TZ): forecast-log workflow бүтэлгүйтлээ, хадгалсан таамаг тасарч магадгүй (ADR 0016). $RUN_URL"

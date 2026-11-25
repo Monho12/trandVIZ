@@ -9,9 +9,7 @@
     if (v >= 1e3) return (v / 1e3).toFixed(v >= 1e4 ? 0 : 1).replace(/\.0$/, "") + " мянга";
     return String(v);
   };
-  const MONTHS = ["1-р", "2-р", "3-р", "4-р", "5-р", "6-р", "7-р", "8-р", "9-р", "10-р", "11-р", "12-р"];
-  const md = window.Words.md;
-  const longDate = (s) => { const [, m, d] = s.split("-"); return `${MONTHS[+m - 1]} сарын ${+d}`; };
+  const { md, longDate } = window.Words;   // огноо (ADR 0018): тэнхлэг, графикийн шошго md "11.09", tooltip longDate "11-р сарын 9"
   const el = (tag, attrs = {}, parent) => {
     const n = document.createElementNS(NS, tag);
     for (const k in attrs) n.setAttribute(k, attrs[k]);
@@ -65,6 +63,7 @@
     const { svg, w, h } = svgFor(box, label);
     const pad = axis ? { l: 58, r: 6, t: 26, b: 24 } : { l: 0, r: 0, t: 2, b: 2 };
     const H = history.length, F = forecast.length, gapSlots = F ? 0.8 : 0;
+    const asof = history[H - 1].d;                        // tooltip-ийн огноонд жил нэмэх эсэхийн жишиг
     const slot = (w - pad.l - pad.r) / (H + F + gapSlots);
     const bw = Math.max(1, slot - (slot > 6 ? 2 : 1));     // баганын хооронд 2px зай
     const X = (i) => pad.l + (i + (i >= H ? gapSlots : 0)) * slot + (slot - bw) / 2;
@@ -129,8 +128,8 @@
       const r = el("rect", { x: X(i) - (slot - bw) / 2, y: 0, width: slot, height: h, fill: "transparent" }, hits);
       const isF = i >= H, d = isF ? forecast[i - H] : history[i];
       const html = isF
-        ? `<b>${longDate(d.d)}, таамаг</b>≈ ${fmt(d.y)} уншилт<br><span>10 удаагийн 8-д: ${fmt(d.lo)} – ${fmt(d.hi)}</span><br><span>${window.Words.TIP.forecastBar}</span>`
-        : `<b>${longDate(d.d)}</b>${fmt(d.v)} уншилт`;
+        ? `<b>${longDate(d.d, asof)}, таамаг</b>≈ ${fmt(d.y)} уншилт<br><span>10 удаагийн 8-д: ${fmt(d.lo)} – ${fmt(d.hi)}</span><br><span>${window.Words.TIP.forecastBar}</span>`
+        : `<b>${longDate(d.d, asof)}</b>${fmt(d.v)} уншилт`;
       r.addEventListener("pointermove", (e) => { hl.setAttribute("x", X(i) - (slot - bw) / 2); hl.setAttribute("visibility", "visible"); showTip(e, html); });
       r.addEventListener("pointerleave", () => { hl.setAttribute("visibility", "hidden"); hideTip(); });
     }
@@ -341,5 +340,5 @@
     el("circle", { class: "sp-dot", cx: X(n - 1), cy: Y(history[n - 1].v), r: 2.5 }, svg);
   }
 
-  window.Charts = { columns, dumbbell, curve, bars, diverging, hbarsV, lines, treemap, spark, heat: HEAT, fmt, longDate, md };
+  window.Charts = { columns, dumbbell, curve, bars, diverging, hbarsV, lines, treemap, spark, heat: HEAT, fmt };
 })();

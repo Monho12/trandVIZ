@@ -55,6 +55,39 @@ def _check_forecast(d):
     assert "viral" not in {x["category"] for x in d["items"]}
 
 
+def test_forecast_dates_text_is_month_dot_day_zero_padded(client):
+    """ADR 0018: хугацааны муж "11.11–11.13" (сар.өдөр, тэгээр нөхсөн), "11/11–11/13" биш."""
+    d = client.get("/api/trending").json()
+    f = pd.date_range(d["asof"], periods=4)[1:]
+    assert d["dates"] == f"{f[0]:%m.%d}–{f[-1]:%m.%d}"
+    assert client.get("/api/model").json()["dates"] == d["dates"]
+
+
+def test_forecast_dates_text_across_new_year_and_single_digit_days():
+    from src import serve
+    assert serve.dates_text(pd.Timestamp("2026-11-08")) == "11.09–11.11"
+    assert serve.dates_text(pd.Timestamp("2026-12-30")) == "12.31–01.02"
+
+
+def test_no_api_text_has_a_slash_date(client):
+    """ADR 0018: /api/*-ийн ямар ч текстэд "11/9", "11/11–11/13" маягийн огноо үлдээгүй."""
+    import re
+    slash = re.compile(r"(?<![\d/])\d{1,2}/\d{1,2}(?![\d/])")
+
+    def strings(v):
+        if isinstance(v, str):
+            yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from strings(x)
+        elif isinstance(v, list):
+            for x in v:
+                yield from strings(x)
+    for ep in ("/api/trending", "/api/topic/ChatGPT", "/api/map", "/api/categories", "/api/model"):
+        hits = [x for x in strings(client.get(ep).json()) if slash.search(x)]
+        assert not hits, (ep, hits[:3])
+
+
 def test_forecast_has_concrete_dates_interval_and_no_viral_category(client):
     _check_forecast(client.get("/api/trending").json())
 

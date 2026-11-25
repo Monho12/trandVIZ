@@ -1,7 +1,7 @@
-# Шуугиан — Дэлхий юуг шуугиж байна?
+# Шуугиан — англи Wikipedia-д юу огцом уншигдав
 
-Wikipedia-ийн өдөр тутмын хандалтаар дэлхийн анхаарлыг хэмжиж, **ирэх 3 өдрийн**
-сонирхлыг gradient boosting-оор (LightGBM / XGBoost / CatBoost-оос valid-аар сонгосон) таамагладаг Data Mining төсөл.
+Өдөр тутмын уншилтаар англи Wikipedia-ийн анхаарлыг хэмжиж, **ирэх 3 өдрийн**
+анхаарлыг gradient boosting-оор (LightGBM / XGBoost / CatBoost-оос valid-аар сонгосон) таамагладаг Data Mining төсөл.
 
 ## Хурдан эхлэх (laptop / гэрийн PC аль алин дээр)
 
@@ -45,6 +45,12 @@ Image зөвхөн серверт хэрэгтэй сангуудыг суулг
 Render-ийн үнэгүй Docker Web Service (512 MB, ADR 0011): серверт зөвхөн CatBoost ачаалагдана.
 15 минут хүсэлтгүй бол унтдаг тул эхний нээлт ~1 минут удаж болно. Порт нь Render-ийн `$PORT` (local-д 7860).
 
+### Хадгалсан таамгийн log (GitHub Actions)
+
+`.github/workflows/forecast-log.yml` өдөр бүр 06:41, 09:41 UTC-д өчигдрийн таамгийг сервертэй ижил кодоор тооцоод
+[`forecast-log`](https://github.com/Monho12/trandVIZ/tree/forecast-log) branch-д хадгална (ADR 0016). Гараар: Actions таб →
+forecast-log → "Run workflow". Local-д: `python -m src.forecast_log run --log-dir log` (Wikimedia-аас татна).
+
 ### Хамгаалалт дээр
 
 Үндсэн нь дээрх Render-ийн линк (5 минутын өмнө нээж сэрээнэ). Нөөц нь **local** (ADR 0010).
@@ -63,6 +69,7 @@ asof хуучин бол шар анхааруулга харуулна. Нөө�
 | `src/` | Python код (өгөгдөл татах, feature, model) |
 | `notebooks/` | Алхам алхмаар тайлбартай notebook-ууд |
 | `app/` | FastAPI backend + вэб |
+| `.github/workflows/` | Хадгалсан таамгийн өдөр тутмын log (ADR 0016) |
 | `docs/` | Хамгаалалтын хуудас, слайд |
 
 ## Төлөвлөгөө

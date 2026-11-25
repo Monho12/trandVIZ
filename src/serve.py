@@ -138,7 +138,8 @@ def _r(p: float) -> float | None:
 
 
 def md(d: pd.Timestamp) -> str:
-    return f"{d.month}/{d.day}"
+    """Сайтын богино огноо (ADR 0018): сар.өдөр, тэгээр нөхсөн ("11.09"). Frontend-ийн Words.md-тэй ижил."""
+    return f"{d.month:02d}.{d.day:02d}"
 
 
 def forecast_dates(asof: pd.Timestamp) -> list[pd.Timestamp]:
@@ -146,7 +147,7 @@ def forecast_dates(asof: pd.Timestamp) -> list[pd.Timestamp]:
 
 
 def dates_text(asof: pd.Timestamp) -> str:
-    """Таамгийн тодорхой огноо (ADR 0008): "11/11–11/13"."""
+    """Таамгийн тодорхой огноо (ADR 0008, 0018): "11.11–11.13"."""
     f = forecast_dates(asof)
     return f"{md(f[0])}–{md(f[-1])}"
 

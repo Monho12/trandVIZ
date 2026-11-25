@@ -1,19 +1,35 @@
 // Сайтын үг ба шошго (ADR 0014): тоо = "уншилт", таамгийн хувь = "анхаарал"; ▲ = өнгөрсөн, ↗/🔥 = таамаг.
-// "Өчигдөр" гэдэг үг зөвхөн эндээс, asof = өчигдөр (age_days = 1) үед л гарна; бусад үед огноо ("11/9").
+// "Өчигдөр" гэдэг үг зөвхөн эндээс, asof = өчигдөр (age_days = 1) үед л гарна; бусад үед огноо.
 // asof: "YYYY-MM-DD", age: /api/*-ийн age_days (серверийн өнөөдөр, Улаанбаатарын цагаар − asof).
 (function (root) {
-  const md = (s) => { const [, m, d] = s.split("-"); return `${+m}/${+d}`; };
-  const isYesterday = (age) => age === 1;
-  const day = (asof, age) => (isYesterday(age) ? "өчигдөр" : md(asof));
-  const dayTile = (asof, age) => (isYesterday(age) ? "Өчигдөр" : md(asof));
-  const homeTitle = (asof, age) => `${isYesterday(age) ? "Өчигдөр" : md(asof) + "-нд"} дэлхий юуг уншив?`;
+  // ── Огноо (ADR 0018). Сайтын бүх огноо эндээс гарна (charts.js, app.js өөрөө огноо задлахгүй, test_words шалгана). ──
+  // iso: "YYYY-MM-DD" (эсвэл "YYYY-MM-DDTHH:MM..."-ийн эхний 10 тэмдэгт).
+  const ymd = (iso) => iso.slice(0, 10).split("-").map(Number);
+  const pad = (n) => String(n).padStart(2, "0");
+  // Карт, графикийн тэнхлэг, богино шошго (▲, чип), хугацаа: "11.09" (YYYY.MM.DD-ийн сар.өдөр, тэгээр нөхсөн). src/serve.py: md()-тэй ижил.
+  const md = (iso) => { const [, m, d] = ymd(iso); return `${pad(m)}.${pad(d)}`; };
+  // Өгүүлбэр, tooltip, гарчиг: "11-р сарын 9". ref (сайтын asof) өгвөл жил нь өөр үед "2025 оны 11-р сарын 9".
+  const longDate = (iso, ref) => {
+    const [y, m, d] = ymd(iso);
+    return `${ref && y !== ymd(ref)[0] ? `${y} оны ` : ""}${m}-р сарын ${d}`;
+  };
+  // Олон жилийн хүрээ (жил заавал): "2026.10.08–2026.11.06"; сар: "2026.05"
+  const fullDate = (iso) => { const [y, m, d] = ymd(iso); return `${y}.${pad(m)}.${pad(d)}`; };
+  const span = (r) => `${fullDate(r.from)}–${fullDate(r.to)}`;
+  const ym = (iso) => fullDate(iso).slice(0, 7);
 
-  // ▲ шошго (ADR 0017: ×N нь анхаарал дээр): урт "өчигдөр анхаарал ×3" / "11/8 анхаарал ×3", богино "×3" (нүүрний нарийн
+  const isYesterday = (age) => age === 1;
+  const day = (asof, age) => (isYesterday(age) ? "өчигдөр" : md(asof));                      // шошго, график
+  const dayLong = (asof, age) => (isYesterday(age) ? "өчигдөр" : longDate(asof));             // өгүүлбэр
+  const dayTile = (asof, age) => (isYesterday(age) ? "Өчигдөр" : md(asof));
+  const homeTitle = (asof, age) => `${isYesterday(age) ? "Өчигдөр" : longDate(asof) + "-нд"} дэлхий юуг уншив?`;
+
+  // ▲ шошго (ADR 0017: ×N нь анхаарал дээр): урт "өчигдөр анхаарал ×3" / "11.08 анхаарал ×3", богино "×3" (нүүрний нарийн
   // картанд, "анхаарал" нь tooltip-д). ▲ тэмдгийг CSS нэмнэ. Tooltip үргэлж огноотой; z тоог харуулахгүй, тайлбар нь давтамжаар.
   const surgeText = (ratio, asof, age, short) => (short ? `×${ratio}` : `${day(asof, age)} анхаарал ×${ratio}`);
   // t: /api/*-ийн сэдэв (ratio, views_ratio, typical_pct, similar_days). Түүхий уншилтын ×N хаалтанд (CONTEXT.md).
   const surgeTip = (t, asof) => [
-    `${md(asof)}-нд анхаарал ердийн өдрөөс ${t.ratio} дахин их${t.views_ratio == null ? "" : ` (уншилт ×${t.views_ratio})`}.`,
+    `${longDate(asof)}-нд анхаарал ердийн өдрөөс ${t.ratio} дахин их${t.views_ratio == null ? "" : ` (уншилт ×${t.views_ratio})`}.`,
     `Энэ сэдэв ихэвчлэн ±${Math.round(t.typical_pct * 100)}%-иар л хэлбэлздэг.`,
     `Сүүлийн 2 сард ийм өдөр ${t.similar_days ? `${t.similar_days} удаа гарсан` : "нэг ч удаа гараагүй"}.`].join(" ");
 
@@ -22,7 +38,7 @@
   // API-ийн "— (өчигдөр уншилтгүй)" шошгыг хуучирсан өгөгдөлд огноотой болгоно
   const forecastLabel = (label, asof, age) => (isYesterday(age) ? label : label.replace("өчигдөр", `${md(asof)}-нд`));
 
-  // Нүүрний "Ирэх 3 өдөрт юу өсөх вэ?"-ийн тайлбар (PLAN, Нүүр). dates: API-ийн "11/11–11/13", fires: 🔥-ийн тоо,
+  // Нүүрний "Ирэх 3 өдөрт юу өсөх вэ?"-ийн тайлбар (PLAN, Нүүр). dates: API-ийн "11.11–11.13", fires: 🔥-ийн тоо,
   // T: 🔥-ийн босго (0.25 -> "25%"), n: API-ийн top_n. "Хэт цөөн уншигддаг..." өгүүлбэрийг app.js tooltip-тэй нь нэмнэ (W.LOW_VIEWS).
   const pctText = (x) => `${Math.round(x * 100)}%`;
   const trendLead = (dates, fires, T, n) => (fires >= 1
@@ -34,7 +50,7 @@
   // shown: карт бүрт харуулах сэдэв, reason: "яагаад эдгээр ангилал" (хоосон бол оруулахгүй).
   const catLead = (nCats, perCat, shown, asof, age, reason) => [
     `${nCats} бүлэгт тус бүр ~${Math.round(perCat)} сэдвийг бид гараар сонгосон.`, reason,
-    `Карт бүрт ${isYesterday(age) ? "өчигдөр" : md(asof) + "-нд"} хамгийн их уншигдсан ${shown} нь.`,
+    `Карт бүрт ${isYesterday(age) ? "өчигдөр" : longDate(asof) + "-нд"} хамгийн их уншигдсан ${shown} нь.`,
     "▲ анхаарал ×2 = ердийн өдрөөс 2 дахин их."].filter(Boolean).join(" ");
   // PLAN-ийн "[Майк бөглөнө: яагаад эдгээр ангилал]". Майк бөглөтөл хоосон (test_words шалгана),
   // "оюутан, залуучуудын сонирхдог" гэж бичихгүй.
@@ -56,13 +72,11 @@
 
   // "Бүх сэдэв" хуудасны тайлбар (ADR 0013): ▲-ийн өдөр нь asof = өчигдөр үед л "өчигдөр", эрэмбийн өдөр үргэлж огноо.
   const listLead = (asof, age) => "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. "
-    + `▲ = ${day(asof, age)} анхаарал ердийнхөөс хэд дахин их. Ангилал бүрт ${md(asof)}-нд хамгийн их уншигдсанаас нь эхлэн.`;
+    + `▲ = ${dayLong(asof, age)} анхаарал ердийнхөөс хэд дахин их. Ангилал бүрт ${longDate(asof)}-нд хамгийн их уншигдсанаас нь эхлэн.`;
 
   // ── "Сонирхолтой" хуудас (issue #33). Юуг харуулахыг app/data/make_insights.py сонгоно, энд зөвхөн үг. ──
   const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];                                   // 0 = Даваа
   const DAYS_LONG = ["Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба", "Ням"];
-  // r: insights.json-ий ranges-ийн нэг ({from, to}, "YYYY-MM-DD") -> "2026.10.08–2026.11.06"
-  const span = (r) => `${r.from.replace(/-/g, ".")}–${r.to.replace(/-/g, ".")}`;
   const year = (iso) => iso.slice(0, 4);
   const factsLead = (r, topics) => `Англи Wikipedia, ${year(r.from)} оноос хойшх өгөгдөл, манай ${topics} сэдэв.`;
   const decayNote = (n) => `Гэнэт шуугисан ${n} сэдвийн дундаж (медиан). Оргил өдрийн уншилт = 100%.`;
@@ -102,7 +116,6 @@
   const months = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / 864e5 / 30.4375);
   const modelWords = (m) => {
     const p = m.pipeline, N = m.names, naive = `"${N.naive}"`;
-    const ym = (iso) => iso.slice(0, 7).replace("-", ".");
     const testSpan = span({ from: p.test_start, to: p.end }), testMonths = months(p.test_start, p.end);
     const validMonths = months(p.train_end, p.valid_end);
     const chosen = `бидний сонгосон ${p.topics_main} сэдэв`;
@@ -147,6 +160,8 @@
         + "Model-ийг сайт дээр дахин сургадаггүй."],
     ].map(([title, value, unit, line, more]) => ({ title, value, unit, line, more }));
     return {
+      // h1-д "загвар" үг үлдээхгүй; "байсан": track record бол өнгөрсөн өгөгдөл (ADR 0022, 0027)
+      title: "Таамаг өмнө нь хэр зөв байсан бэ?",
       errHint: `Дунджаар хэдэн хувиар зөрдөг вэ (${testSpan}, model огт хараагүй ${testMonths} сарын test өгөгдөл, ${chosen}). Ойр = илүү зөв.`,
       overfitSub: "Overfit = сургалтын өгөгдлөө цээжлээд шинэ өгөгдөл дээр муу таамаглах. Хоёр шугам ойрхон бол цээжлээгүй.",
       overfitNote: `Validation (сургалтад ороогүй шалгах өгөгдөл) дээрх алдаа сургалтынхаас бага гарсан нь алдаа биш: тэр ${validMonths} сар илүү тайван байсан. `
@@ -179,7 +194,7 @@
     other: "Сарын шилдэг 200-д 1–2 сар орсон, оргил өдөр нь ердийнхөөсөө 8+ дахин их",
   };
 
-  const Words = { md, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, expand, COLLAPSE,
+  const Words = { md, longDate, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, expand, COLLAPSE,
     listLead, LOW_TAG, OTHER_NOTE, LOW_VIEWS, TIP,
     DAYS, span, factsLead, decayNote, catsNote, mongoliaNote, catsHeadline, weekdayTitle, weekdayLabel, WEEKDAY_NOTE,
     HOLIDAY_TITLE, holidayLabel, holidayNote,
