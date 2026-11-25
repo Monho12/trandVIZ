@@ -216,7 +216,7 @@
     const vsNaive = Math.min(...v.rows.map((r) => r.naive - r[m.winner]));
     const T = W.modelWords(m), steps = T.steps;   // хуудасны үг (#34): words.js
     main.innerHTML = `
-      <h1 class="page-h">Загвар хэр сайн таамагладаг вэ?</h1>
+      <h1 class="page-h">${esc(T.title)}</h1>
       <p class="lead">Энгийн аргаас илүү зөв үү?</p>
       <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b> ${esc(m.live.version)}, сургасан ${C.md(m.live.trained_at.slice(0, 10))},
         өгөгдөл ${C.md(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
