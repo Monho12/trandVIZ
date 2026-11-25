@@ -268,7 +268,8 @@ def test_each_anomaly_verdict_carries_its_recomputed_track_record_for_the_loaded
         if t["verdict"]:
             tr = t["verdict_track"]
             assert (tr["source"], tr["model_version"]) == ("сэргээж тооцсон", version)
-            assert (tr["n"], tr["hit"], tr["base_hit"]) == tuple(by[t["verdict"]][k] for k in ("n", "hit", "base_hit"))
+            assert (tr["n"], tr["hit"], tr["base_hit"], tr.get("text")) == tuple(
+                by[t["verdict"]].get(k) for k in ("n", "hit", "base_hit", "text"))
 
 
 def test_trending_summarizes_the_days_anomalies_by_verdict(client):

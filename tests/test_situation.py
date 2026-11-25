@@ -260,3 +260,15 @@ def test_all_fade_day_keeps_its_anomalies_and_says_all_fade():
     an = [t for t in res["items"] if t["anomaly"] and t["pct"] is not None]
     assert len(an) == 19 and all(t["verdict"] == "fade" and t["verdict_label"] == "унтрах" for t in an)
     assert res["anomalies"] == {"n": 19, "continue": 0, "fade": 19, "all_fade": True}
+
+
+def test_base_rate_of_few_anomalies_is_insufficient_too():
+    d = pd.concat([rows(5, anomaly=True, verdict="continue"), rows(30)], ignore_index=True)
+    c = entry(situation.track_record(d, "stored")["by_verdict"], "continue")
+    assert (c["hit"], c["base_hit"], c["text"]) == (None, None, "хангалтгүй")
+
+
+def test_excess_share_needs_20_rows_with_a_known_cycle():
+    d = pd.concat([rows(15, situation="rebound", cycle=np.nan), rows(10, situation="rebound")], ignore_index=True)
+    e = entry(situation.track_record(d, "recomputed")["by_code"], "rebound")
+    assert e["n"] == 25 and e["up10"] is not None and e["excess10"] is None

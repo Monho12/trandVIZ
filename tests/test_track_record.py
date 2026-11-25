@@ -50,7 +50,7 @@ def test_stored_rows_score_the_logged_forecast_against_actual_h3_and_drop_late_d
     log = write_log(tmp_path, [stored_record(raw, model, D, {
         "Donald_Trump": {"y_0": 2.0}, "Joe_Biden": {"was_missing": True}, "Taylor_Swift": {"situation": None}})])
     rows, skipped = track_record.stored_rows(log, raw)
-    assert list(rows["article"]) == ["Donald_Trump"] and skipped == {"late_data": 1, "no_code": 1}
+    assert list(rows["article"]) == ["Donald_Trump"] and skipped == {model.model_hash: {"late_data": 1, "no_code": 1}}
     cl = backtest.add_actuals(raw, pd.DataFrame({"asof": [D], "article": ["Donald_Trump"], "y_0": [2.0]}))
     assert rows["actual_pct_h3"].iloc[0] == pytest.approx(cl["actual_pct_h3"].iloc[0])
     assert rows["actual_pct_h3"].iloc[0] == pytest.approx(scoring.pct(2.0, cl["actual_delta_h3"].iloc[0] + 2.0))
@@ -73,6 +73,16 @@ def test_build_keeps_recomputed_and_stored_apart_each_with_its_model_version(tmp
     rec = out["sources"][0]
     assert rec["from"] == "2026-04-01" and rec["base"]["n"] == 3 * 3   # (а) 3 сэдэв × бодит h3-тай 3 өдөр
     assert out["sources"][1]["skipped"] == {"late_data": 0, "no_code": 0}
+
+
+def test_skipped_counts_belong_to_their_own_model_version(tmp_path, raw, model):
+    mine = stored_record(raw, model, D, {"Donald_Trump": {}, "Joe_Biden": {"was_missing": True}})
+    other = stored_record(raw, model, pd.Timestamp("2026-06-16"), {"Donald_Trump": {}, "Taylor_Swift": {"situation": None}})
+    other["model_hash"] = "f" * 64
+    out = track_record.build(model, raw, log_dir=write_log(tmp_path, [mine, other]), backtest_dir=tmp_path / "none")
+    skipped = {s["model_version"]: s["skipped"] for s in out["sources"]}
+    assert skipped == {train.short_version(model.model_hash): {"late_data": 1, "no_code": 0},
+                       "vfffffff": {"late_data": 0, "no_code": 1}}
 
 
 def test_build_without_a_log_has_only_the_recomputed_source(tmp_path, raw, model):

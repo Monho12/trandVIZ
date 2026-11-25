@@ -11,13 +11,13 @@ import numpy as np
 import pandas as pd
 
 from src.anomaly import Z_ANOMALY
-from src.cycle import excess
-from src.scoring import GROUP_NEW_VIRAL
+from src.cycle import EXCESS_BAND, excess
+from src.scoring import DECLINING, GROUP_NEW_VIRAL, RISING, T_FLOOR
 from src.train import short_version
 
 # ---------------------------------------------------------------- дүгнэлт (ADR 0021, "Тодорхойлолт")
 # Anomaly сэдвийн таамагласан pct (h3) ≤ −10% -> унтрах, бусад -> үргэлжлэх. Сайтын сумтай нэг хил (src/scoring.py).
-FADE_MAX = -0.10
+FADE_MAX = DECLINING
 VERDICTS = {"continue": "үргэлжлэх", "fade": "унтрах"}
 
 
@@ -73,7 +73,9 @@ def code(df) -> np.ndarray:
 # ---------------------------------------------------------------- таамгийн зурвас (таамагласан pct h3), сайтын сумтай нэг хил
 
 BANDS = {"le_-20": "≤ −20%", "-20_-10": "−20…−10%", "pm10": "±10%", "10_25": "+10…+25%", "ge_25": "≥ +25%"}
-BAND_EDGES = (-0.20, -0.10, 0.10, 0.25)   # ↓ ≤ −20% < ↘ ≤ −10% < ≈ < +10% ≤ ↗ < +25% ≤
+# ↓ ≤ −20% < ↘ ≤ −10% < ≈ < +10% ≤ ↗ < +25% ≤. Дээд хил нь T-ийн доод хязгаар (T_FLOOR) тогтмол: тааруулсан T өөрчлөгдсөн ч
+# зурвас өөрчлөгдөхгүй (issue #51-ийн зурвас), харин 🔥/хүчтэй ↗ нь T ≥ 25%-аар (src/scoring.arrow).
+BAND_EDGES = (-0.20, DECLINING, RISING, T_FLOOR)
 
 
 def band(pct_h3) -> np.ndarray:
@@ -93,8 +95,9 @@ def band(pct_h3) -> np.ndarray:
 SOURCES = {"recomputed": "сэргээж тооцсон", "stored": "хадгалсан"}   # GLOSSARY: Сэргээж тооцсон / Хадгалсан таамаг
 MIN_N = 20
 INSUFFICIENT = "хангалтгүй"
-UP, DOWN = 0.10, -0.10     # бодит ≥ +10% / ≤ −10% (≤ −10% = унтарсан, ADR 0021)
-EXCESS_HIT = 0.10          # бодит илүүдэл ≥ +10% (ADR 0019, src/cycle.py EXCESS_BAND)
+ACTUAL_UP, ACTUAL_DOWN = RISING, DECLINING   # бодит ≥ +10% / ≤ −10% (≤ −10% = унтарсан, ADR 0021)
+# Дүгнэлт бүрийн "биелсэн" үр дүн (hit ба ердийн үеийн base_hit хоёулаа үүгээр)
+HELD = {"continue": lambda a: a > ACTUAL_DOWN, "fade": lambda a: a <= ACTUAL_DOWN}
 POPULATION = "хэмжигдэх сэдэв, (в) бүлгийг хассан, бодит үр дүн (h3) мэдэгдсэн таамгууд"
 COLS = ["asof", "measurable", "group", "model_hash", "pct_h3", "actual_pct_h3", "cycle", "situation", "anomaly", "verdict"]
 
@@ -104,15 +107,16 @@ def _share(mask: np.ndarray) -> float:
 
 
 def outcome(d: pd.DataFrame) -> dict:
-    """n ба бодит ≥ +10%, > 0, ≤ −10%, бодит илүүдэл ≥ +10%-ийн хувь. n < MIN_N бол тоо биш "хангалтгүй"."""
+    """n ба бодит ≥ +10%, > 0, ≤ −10%, бодит илүүдэл ≥ +10%-ийн хувь. n < MIN_N бол тоо биш "хангалтгүй".
+    Илүүдэл нь мөчлөг мэдэгдсэн мөрүүд дээр: тэдгээр нь MIN_N-ээс цөөн бол excess10 = None."""
     n = len(d)
     if n < MIN_N:
         return {"n": n, "enough": False, "text": INSUFFICIENT, "up10": None, "up": None, "down10": None, "excess10": None}
     a = d["actual_pct_h3"].to_numpy(float)
     e = excess(a, d["cycle"].to_numpy(float))
     defined = np.isfinite(e)
-    return {"n": n, "enough": True, "up10": _share(a >= UP), "up": _share(a > 0), "down10": _share(a <= DOWN),
-            "excess10": _share(e[defined] >= EXCESS_HIT) if defined.any() else None}
+    return {"n": n, "enough": True, "up10": _share(a >= ACTUAL_UP), "up": _share(a > 0), "down10": _share(a <= ACTUAL_DOWN),
+            "excess10": _share(e[defined] >= EXCESS_BAND) if defined.sum() >= MIN_N else None}
 
 
 def _by(d: pd.DataFrame, col: str, labels: dict) -> list[dict]:
@@ -129,14 +133,11 @@ def track_record(rows: pd.DataFrame, source: str) -> dict:
             & np.isfinite(rows["actual_pct_h3"].to_numpy(float)))
     d = rows[keep.to_numpy()].assign(band=lambda x: band(x["pct_h3"]))
     an = d[d["anomaly"].fillna(False).astype(bool)]
-    a = an["actual_pct_h3"].to_numpy(float)
-    base_hit = {"continue": _share(a > DOWN) if len(a) else None, "fade": _share(a <= DOWN) if len(a) else None}
+    held = lambda k, g: _share(HELD[k](g["actual_pct_h3"].to_numpy(float))) if len(g) >= MIN_N else None   # noqa: E731
     verdicts = []
     for k, v in VERDICTS.items():
         g = an[an["verdict"] == k]
-        o = outcome(g)
-        hit = (o["down10"] if k == "fade" else round(1 - o["down10"], 4)) if o["enough"] else None
-        verdicts.append({"key": k, "label": v, **o, "hit": hit, "base_hit": base_hit[k]})
+        verdicts.append({"key": k, "label": v, **outcome(g), "hit": held(k, g), "base_hit": held(k, an)})
     dates = pd.to_datetime(d["asof"]) if len(d) else pd.to_datetime(rows["asof"])
     return {"source_key": source, "source": SOURCES[source], "model_hash": h, "model_version": short_version(h),
             "from": dates.min().strftime("%Y-%m-%d"), "through": dates.max().strftime("%Y-%m-%d"),

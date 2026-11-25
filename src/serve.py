@@ -214,8 +214,8 @@ def verdict_tracks(model, path: Path | None = None) -> dict[str, dict]:
     src = next((s for s in track_records(model, path)["sources"] if s["current"] and s["source_key"] == "recomputed"), None)
     if src is None:
         return {}
-    keep = ("n", "enough", "hit", "base_hit")
-    return {e["key"]: {"source": src["source"], "model_version": src["model_version"], **{k: e[k] for k in keep}}
+    keep = ("n", "enough", "text", "hit", "base_hit")   # text = "хангалтгүй" (n < 20)
+    return {e["key"]: {"source": src["source"], "model_version": src["model_version"], **{k: e[k] for k in keep if k in e}}
             for e in src["by_verdict"]}
 
 
