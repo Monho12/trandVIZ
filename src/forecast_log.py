@@ -105,6 +105,7 @@ def save_delta(log_dir: Path, old: live.RawCache, new: live.RawCache) -> Path | 
 
 def topic_rows(cache: live.RawCache, pred: pd.DataFrame, asof: pd.Timestamp, horizons) -> list[dict]:
     """Сэдэв бүрт нэг мөр (cache-ийн бүх сэдэв). Feature дутуу тул таамаглаагүй сэдэвт h талбарууд null.
+    anomaly, z, cycle, situation (нөхцөл байдлын код), verdict ("continue"/"fade"/null) нь /api/trending-тэй ижил.
     was_missing: asof өдөр сэдвийн (үндсэн нэрийн) мөр API-аас ирээгүй. 0 уншилт уу, хоцорсон уу гэдгийг ялгах боломжгүй
     тул сургалттай адил 0 гэж тооцсон (ADR 0016, 5-р зүйл)."""
     pv = cache.pageviews
@@ -116,7 +117,11 @@ def topic_rows(cache: live.RawCache, pred: pd.DataFrame, asof: pd.Timestamp, hor
         r = by.get(a)
         row = {"article": a, "category": cats[a], "was_missing": a not in arrived,
                "views": None if r is None else int(r.views), "y_0": None if r is None else _num(r.y_0),
-               "measurable": None if r is None else bool(r.measurable), "arrow": None if r is None else r.arrow}
+               "measurable": None if r is None else bool(r.measurable), "arrow": None if r is None else r.arrow,
+               # Нөхцөл байдал ба дүгнэлт (ADR 0020, 0021): тэр өдөр харуулсан нь, track record-ын хадгалсан эх сурвалж
+               "anomaly": None if r is None else bool(r.anomaly), "z": None if r is None else _num(r.z),
+               "cycle": None if r is None else _num(r.cycle),
+               "situation": None if r is None else r.situation, "verdict": None if r is None else r.verdict}
         for h in horizons:
             row[f"h{h}"] = None if r is None else {
                 "delta_hat": _num(getattr(r, f"delta_hat_h{h}")), "pct": _num(getattr(r, f"pct_h{h}")),
@@ -298,7 +303,7 @@ LOG_README = """# forecast-log
 Энэ branch-ийг гараар бүү засаарай: зөвхөн нэмэгддэг, `main`-д merge хийхгүй.
 
 - `forecasts/YYYY-MM-DD.json`: asof өдрийн хадгалсан таамаг (model хувилбар, сэдэв бүрийн h1–h3 Δ̂/pct/80% интервал/уншилт,
-  `was_missing`, сангийн хувилбар, Render-тэй харьцуулалт). Нэг удаа бичигдэнэ.
+  `was_missing`, Anomaly, нөхцөл байдлын код, "үргэлжлэх/унтрах" дүгнэлт, сангийн хувилбар, Render-тэй харьцуулалт). Нэг удаа бичигдэнэ.
 - `deltas/YYYY-MM-DD.csv`: тэр ажиллагаа Wikimedia-аас шинээр татсан түүхий мөрүүд (нэр = delta-ийн сүүлийн өдөр). Дараагийн ажиллагаа
   `main`-ийн `data/processed/` + эдгээрээс эхэлнэ.
 - `attempts.jsonl`: оролдлого бүрийн цаг ба статус (`logged`, `already_logged`, `not_published`, `error`).

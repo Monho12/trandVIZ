@@ -10,7 +10,7 @@ As-of replay: asof D бүрт түүхий өгөгдлийг ≤ D хүртэл
     nohup python -m src.backtest run > backtest.log 2>&1 &
 
 Гаралт: data/backtest/<model хувилбар>/
-    backtest.parquet   asof × сэдэв: таамаг (h1–h3 Δ̂, pct, 80% интервал, уншилт), бодит утга, бүлэг, model_hash
+    backtest.parquet   asof × сэдэв: таамаг (h1–h3 Δ̂, pct, 80% интервал, уншилт), Anomaly/мөчлөг/код/дүгнэлт, бодит утга, бүлэг, model_hash
     summary.json       бүлгээр (гол нь (а)) MAE/skill/интервалын хамралт + үлдэх хазайлт
 Хувилбар бүр өөрийн хавтастай, файл доторх model_hash өөр бол ажиллахгүй: өөр хувилбарын үр дүнг холихгүй.
 
@@ -62,6 +62,7 @@ def boundary(model) -> pd.Timestamp:
 
 HORIZONS = (1, 2, 3)
 PRED_COLS = ["delta_hat", "pct", "lo", "hi", "views"]   # h бүрт: Δ̂, таамагласан pct, 80% интервал (pct), уншилтын таамаг
+SITUATION_COLS = ["z", "anomaly", "cycle", "situation", "verdict"]   # ADR 0020, 0021 (#51)
 
 
 def truncate(raw: live.RawCache, asof: pd.Timestamp) -> live.RawCache:
@@ -73,7 +74,7 @@ def truncate(raw: live.RawCache, asof: pd.Timestamp) -> live.RawCache:
 def replay(raw: live.RawCache, model, asof) -> pd.DataFrame:
     """asof D-ийн сэргээж тооцсон таамаг: таамагласан сэдэв бүрт нэг мөр (feature дутуу сэдэв орохгүй, сервертэй адил).
     Баганууд: asof, article, category (сайтын), was_missing (D өдөр сэдвийн үндсэн нэрийн мөр алга), views, y_0,
-    measurable, arrow, h бүрт `{delta_hat,pct,lo,hi,views}_h{h}`."""
+    measurable, arrow, z, anomaly, cycle, situation (код), verdict ("continue"/"fade"/None), h бүрт `{delta_hat,pct,lo,hi,views}_h{h}`."""
     asof = pd.Timestamp(asof)
     cut = truncate(raw, asof)
     if cut.end != asof:
@@ -83,7 +84,9 @@ def replay(raw: live.RawCache, model, asof) -> pd.DataFrame:
     out = pd.DataFrame({
         "asof": asof, "article": pred["article"].astype(str), "category": pred["category"].astype(str),
         "was_missing": ~pred["article"].isin(arrived), "views": pred["views"].astype("int64"),
-        "y_0": pred["y_0"].astype(float), "measurable": pred["measurable"].astype(bool), "arrow": pred["arrow"]})
+        "y_0": pred["y_0"].astype(float), "measurable": pred["measurable"].astype(bool), "arrow": pred["arrow"],
+        # Нөхцөл байдал ба дүгнэлт (ADR 0020, 0021): track record (src/track_record.py) эдгээрээр бүлэглэнэ
+        **{c: pred[c].astype({"anomaly": bool, "situation": object, "verdict": object}.get(c, float)) for c in SITUATION_COLS}})
     for h in HORIZONS:
         for c in PRED_COLS:
             out[f"{c}_h{h}"] = pred[f"{c}_h{h}"].astype(float)
@@ -116,7 +119,8 @@ def _write(df: pd.DataFrame, path: Path) -> None:
 
 
 def load_done(path: Path, model) -> pd.DataFrame | None:
-    """Өмнө тооцсон таамгууд (бодит утгагүй). Өөр model хувилбарын мөр байвал ValueError: холихгүй."""
+    """Өмнө тооцсон таамгууд (бодит утгагүй). Өөр model хувилбарын мөр байвал ValueError: холихгүй.
+    Код/дүгнэлтгүй хуучин кэш бол None (дахин тооцно)."""
     if not path.exists():
         return None
     df = pd.read_parquet(path)
@@ -124,6 +128,8 @@ def load_done(path: Path, model) -> pd.DataFrame | None:
     if other:
         raise ValueError(f"{path}: өөр model хувилбарын мөр ({', '.join(sorted(train.short_version(h) for h in other))}), "
                          f"ачаалсан нь {train.short_version(model.model_hash)}. Хувилбарыг холихгүй.")
+    if not set(SITUATION_COLS) <= set(df.columns):
+        return None   # #51-ээс өмнөх кэш (код, дүгнэлтгүй): бүгдийг дахин тооцно
     return df.drop(columns=[c for c in df.columns if c.startswith("actual_")] + ["group"], errors="ignore")
 
 

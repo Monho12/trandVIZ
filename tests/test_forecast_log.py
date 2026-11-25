@@ -93,6 +93,21 @@ def test_published_day_is_stored_with_model_version_topics_and_missing_flags(tmp
     assert [a["status"] for a in attempts(tmp_path)] == [forecast_log.LOGGED]
 
 
+def test_stored_record_keeps_the_situation_code_and_verdict_shown_that_day(tmp_path, base, model):
+    """Track record-ын хадгалсан эх сурвалж (ADR 0020, #51): тэр өдөр харуулсан код ба дүгнэлтийг хадгална, хожим дахин тооцохгүй.
+    Сервертэй (/api/trending) ижил."""
+    forecast_log.run_day(tmp_path, base, FakeWikimedia(base, published_through=D), model, RUN)
+    rec = read_json(tmp_path / "forecasts" / "2026-11-11.json")
+    snap = serve.Snapshot.from_raw(forecast_log.load_raw(base, tmp_path))
+    api = {i["article"]: i for i in serve.trending(model, snap, RUN.normalize())["items"]}
+    for t in rec["topics"]:
+        if t["article"] in api:
+            i = api[t["article"]]
+            assert (t["situation"], t["verdict"], t["anomaly"]) == (i["situation"], i["verdict"], i["anomaly"]), t["article"]
+            assert serve._r(t["cycle"]) == i["cycle"]   # хадгалсан нь бүтэн нарийвчлалтай, API 5%-д тайрсан
+    assert any(t["verdict"] for t in rec["topics"])
+
+
 def test_unpublished_day_writes_only_status_and_is_never_backfilled(tmp_path, base, model):
     """D гараагүй: таамаг бичихгүй, not_published. Маргааш D+1 бичигдэнэ, D цоорхой хэвээр (хожим нөхөхгүй)."""
     att = forecast_log.run_day(tmp_path, base, FakeWikimedia(base, published_through=BASE_END), model, RUN)

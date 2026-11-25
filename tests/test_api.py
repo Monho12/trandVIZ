@@ -240,3 +240,63 @@ def test_responses_carry_total_views_note_field(client):
         d = client.get(ep).json()
         assert "total_note" in d
         assert d["total_note"] is None or d["total_note"]["text"].startswith("Энэ өдөр Wikipedia-ийн нийт уншилт")
+
+
+# ---------------------------------------------------------------- нөхцөл байдал ба дүгнэлт (ADR 0020, 0021, #51)
+
+def test_every_topic_has_a_situation_code_and_only_anomalies_have_a_verdict(client):
+    """Код нь ADR 0020-ийн 6 утгын нэг. Дүгнэлт (ADR 0021): Anomaly-д л, таамагласан pct (h3) ≤ −10% бол "унтрах".
+    JSON-ийн pct нь 5%-ийн алхмаар тэг рүү тайрсан тул −10%-ийн хил хадгалагдана."""
+    from src import situation
+    items = client.get("/api/trending").json()["items"]
+    for t in items:
+        assert t["situation"] in situation.CODES and t["situation_label"] == situation.CODES[t["situation"]], t["article"]
+        if not t["anomaly"] or t["pct"] is None:
+            assert t["verdict"] is None and t["verdict_label"] is None and t["verdict_track"] is None, t["article"]
+            continue
+        assert t["verdict"] == ("fade" if t["pct"] <= -0.10 else "continue"), t["article"]
+        assert t["verdict_label"] == situation.VERDICTS[t["verdict"]]
+    assert any(t["verdict"] for t in items)
+
+
+def test_each_anomaly_verdict_carries_its_recomputed_track_record_for_the_loaded_model(client):
+    version = client.get("/api/model").json()["live"]["version"]
+    full = client.get("/api/track-record").json()
+    rec = next(s for s in full["sources"] if s["source_key"] == "recomputed" and s["model_version"] == version)
+    by = {e["key"]: e for e in rec["by_verdict"]}
+    for t in client.get("/api/trending").json()["items"]:
+        if t["verdict"]:
+            tr = t["verdict_track"]
+            assert (tr["source"], tr["model_version"]) == ("сэргээж тооцсон", version)
+            assert (tr["n"], tr["hit"], tr["base_hit"]) == tuple(by[t["verdict"]][k] for k in ("n", "hit", "base_hit"))
+
+
+def test_trending_summarizes_the_days_anomalies_by_verdict(client):
+    d = client.get("/api/trending").json()
+    an = [t for t in d["items"] if t["verdict"]]
+    s = d["anomalies"]
+    assert s["n"] == len(an) and s["continue"] == sum(t["verdict"] == "continue" for t in an)
+    assert s["fade"] == s["n"] - s["continue"] and s["all_fade"] == (s["n"] > 0 and s["continue"] == 0)
+
+
+def test_topic_page_has_the_same_situation_and_verdict_as_the_list(client):
+    by = {t["article"]: t for t in client.get("/api/trending").json()["items"]}
+    t = client.get("/api/topic/ChatGPT").json()
+    assert (t["situation"], t["verdict"]) == (by["ChatGPT"]["situation"], by["ChatGPT"]["verdict"])
+
+
+def test_track_record_endpoint_gives_tables_per_source_and_model_version(client):
+    """"Хэр найдвартай вэ?" (ADR 0020): эх сурвалж бүр (сэргээж тооцсон / хадгалсан) model хувилбартай, тусдаа."""
+    from src import situation
+    d = client.get("/api/track-record").json()
+    assert d["model_version"] == client.get("/api/model").json()["live"]["version"]
+    assert d["sources"] and d["min_n"] == situation.MIN_N
+    for s in d["sources"]:
+        assert s["source"] == situation.SOURCES[s["source_key"]] and s["model_version"].startswith("v")
+        assert s["current"] == (s["model_version"] == d["model_version"])
+        assert [e["key"] for e in s["by_code"]] == list(situation.CODES)
+        assert [e["key"] for e in s["by_band"]] == list(situation.BANDS)
+        assert [e["key"] for e in s["by_verdict"]] == list(situation.VERDICTS)
+        for e in s["by_code"] + s["by_band"] + s["by_verdict"]:
+            assert e["enough"] == (e["n"] >= situation.MIN_N)
+            assert (e["up10"] is None) == (not e["enough"]) and (e.get("text") == "хангалтгүй") == (not e["enough"])
