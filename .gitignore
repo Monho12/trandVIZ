@@ -22,3 +22,8 @@ catboost_info/
 # Сервер Wikimedia-аас шинэчилсэн cache (ADR 0008)
 data/live/
 .playwright-mcp/
+
+# Сэргээж тооцсон backtest-ийн мөрүүд (ADR 0015): `python -m src.backtest run` ~15 минутад дахин үүсгэнэ, ажиллагаа бүрд дахин
+# бичигддэг тул git-д хадгалахгүй (ADR 0016: binary-г өдөр бүр дахин бичвэл repo томордог). summary.json нь git-д.
+data/backtest/*/backtest.parquet
+data/backtest/*/*.tmp
