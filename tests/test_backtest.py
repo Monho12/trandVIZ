@@ -33,14 +33,15 @@ def subset(raw: live.RawCache, articles) -> live.RawCache:
     return live.RawCache(keep(raw.pageviews), keep(raw.alias), raw.total)
 
 
-def edit(raw: live.RawCache, fn_pv, fn_total=lambda t: t) -> live.RawCache:
-    return live.RawCache(fn_pv(raw.pageviews.copy()), raw.alias, fn_total(raw.total.copy()))
+def edit(raw: live.RawCache, fn_pv, fn_total=lambda t: t, fn_alias=lambda a: a) -> live.RawCache:
+    return live.RawCache(fn_pv(raw.pageviews.copy()), fn_alias(raw.alias.copy()), fn_total(raw.total.copy()))
 
 
 def test_replay_of_day_d_ignores_every_raw_row_after_d(raw, model):
     """D өдөр SPIKY-д ганц өдрийн огцом өсөлт. D+1 нь бага бол бүтэн түүхээр цэвэрлэхэд D хязгаарлагдана (look-ahead),
     D+1 өндөр бол үгүй. As-of replay хоёр тохиолдолд ЯГ ижил байх ёстой, D-ээс хойшхи бүх мөрийг өөрчилсөн ч."""
-    arts = sorted(raw.pageviews["article"].unique())[:15] + [SPIKY]
+    aliased = sorted(raw.alias["article"].unique())
+    arts = sorted(set(raw.pageviews["article"].unique()[:15]) | set(aliased) | {SPIKY})
     small = subset(raw, arts)
     pv = small.pageviews
     is_x = pv["article"] == SPIKY
@@ -63,8 +64,10 @@ def test_replay_of_day_d_ignores_every_raw_row_after_d(raw, model):
         return p[~(after & (p["date"].dt.day % 5 == 0))].reset_index(drop=True)
 
     a = edit(small, quiet_after)
-    b = edit(small, loud_after, lambda t: t.assign(total_views=np.where(t["date"] > D, t["total_views"] // 2,
-                                                                          t["total_views"])))
+    b = edit(small, loud_after,
+             lambda t: t.assign(total_views=np.where(t["date"] > D, t["total_views"] // 2, t["total_views"])),
+             lambda al: al.assign(views=np.where(al["date"] > D, al["views"] * 7 + 1000, al["views"])))
+    assert (b.alias["date"] > D).any() and not b.alias.equals(a.alias)
 
     # Шалгалтын шүд: бүтэн түүхээр цэвэрлэвэл D өдрийн утга хоёр тохиолдолд өөр (тиймээс бэлэн хүснэгтээс тооцохгүй).
     full = lambda r: clean.clean_frame(r.pageviews, r.alias, r.total)[0].set_index(["article", "date"])   # noqa: E731
@@ -91,7 +94,7 @@ def test_replay_of_last_day_equals_the_servers_forecast_that_day(raw, model):
 
     srv = server.set_index(server["article"].astype(str)).sort_index()
     ours = rep.set_index("article").sort_index()
-    assert list(ours.index) == list(srv.index) and len(ours) == 301
+    assert list(ours.index) == list(srv.index) and len(ours) > 0.9 * raw.pageviews["article"].nunique()
     for h in backtest.HORIZONS:
         for col in ("delta_hat", "pct", "lo", "hi", "views"):
             np.testing.assert_array_equal(ours[f"{col}_h{h}"].to_numpy(), srv[f"{col}_h{h}"].to_numpy(dtype=float))
