@@ -111,7 +111,7 @@ CAVEATS = [
 def _write(df: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    df.to_parquet(tmp, index=False)
+    df.to_parquet(tmp, index=False, compression="zstd")
     tmp.replace(path)
 
 
