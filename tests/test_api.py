@@ -161,3 +161,40 @@ def test_static_files_are_revalidated_so_css_matches_js(client):
     """Cache-Control-гүй бол браузер хуучин styles.css-ийг шинэ app.js-тэй хамт ашиглаж, загвар эвдэрдэг байв."""
     for f in ("styles.css", "app.js", "charts.js"):
         assert client.get(f"/static/{f}").headers["cache-control"] == "no-cache"
+
+
+ANOMALY_FIELDS = ("z", "anomaly", "ratio", "views_ratio", "normal", "typical_pct", "similar_days")
+
+
+def test_every_topic_has_anomaly_fields_and_anomaly_iff_z_at_least_3(client):
+    """ADR 0017 (#48): z, anomaly, ×N (анхаарал), уншилтын ×N, ердийн өдөр, ердийн хэлбэлзэл, "ийм өдөр хэдэн удаа"."""
+    items = client.get("/api/trending").json()["items"]
+    for t in items:
+        assert all(k in t for k in ANOMALY_FIELDS), t["article"]
+        if t["z"] is None:
+            assert t["anomaly"] is False
+        else:   # z нь JSON-д 2 оронтой
+            assert t["anomaly"] == (t["z"] >= 3) or abs(t["z"] - 3) <= 0.005, (t["article"], t["z"])
+    n = sum(t["anomaly"] for t in items)
+    assert 5 <= n <= 60, n      # valid дээр хэмжигдэх сэдэвт өдөрт ~19.6 (8 … ~39)
+
+
+def test_normal_is_median_views_of_days_t59_to_t7_not_derived_from_ratio(client):
+    """"Ердийн өдөр"-ийн тоо API-ийн `normal`-оос: /api/topic-ийн өөрийн 180 өдрийн түүхийн t−59 … t−7 өдрийн медиан уншилт.
+    ratio нь одоо анхаарал дээр тул views / ratio нь ердийн өдрийн уншилт биш."""
+    import statistics
+    t = client.get("/api/topic/ChatGPT").json()
+    v = [h["v"] for h in t["history"]]
+    assert t["history"][-1]["d"] == t["asof"]
+    want = statistics.median(v[-60:-7])            # t−59 … t−7 = 53 өдөр
+    assert t["normal"] == round(want)
+    assert t["views_ratio"] == round(t["views"] / want, 1)
+    assert t["typical_pct"] > 0 and isinstance(t["similar_days"], int)
+
+
+def test_responses_carry_total_views_note_field(client):
+    """Нийт уншилтын |z| ≥ 4 өдөр л мөртэй (src/anomaly.total_note), бусад үед null."""
+    for ep in ("/api/trending", "/api/categories", "/api/map", "/api/topic/ChatGPT"):
+        d = client.get(ep).json()
+        assert "total_note" in d
+        assert d["total_note"] is None or d["total_note"]["text"].startswith("Энэ өдөр Wikipedia-ийн нийт уншилт")

@@ -24,9 +24,14 @@
   const dayTile = (asof, age) => (isYesterday(age) ? "Өчигдөр" : md(asof));
   const homeTitle = (asof, age) => `${isYesterday(age) ? "Өчигдөр" : longDate(asof) + "-нд"} дэлхий юуг уншив?`;
 
-  // ▲ шошго: урт "өчигдөр ×3" / "11.08 ×3", богино "×3" (▲ тэмдгийг CSS нэмнэ). Tooltip үргэлж огноотой.
-  const surgeText = (ratio, asof, age, short) => (short ? `×${ratio}` : `${day(asof, age)} ×${ratio}`);
-  const surgeTip = (ratio, asof) => `${longDate(asof)}-нд ердийн өдрөөс ${ratio} дахин их уншигдсан`;
+  // ▲ шошго (ADR 0017: ×N нь анхаарал дээр): урт "өчигдөр анхаарал ×3" / "11.08 анхаарал ×3", богино "×3" (нүүрний нарийн
+  // картанд, "анхаарал" нь tooltip-д). ▲ тэмдгийг CSS нэмнэ. Tooltip үргэлж огноотой; z тоог харуулахгүй, тайлбар нь давтамжаар.
+  const surgeText = (ratio, asof, age, short) => (short ? `×${ratio}` : `${day(asof, age)} анхаарал ×${ratio}`);
+  // t: /api/*-ийн сэдэв (ratio, views_ratio, typical_pct, similar_days). Түүхий уншилтын ×N хаалтанд (CONTEXT.md).
+  const surgeTip = (t, asof) => [
+    `${longDate(asof)}-нд анхаарал ердийн өдрөөс ${t.ratio} дахин их${t.views_ratio == null ? "" : ` (уншилт ×${t.views_ratio})`}.`,
+    `Энэ сэдэв ихэвчлэн ±${Math.round(t.typical_pct * 100)}%-иар л хэлбэлздэг.`,
+    `Сүүлийн 2 сард ийм өдөр ${t.similar_days ? `${t.similar_days} удаа гарсан` : "нэг ч удаа гараагүй"}.`].join(" ");
 
   // API-ийн "80%: +10% … +85%" -> "10 удаагийн 8-д: +10% … +85%"
   const interval = (text) => (text ? text.replace(/^80%:\s*/, "10 удаагийн 8-д: ") : "");
@@ -46,7 +51,7 @@
   const catLead = (nCats, perCat, shown, asof, age, reason) => [
     `${nCats} бүлэгт тус бүр ~${Math.round(perCat)} сэдвийг бид гараар сонгосон.`, reason,
     `Карт бүрт ${isYesterday(age) ? "өчигдөр" : longDate(asof) + "-нд"} хамгийн их уншигдсан ${shown} нь.`,
-    "▲ ×2 = ердийн өдрөөс 2 дахин их."].filter(Boolean).join(" ");
+    "▲ анхаарал ×2 = ердийн өдрөөс 2 дахин их."].filter(Boolean).join(" ");
   // PLAN-ийн "[Майк бөглөнө: яагаад эдгээр ангилал]". Майк бөглөтөл хоосон (test_words шалгана),
   // "оюутан, залуучуудын сонирхдог" гэж бичихгүй.
   const CAT_REASON = "";
@@ -67,7 +72,7 @@
 
   // "Бүх сэдэв" хуудасны тайлбар (ADR 0013): ▲-ийн өдөр нь asof = өчигдөр үед л "өчигдөр", эрэмбийн өдөр үргэлж огноо.
   const listLead = (asof, age) => "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. "
-    + `▲ = ${dayLong(asof, age)} ердийнхөөс хэд дахин их. Ангилал бүрт ${longDate(asof)}-нд хамгийн их уншигдсанаас нь эхлэн.`;
+    + `▲ = ${dayLong(asof, age)} анхаарал ердийнхөөс хэд дахин их. Ангилал бүрт ${longDate(asof)}-нд хамгийн их уншигдсанаас нь эхлэн.`;
 
   // ── "Сонирхолтой" хуудас (issue #33). Юуг харуулахыг app/data/make_insights.py сонгоно, энд зөвхөн үг. ──
   const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];                                   // 0 = Даваа
