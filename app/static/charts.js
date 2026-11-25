@@ -301,7 +301,7 @@
     }
     return out;
   }
-  // Өсөлтийн өнгө: цэнхэр = буурсан, саарал = ердийн, улаан = шуугиж байна
+  // Өсөлтийн өнгө (анхаарлын ×N, ADR 0017): цэнхэр = буурсан, саарал = ердийн, улаан = шуугиж байна
   const HEAT = [[0.67, "#2a78d6", "#fff"], [0.9, "#a9c9f0", "#13294b"], [1.5, "#eef1f5", "#1D3557"],
     [2.5, "#fbd5d8", "#5c1219"], [5, "#f4a3a9", "#4a0e14"], [15, "#e63946", "#fff"], [Infinity, "#b5222e", "#fff"]];
   const heat = (r) => HEAT.find((h) => r < h[0]);
@@ -312,16 +312,17 @@
     const n = w < 600 ? 14 : items.length;   // утсан дээр цөөн, том хайрцаг
     const rects = squarify(items.map((d) => ({ ...d, v: d.views })).sort((a, b) => b.v - a.v).slice(0, n), 0, 0, w, h);
     rects.forEach((r, i) => {
-      const [, bg, fg] = heat(r.ratio);
+      const [, bg, fg] = heat(r.ratio ?? 1);   // ×N тодорхойгүй (ердийн өдөр 0 уншилт) -> саарал
+      const raw = r.views_ratio == null ? "" : ` (уншилт ×${r.views_ratio})`;
       const a = document.createElement("a");
       a.className = "tm-cell";
       a.href = "#/topic/" + encodeURIComponent(r.article);
       a.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${bg};color:${fg};--i:${i}`;
-      a.setAttribute("aria-label", `${r.title}: ${fmt(r.views)} уншилт, ердийнхөөс ×${r.ratio}`);
+      a.setAttribute("aria-label", `${r.title}: ${fmt(r.views)} уншилт, анхаарал ердийнхөөс ×${r.ratio}${raw}`);
       const big = r.w > 120 && r.h > 70, mid = r.w > 56 && r.h > 34;
       if (mid) a.innerHTML = `<span class="tm-t${big ? " tm-big" : ""}">${emoji[r.category] || ""} ${r.title}</span>` +
         (big ? `<span class="tm-v">${fmt(r.views)}, ×${r.ratio}</span>` : "");
-      a.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Ердийнхөөс ×${r.ratio}</span>`));
+      a.addEventListener("pointermove", (e) => showTip(e, `<b>${r.title}</b>${fmt(r.views)} уншилт<br><span>Анхаарал ердийнхөөс ×${r.ratio}${raw}</span>`));
       a.addEventListener("pointerleave", hideTip);
       box.appendChild(a);
     });

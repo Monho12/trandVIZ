@@ -20,19 +20,37 @@ def words(name: str, *args):
 
 
 def test_surge_label_says_yesterday_only_when_asof_is_yesterday():
-    assert words("surgeText", 3, ASOF, 1) == "өчигдөр ×3"
-    assert words("surgeText", 3, ASOF, 4) == "11/9 ×3"       # хуучирсан өгөгдөл: огноо
-    assert words("surgeText", 3, ASOF, 0) == "11/9 ×3"       # asof = өнөөдөр ч "өчигдөр" биш
-    assert words("surgeText", 2.4, "2026-01-05", 2) == "1/5 ×2.4"
+    """▲ ×N нь анхаарал дээр (ADR 0017): картанд "анхаарал" гэж бичнэ."""
+    assert words("surgeText", 3, ASOF, 1) == "өчигдөр анхаарал ×3"
+    assert words("surgeText", 3, ASOF, 4) == "11/9 анхаарал ×3"       # хуучирсан өгөгдөл: огноо
+    assert words("surgeText", 3, ASOF, 0) == "11/9 анхаарал ×3"       # asof = өнөөдөр ч "өчигдөр" биш
+    assert words("surgeText", 2.4, "2026-01-05", 2) == "1/5 анхаарал ×2.4"
 
 
 def test_short_surge_label_has_no_day():
+    """Богино хэлбэр нүүрний нарийн ангиллын картанд: "анхаарал" гэвэл гарчиг 1 үсэг болтол тайрагддаг (Playwright, #48).
+    Тэнд "анхаарал" нь tooltip ба картын дээрх тайлбарт ("▲ анхаарал ×2 = ...") бий."""
     assert words("surgeText", 3, ASOF, 1, True) == "×3"
     assert words("surgeText", 3, ASOF, 4, True) == "×3"
 
 
-def test_surge_tooltip_always_has_the_date():
-    assert words("surgeTip", 3, ASOF) == "11/9-нд ердийн өдрөөс 3 дахин их уншигдсан"
+def topic(ratio=3, views_ratio=2.8, typical_pct=0.08, similar_days=0):
+    return {"ratio": ratio, "views_ratio": views_ratio, "typical_pct": typical_pct, "similar_days": similar_days}
+
+
+def test_surge_tooltip_has_date_attention_ratio_raw_views_in_brackets_and_frequency():
+    """ADR 0017: "Тайлбар нь давтамжаар", z тоог харуулахгүй. CONTEXT.md: анхаарлын харьцааны хажууд түүхий уншилтын харьцаа хаалтанд."""
+    assert words("surgeTip", topic(), ASOF) == (
+        "11/9-нд анхаарал ердийн өдрөөс 3 дахин их (уншилт ×2.8). "
+        "Энэ сэдэв ихэвчлэн ±8%-иар л хэлбэлздэг. Сүүлийн 2 сард ийм өдөр нэг ч удаа гараагүй.")
+    assert words("surgeTip", topic(ratio=1.9, views_ratio=2.1, typical_pct=0.184, similar_days=3), ASOF) == (
+        "11/9-нд анхаарал ердийн өдрөөс 1.9 дахин их (уншилт ×2.1). "
+        "Энэ сэдэв ихэвчлэн ±18%-иар л хэлбэлздэг. Сүүлийн 2 сард ийм өдөр 3 удаа гарсан.")
+
+
+def test_surge_tooltip_skips_raw_views_ratio_when_unknown():
+    tip = words("surgeTip", topic(views_ratio=None), ASOF)
+    assert tip.startswith("11/9-нд анхаарал ердийн өдрөөс 3 дахин их. Энэ сэдэв") and "уншилт ×" not in tip
 
 
 def test_day_word_for_titles_and_tiles():
@@ -93,10 +111,10 @@ def test_map_scope_names_both_counts():
 def test_category_lead_counts_from_data_and_skips_empty_reason():
     assert words("catLead", 10, 15.1, 4, ASOF, 1, "") == (
         "10 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Карт бүрт өчигдөр хамгийн их уншигдсан 4 нь. "
-        "▲ ×2 = ердийн өдрөөс 2 дахин их.")
+        "▲ анхаарал ×2 = ердийн өдрөөс 2 дахин их.")
     assert words("catLead", 9, 14.6, 3, ASOF, 4, "Учир нь X.") == (
         "9 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Учир нь X. Карт бүрт 11/9-нд хамгийн их уншигдсан 3 нь. "
-        "▲ ×2 = ердийн өдрөөс 2 дахин их.")
+        "▲ анхаарал ×2 = ердийн өдрөөс 2 дахин их.")
 
 
 def test_category_reason_stays_out_until_mike_fills_it_in_plan():
@@ -114,10 +132,10 @@ def test_see_all_link_text():
 
 def test_list_lead_explains_the_bars_and_names_the_asof_date():
     assert words("listLead", ASOF, 1) == (
-        "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. ▲ = өчигдөр ердийнхөөс хэд дахин их. "
+        "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. ▲ = өчигдөр анхаарал ердийнхөөс хэд дахин их. "
         "Ангилал бүрт 11/9-нд хамгийн их уншигдсанаас нь эхлэн.")
     stale = words("listLead", ASOF, 4)       # хуучирсан өгөгдөл: "өчигдөр" гэж хэлэхгүй
-    assert "▲ = 11/9 ердийнхөөс хэд дахин их." in stale and "өчигдөр" not in stale
+    assert "▲ = 11/9 анхаарал ердийнхөөс хэд дахин их." in stale and "өчигдөр" not in stale
 
 
 def test_expand_button_text_has_the_count_and_no_arrow():

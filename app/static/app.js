@@ -13,9 +13,10 @@
   const cat = (k) => (CATS[k] || ["", k]).join(" ");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
-  // ▲ = өнгөрсөн (ADR 0014). d: asof ба age_days-тэй хариу (meta_block)
-  const surge = (r, d, short) => r >= 1.5
-    ? `<span class="surge" title="${esc(W.surgeTip(r, d.asof))}">${esc(W.surgeText(r, d.asof, d.age_days, short))}</span>`
+  // ▲ = өнгөрсөн (ADR 0014). Anomaly ⇔ анхаарлын robust z ≥ 3, ×N нь анхаарал дээр (ADR 0017, API-ийн t.anomaly, t.ratio).
+  // t: /api/*-ийн сэдэв, d: asof ба age_days-тэй хариу (meta_block)
+  const surge = (t, d, short) => t.anomaly
+    ? `<span class="surge" title="${esc(W.surgeTip(t, d.asof))}">${esc(W.surgeText(t.ratio, d.asof, d.age_days, short))}</span>`
     : `<span class="surge calm">ердийн</span>`;
   const last = (t) => t.history[t.history.length - 1].v;
   const in3 = (t) => t.forecast[t.forecast.length - 1];
@@ -45,7 +46,6 @@
 
   // Сэдвийн дэлгэрэнгүй хэсэг (нүүр болон сэдвийн хуудсанд хоёуланд)
   function focusHTML(t, d, { titleTag = "h2", link = true } = {}) {
-    const normal = t.views / Math.max(t.ratio, 0.01);
     const title = link ? `<a href="${href(t.article)}">${esc(t.title)}</a>` : esc(t.title);
     return `
       <div class="focus-head">
@@ -54,7 +54,8 @@
       </div>
       <dl class="tiles">
         <div class="tile t-blue"><dt>${W.dayTile(d.asof, d.age_days)}</dt><dd>${C.fmt(t.views)}<small>уншилт</small></dd></div>
-        <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${C.fmt(normal)}<small>${t.ratio >= 1.5 ? `×${t.ratio}` : ""}</small></dd></div>
+        <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${t.normal == null ? "—" : C.fmt(t.normal)}<small>${t.anomaly
+          ? tipped(`анхаарал ×${t.ratio}`, W.surgeTip(t, d.asof)) : ""}</small></dd></div>
         <div class="tile t-forecast"><dt>${C.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>уншилт</small><small class="sub">${pct(t, d)}</small><small class="iv">${iv(t)}</small></dd></div>
       </dl>
       <p class="chart-h">Өдөр бүрийн уншилт</p>
@@ -66,7 +67,7 @@
         <li><i class="k-range"></i>Таамгийн хүрээ</li>
       </ul>`;
   }
-  const drawFocus = (t, d) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.views / Math.max(t.ratio, 0.01),
+  const drawFocus = (t, d) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.normal,   // API-ийн ердийн өдрийн уншилт (ADR 0017)
     day: W.day(d.asof, d.age_days),
     label: `${t.title}: өдөр бүрийн уншилт ба ирэх 3 өдрийн таамаг` });
 
@@ -102,7 +103,7 @@
         <div class="cats">${chans.map((c) => `
           <div class="cat">
             <h3>${cat(c.key)}</h3>
-            <ul>${c.topics.map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t.ratio, cs, true)}</li>`).join("")}</ul>
+            <ul>${c.topics.map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t, cs, true)}</li>`).join("")}</ul>
             <a class="more" href="#/list/${encodeURIComponent(c.key)}">${esc(W.seeAll(count(c.key)))}</a>
           </div>`).join("")}
         </div>
@@ -137,7 +138,7 @@
         <li class="row">
           <div>
             <h3><a href="${href(t.article)}">${esc(t.title)}</a></h3>
-            <p class="meta">${surge(t.ratio, tr)}<span><b>${C.fmt(t.views)}</b> уншилт</span>${
+            <p class="meta">${surge(t, tr)}<span><b>${C.fmt(t.views)}</b> уншилт</span>${
               t.measurable ? "" : `<span class="fcl low" title="${esc(W.TIP.lowViews)}">${esc(W.LOW_TAG)}</span>`
               }<span>${esc(t.dates)}: ${pct(t, tr)} ${iv(t)}</span></p>
           </div>

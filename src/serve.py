@@ -21,17 +21,16 @@ from functools import cached_property
 import numpy as np
 import pandas as pd
 
-from src import clean, evaluate, features, scoring
+from src import anomaly, clean, evaluate, features, scoring
 from src.live import RawCache
 
 FEATURE_DAYS = 366          # level_365-ийн цонх + asof
 LIST_DAYS, TOPIC_DAYS = 30, 180
-NORMAL_FROM, NORMAL_TO = 59, 7   # "ердийн өдөр" = t−59 … t−7 өдрийн уншилтын медиан (сүүлийн долоо хоногийг оруулахгүй)
 MAP_N, CATEGORY_N = 40, 4
 STALE_DAYS = 2                   # asof нь өнөөдрөөс 2-оос олон өдрийн өмнөх бол шар анхааруулга (ADR 0008)
-# Snapshot-д барих өдөр: feature (level_365 + asof), /api/topic-ийн history, жагсаалт, "ердийн өдөр"-ийн хамгийн урт нь.
+# Snapshot-д барих өдөр: feature (level_365 + asof), /api/topic-ийн history, жагсаалт, anomaly-ийн цонх (t−59 … t−7)-ийн хамгийн урт нь.
 # Нөөц хэрэггүй: цэвэрлэгээ тайрахаас ӨМНӨ бүтэн түүхээр хийгдсэн тул тайрсан мөрийн утга өөрчлөгдөхгүй.
-KEEP_DAYS = max(FEATURE_DAYS, TOPIC_DAYS, LIST_DAYS, NORMAL_FROM + 1)
+KEEP_DAYS = max(FEATURE_DAYS, TOPIC_DAYS, LIST_DAYS, anomaly.WINDOW_FROM + 1)
 CHUNK_ARTICLES = 40              # нэг удаа цэвэрлэх сэдвийн тоо (~70k мөр): Snapshot барих үеийн санах ойн оргил
 
 
@@ -67,6 +66,11 @@ class Snapshot:
         """Бүх сэдвийн asof өдрийн feature + measurable (нэг хувилбарт нэг удаа)."""
         return feature_rows(self.tail(), self.asof)
 
+    @cached_property
+    def total_note(self) -> dict | None:
+        """asof өдөр Wikipedia-ийн нийт уншилт ердийнхөөс огцом зөрсөн бол өдрийн мөр (ADR 0017), үгүй бол None."""
+        return anomaly.total_note(self.clean.drop_duplicates("date")[["date", "total_views"]], self.asof)
+
 
 def clean_chunks(raw: RawCache, size: int = CHUNK_ARTICLES):
     """clean.clean_frame-ийг сэдвийн хэсгүүдээр: (article, date)-аар эрэмбэлсэн бүтэн үр дүнгийн дараалсан хэсгүүд."""
@@ -90,9 +94,12 @@ def feature_rows(tail: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
     f = f[f["date"] == asof].drop(columns=["category"]).merge(extra, on=["article", "date"], how="left")
     cat = tail.drop_duplicates("article").set_index("article")["category"].astype(object)
     f["category"] = f["article"].map(cat)
-    normal = (tail[(tail["date"] >= asof - pd.Timedelta(days=NORMAL_FROM)) & (tail["date"] <= asof - pd.Timedelta(days=NORMAL_TO))]
-              .groupby("article", observed=True)["views"].median())
-    f["normal"] = f["article"].map(normal)
+    # Anomaly (ADR 0017): z, ×N (анхаарал), ердийн өдрийн уншилт гэх мэт. asof өдрийнхөд t−59 … asof хангалттай.
+    recent = tail[tail["date"] >= asof - pd.Timedelta(days=anomaly.WINDOW_FROM)]
+    an = anomaly.score(recent)[(recent["date"] == asof).to_numpy()]
+    an = an.set_index(recent.loc[an.index, "article"].astype(object))
+    for c in an.columns:
+        f[c] = f["article"].astype(object).map(an[c])
     f["article"] = f["article"].astype(object)
     return f.reset_index(drop=True)
 
@@ -150,14 +157,29 @@ def meta_block(asof: pd.Timestamp, today: pd.Timestamp) -> dict:
             "age_days": age, "stale": age > STALE_DAYS}
 
 
+def day_block(snap: Snapshot, today: pd.Timestamp) -> dict:
+    """Сэдвийн хариуны толгой: meta_block + нийт уншилтын өдрийн мөр (`total_note`, ихэнх өдөр null)."""
+    return {**meta_block(snap.asof, today), "total_note": snap.total_note}
+
+
+def _num(v, digits: int) -> float | None:
+    """JSON-д тоо, тодорхойгүй (NaN/inf) бол null."""
+    return round(float(v), digits) if v is not None and np.isfinite(v) else None
+
+
 def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None) -> dict:
     """Нэг сэдвийн JSON. Хуучин бүтэц (article, title, category, views, ratio, history, forecast) хэвээр,
-    дээр нь pct (h3, 5%-д дугуйлсан), 80% интервал, сум, 🔥, хэмжигдэх эсэх, огноо нэмэгдэнэ."""
-    views = int(r.views)
-    normal = float(r.normal) if pd.notna(r.normal) else views
+    дээр нь pct (h3, 5%-д дугуйлсан), 80% интервал, сум, 🔥, хэмжигдэх эсэх, огноо нэмэгдэнэ.
+    Anomaly (ADR 0017, src/anomaly.py): `ratio` = ▲ ×N АНХААРАЛ дээр, `views_ratio` = түүхий уншилтын ×N (хаалтанд),
+    `normal` = ердийн өдрийн уншилт, `z`/`anomaly` (z ≥ 3), `typical_pct` = ердийн хэлбэлзэл ±, `similar_days` = сүүлийн
+    2 сард (t−59 … t−7) ийм өндөр өдрийн тоо."""
+    normal = _num(r.normal, 0)
     return {
         "article": r.article, "title": r.article.replace("_", " "), "category": r.category,
-        "views": views, "ratio": round(views / max(normal, 1.0), 1),
+        "views": int(r.views), "ratio": _num(r.ratio, 1), "views_ratio": _num(r.views_ratio, 1),
+        "normal": None if normal is None else int(normal),
+        "z": _num(r.z, 2), "anomaly": bool(r.anomaly), "typical_pct": _num(r.typical_pct, 2),
+        "similar_days": int(r.similar_days),
         "history": [{"d": d.strftime("%Y-%m-%d"), "v": int(v)} for d, v in zip(history["date"], history["views"])],
         "forecast": [{"d": d.strftime("%Y-%m-%d"), "y": round(getattr(r, f"views_h{h}")),
                       "lo": round(getattr(r, f"views_lo_h{h}")), "hi": round(getattr(r, f"views_hi_h{h}")),
@@ -190,7 +212,7 @@ def trending(model, snap: Snapshot, today) -> dict:
     p = ranked(predict(model, snap.universe))
     hist = _histories(snap, p["article"], LIST_DAYS)
     items = [item(r, hist[r.article], snap.asof, None if pd.isna(r.rank) else int(r.rank)) for r in p.itertuples()]
-    return {**meta_block(snap.asof, today), "T": model.meta["fire"]["T"],
+    return {**day_block(snap, today), "T": model.meta["fire"]["T"],
             "fires": sum(i["fire"] for i in items), "top_n": scoring.TOP_N, "items": items}
 
 
@@ -202,7 +224,7 @@ def categories(model, snap: Snapshot, today) -> dict:
     cats: dict[str, list] = {}
     for r in p.itertuples():
         cats.setdefault(r.category, []).append(item(r, hist[r.article], snap.asof))
-    return {**meta_block(snap.asof, today), "categories": [{"key": k, "topics": v} for k, v in cats.items()]}
+    return {**day_block(snap, today), "categories": [{"key": k, "topics": v} for k, v in cats.items()]}
 
 
 def attention_map(model, snap: Snapshot, today) -> dict:
@@ -210,8 +232,8 @@ def attention_map(model, snap: Snapshot, today) -> dict:
     p = predict(model, snap.universe)
     top = p.sort_values(["views", "article"], ascending=[False, True]).head(MAP_N)
     hist = _histories(snap, top["article"], 1)
-    keep = ("article", "title", "category", "views", "ratio", "pct", "pct_text", "label", "arrow", "fire")
-    return {**meta_block(snap.asof, today), "total_topics": int(len(p)), "total_views": int(p["views"].sum()),
+    keep = ("article", "title", "category", "views", "ratio", "views_ratio", "anomaly", "pct", "pct_text", "label", "arrow", "fire")
+    return {**day_block(snap, today), "total_topics": int(len(p)), "total_views": int(p["views"].sum()),
             "items": [{k: v for k, v in item(r, hist[r.article], snap.asof).items() if k in keep} for r in top.itertuples()]}
 
 
@@ -225,4 +247,4 @@ def topic(model, snap: Snapshot, article: str, today) -> dict | None:
         return None
     r = next(p.itertuples())
     hist = _histories(snap, [article], TOPIC_DAYS)[article]
-    return {**meta_block(snap.asof, today), **item(r, hist, snap.asof)}
+    return {**day_block(snap, today), **item(r, hist, snap.asof)}
