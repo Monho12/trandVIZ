@@ -1,4 +1,4 @@
-"""app/static/*.js-ийн цэвэр функцийг node-оор дуудах (browser-гүй). test_words, test_listing, test_model_words ашиглана."""
+"""app/static/*.js-ийн цэвэр функцийг node-оор дуудах (browser-гүй). test_words, test_listing, test_model_words, test_neutral_words ашиглана."""
 import json
 import shutil
 import subprocess
