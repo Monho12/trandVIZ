@@ -255,7 +255,7 @@ def model():
             "algo": meta["algo"], "algo_name": evaluate.ALGO_NAME[meta["algo"]],
             "trained_at": meta["trained_at"], "data_asof": snap.asof.strftime("%Y-%m-%d"),
             # Model хувилбар (ADR 0015): model файлууд + meta.json-ийн hash. Калибровк дахин бичихэд ч өөрчлөгдөнө.
-            "version": train.short_version(state.model.version), "model_hash": state.model.version,
+            "version": train.short_version(state.model.model_hash), "model_hash": state.model.model_hash,
             "loaded_at": state.loaded_at.isoformat(timespec="seconds"),
             "snapshot_built_at": snap.built_at.isoformat(timespec="seconds"),
             "horizons": meta["horizons"], "n_features": len(meta["features"]),

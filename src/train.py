@@ -246,7 +246,7 @@ def short_version(full_hash: str) -> str:
 class LoadedModel:
     meta: dict
     models: dict
-    version: str = ""        # model_hash(): ачаалсан файлуудын бүтэн hash
+    model_hash: str          # model_hash(): ачаалсан файлуудын бүтэн hash (UI-д short_version)
 
     def predict(self, X: pd.DataFrame, h: int) -> np.ndarray:
         """Δ̂ (h өдрийн дараах лог анхаарал − өнөөдрийнх). X-ээс meta["features"] багануудыг дарааллаар нь авна."""

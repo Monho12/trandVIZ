@@ -87,12 +87,16 @@ def test_model_hash_is_the_same_for_the_same_files(tmp_path):
     assert train.model_hash(a) == h == train.model_hash(b)
 
 
-def test_model_hash_changes_when_calibration_is_rewritten_with_the_same_trained_at(tmp_path):
+@pytest.mark.parametrize("path", [("fire", "T"), ("interval", "h3", "hi")])
+def test_model_hash_changes_when_calibration_is_rewritten_with_the_same_trained_at(tmp_path, path):
     """src/calibrate.py нь T ба интервалыг trained_at-ыг өөрчлөхгүйгээр дахин бичдэг тул trained_at хувилбар болохгүй."""
     d = _copy_model(tmp_path / "m")
     before = train.model_hash(d)
     meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
-    meta["interval"]["h3"]["hi"] += 0.01
+    node = meta
+    for k in path[:-1]:
+        node = node[k]
+    node[path[-1]] += 0.01
     (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     after = train.model_hash(d)
     assert json.loads((d / "meta.json").read_text(encoding="utf-8"))["trained_at"] == meta["trained_at"]
@@ -111,5 +115,5 @@ def test_model_hash_covers_the_model_files_too(tmp_path):
 def test_loaded_model_carries_its_version():
     """Сервер, log (W2), backtest (W4) нэг л функцээр хувилбараа авна: load() нь model_hash-ийг хадгална."""
     m = train.load()
-    assert m.version == train.model_hash(train.MODEL_DIR)
-    assert train.short_version(m.version) == "v" + m.version[:7]
+    assert m.model_hash == train.model_hash(train.MODEL_DIR)
+    assert train.short_version(m.model_hash) == "v" + m.model_hash[:7]     # ADR 0015: "model vXXXXXXX"
