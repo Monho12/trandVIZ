@@ -84,6 +84,10 @@ def test_model_endpoint_shows_loaded_model_and_data_asof(client):
     live = m["live"]
     assert live["algo"] == "catboost" and live["trained_at"].startswith("2026-11-09")
     assert live["data_asof"] == m["asof"]
+    # Model хувилбар (ADR 0015, #44): ачаалсан файлуудын hash, UI-д богино нь
+    from src import train
+    assert live["model_hash"] == train.model_hash(train.MODEL_DIR)
+    assert live["version"] == "v" + live["model_hash"][:7]
     assert m["winner"] == "catboost" and m["metrics"] and m["test_end"]
     # "Яаж хийсэн бэ?": бүх тоо meta.json / өгөгдлөөс
     p = m["pipeline"]

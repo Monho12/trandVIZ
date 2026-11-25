@@ -71,3 +71,45 @@ def test_exported_model_predicts_exactly_like_the_trained_one(algo, tmp_path):
     assert meta["importance_top10"][0]["feature"] == "f0" and len(meta["importance_top10"]) == 10
     curve = meta["learning_curve"]["h1"]
     assert len(curve["train"]) == len(curve["valid"]) == len(curve["iteration"]) > 0
+
+
+def _copy_model(dst: Path) -> Path:
+    """app/model/-ийн хуулбар (model файлууд + meta.json), тест бүр өөрийнхөө хуулбарыг өөрчилнө."""
+    import shutil
+    return Path(shutil.copytree(train.MODEL_DIR, dst))
+
+
+def test_model_hash_is_the_same_for_the_same_files(tmp_path):
+    """ADR 0015, 2-р дүрэм: model хувилбар нь файлуудаас тогтмол, давтагдах hash. Хавтасны байршлаас хамаарахгүй."""
+    a, b = _copy_model(tmp_path / "a"), _copy_model(tmp_path / "b")
+    h = train.model_hash(a)
+    assert len(h) == 64 and int(h, 16) >= 0                    # бүтэн sha256 hex
+    assert train.model_hash(a) == h == train.model_hash(b)
+
+
+def test_model_hash_changes_when_calibration_is_rewritten_with_the_same_trained_at(tmp_path):
+    """src/calibrate.py нь T ба интервалыг trained_at-ыг өөрчлөхгүйгээр дахин бичдэг тул trained_at хувилбар болохгүй."""
+    d = _copy_model(tmp_path / "m")
+    before = train.model_hash(d)
+    meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
+    meta["interval"]["h3"]["hi"] += 0.01
+    (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    after = train.model_hash(d)
+    assert json.loads((d / "meta.json").read_text(encoding="utf-8"))["trained_at"] == meta["trained_at"]
+    assert after != before
+
+
+def test_model_hash_covers_the_model_files_too(tmp_path):
+    """Hash нь meta.json-оос гадна h1–h3 model файлыг бүхэлд нь хамарна."""
+    d = _copy_model(tmp_path / "m")
+    before = train.model_hash(d)
+    f = d / json.loads((d / "meta.json").read_text(encoding="utf-8"))["files"]["h2"]
+    f.write_bytes(f.read_bytes() + b"\0")
+    assert train.model_hash(d) != before
+
+
+def test_loaded_model_carries_its_version():
+    """Сервер, log (W2), backtest (W4) нэг л функцээр хувилбараа авна: load() нь model_hash-ийг хадгална."""
+    m = train.load()
+    assert m.version == train.model_hash(train.MODEL_DIR)
+    assert train.short_version(m.version) == "v" + m.version[:7]

@@ -14,6 +14,7 @@ algo-гийн ганц санг л ачаална (ADR 0011, Render-ийн 512 M
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from dataclasses import dataclass, field
@@ -216,10 +217,36 @@ def export(out_dir: Path, algo: str, fitted: dict[int, Fitted], features: list[s
     return meta
 
 
+VERSION_CHARS = 7                         # UI-д харуулах богино hash: "model v1a2b3c4"
+
+
+def model_hash(model_dir: Path = MODEL_DIR) -> str:
+    """Model хувилбар (ADR 0015, 2-р дүрэм): meta.json + түүний "files"-д заасан model файлуудын sha256 (бүтэн hex).
+    trained_at хангалтгүй: src/calibrate.py нь T ба интервалыг trained_at-ыг өөрчлөхгүйгээр дахин бичдэг.
+    Файлын байт дээр тооцно (.gitattributes: текст нь үргэлж LF, *.cbm binary) тул ямар ч машинд ижил.
+    Сервер (/api/model), хадгалсан таамгийн log (W2), backtest (W4) бүгд үүнийг ашиглана."""
+    model_dir = Path(model_dir)
+    meta_bytes = (model_dir / "meta.json").read_bytes()
+    names = ["meta.json", *sorted(json.loads(meta_bytes.decode("utf-8"))["files"].values())]
+    h = hashlib.sha256()
+    for name in names:
+        data = meta_bytes if name == "meta.json" else (model_dir / name).read_bytes()
+        # нэр ба урт нь хил: ("ab", "c") ба ("a", "bc") ижил hash гаргахгүй
+        h.update(f"{name}\0{len(data)}\0".encode("utf-8"))
+        h.update(data)
+    return h.hexdigest()
+
+
+def short_version(full_hash: str) -> str:
+    """UI-д харуулах хувилбар: "v" + hash-ийн эхний VERSION_CHARS тэмдэгт."""
+    return "v" + full_hash[:VERSION_CHARS]
+
+
 @dataclass
 class LoadedModel:
     meta: dict
     models: dict
+    version: str = ""        # model_hash(): ачаалсан файлуудын бүтэн hash
 
     def predict(self, X: pd.DataFrame, h: int) -> np.ndarray:
         """Δ̂ (h өдрийн дараах лог анхаарал − өнөөдрийнх). X-ээс meta["features"] багануудыг дарааллаар нь авна."""
@@ -244,7 +271,7 @@ def load(model_dir: Path = MODEL_DIR) -> LoadedModel:
             import catboost as cb
             models[h] = cb.CatBoostRegressor()
             models[h].load_model(path)
-    return LoadedModel(meta, models)
+    return LoadedModel(meta, models, model_hash(model_dir))
 
 
 # ---------------------------------------------------------------- Optuna

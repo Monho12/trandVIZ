@@ -9,7 +9,7 @@
   Арын thread өдөрт нэг удаа зөвхөн дутуу сүүлийн өдрүүдийг Wikimedia-аас татна (src/live.py).
   D гараагүй / алдаа бол ~3 цагийн дараа нэг удаа дахин оролдоно, тэгээд ч болохгүй бол сүүлийн cache.
 - /api/topic, /api/categories, /api/trending, /api/map: хүсэлт бүрт model -> scoring (src/serve.py).
-- /api/model: ачаалагдсан алгоритм, сургасан огноо, өгөгдлийн asof + Загвар хуудасны үнэлгээ.
+- /api/model: ачаалагдсан алгоритм, model хувилбар (hash), сургасан огноо, өгөгдлийн asof + Загвар хуудасны үнэлгээ.
 - /api/health: санах ой (cgroup + процессын RSS), uptime, refresh-ийн төлөв (Render free санах ойн график харуулдаггүй).
 
 Орчны хувьсагч:
@@ -254,6 +254,8 @@ def model():
         "live": {
             "algo": meta["algo"], "algo_name": evaluate.ALGO_NAME[meta["algo"]],
             "trained_at": meta["trained_at"], "data_asof": snap.asof.strftime("%Y-%m-%d"),
+            # Model хувилбар (ADR 0015): model файлууд + meta.json-ийн hash. Калибровк дахин бичихэд ч өөрчлөгдөнө.
+            "version": train.short_version(state.model.version), "model_hash": state.model.version,
             "loaded_at": state.loaded_at.isoformat(timespec="seconds"),
             "snapshot_built_at": snap.built_at.isoformat(timespec="seconds"),
             "horizons": meta["horizons"], "n_features": len(meta["features"]),

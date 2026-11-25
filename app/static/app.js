@@ -218,7 +218,7 @@
     main.innerHTML = `
       <h1 class="page-h">Загвар хэр сайн таамагладаг вэ?</h1>
       <p class="lead">Энгийн аргаас илүү зөв үү?</p>
-      <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b>, сургасан ${C.md(m.live.trained_at.slice(0, 10))},
+      <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b> ${esc(m.live.version)}, сургасан ${C.md(m.live.trained_at.slice(0, 10))},
         өгөгдөл ${C.md(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
       <div class="mgrid">
         <div class="mcard">
