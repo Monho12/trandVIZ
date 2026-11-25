@@ -20,8 +20,10 @@ from src import wiki
 
 OK, PARTIAL, NOT_PUBLISHED, ERROR, UP_TO_DATE = "ok", "partial", "not_published", "error", "up_to_date"
 RETRY_STATUSES = (PARTIAL, NOT_PUBLISHED, ERROR)   # D бүрэн ирээгүй эсвэл алдаа
-TOTAL_MIN_SHARE = 0.5   # D өдрийн total_views сүүлийн 28 өдрийн медианы 50%-иас бага бол "дутуу" гэж үзнэ
-ARTICLE_MIN_SHARE = 0.5  # тухайн өдөр сэдвүүдийн 50%-иас цөөнд мөр ирвэл тэр өдрийг "хараахан гараагүй" гэж үзнэ
+# "Өгөгдөл дутуу"-гийн хоёр босго (ADR 0022). docs/numbers/frequency.md-ийн #14-өөр тогтоосон (2026-11-25, 50%-иас):
+# 2021–2026-ийн бүх бүрэн өдрөөс хатуу доор байх 5%-ийн хамгийн их үржвэр. Өөрчилбөл scripts/frequency_numbers.py-г дахин ажиллуул.
+TOTAL_MIN_SHARE = 0.85   # D өдрийн total_views ≤ сүүлийн 28 өдрийн медианы 85% бол "дутуу" (бүрэн өдрийн min 0.886)
+ARTICLE_MIN_SHARE = 0.95  # уншилттай сэдэв < өмнөх өдрийн мөртэй сэдвийн 95% бол "хараахан гараагүй" (бүрэн өдрийн min 0.980)
 FILES = {"pageviews": "pageviews.parquet", "alias": "alias_pageviews.parquet", "total": "total_views.parquet"}
 
 
