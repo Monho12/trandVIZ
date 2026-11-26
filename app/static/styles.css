@@ -1,8 +1,6 @@
 /* ══════════ Шуугиан ══════════
-   Энгийн, цэвэрхэн, light горим. Өнгө бүр нэг утгатай:
-     цэнхэр  = бодит уншилт (өнгөрсөн)
-     улаан   = таамаг (ирээдүй: ↗/🔥) ба ердийнхөөс их уншигдсан (өнгөрсөн: үргэлж ▲ тэмдэг, тоотой хамт).
-               Өнгөөр биш үгээр ялгана (ADR 0014).                                 */
+   Theme 1, light горим (ADR 0023, 0028). Брэнд (--blue, --red: лого, accent) ба өгөгдлийн өнгө (--data, --data-fc, --band) тусдаа.
+   "Загвар", "Сонирхолтой" хуудасны хуучин графикууд --blue / --forecast-ийг хэрэглэсээр.                                 */
 :root {
   --bg: #f4f5f7;          /* хуудасны дэвсгэр */
   --surface: #ffffff;     /* карт */
@@ -60,8 +58,6 @@ main:focus, main:focus-visible { outline: none; }
 .stale-note { max-width: var(--wrap); margin: 0 auto 8px; padding: 8px 16px; color: #5c4400; font-size: 14px;
   background: #fff4c2; border-radius: 8px; }
 .stale-note::before { content: "⚠ "; }
-.iv { color: var(--muted); font-weight: 400; }
-.anh { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 
 main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .foot { max-width: var(--wrap); margin: 0 auto; padding: 28px 16px 40px; color: var(--muted); font-size: 13px;
@@ -70,53 +66,10 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 8px 16px 72px; }
 .page-h { margin: 28px 0 6px; font-size: clamp(26px, 3.4vw, 36px); font-weight: 700; letter-spacing: -.01em; }
 .lead { margin: 0 0 22px; color: var(--text-2); max-width: 66ch; }
 
-/* ── Ердийнхөөс их уншигдсан (▲) шошго: тэмдэг + тоо + үг (зөвхөн өнгөөр биш) ── */
-.surge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
-  background: var(--red-soft); color: var(--text); font-size: 13px; font-weight: 600; white-space: nowrap; }
-.surge::before { content: "▲"; color: var(--red); font-size: 10px; }
-.surge.calm { background: var(--bg); color: var(--text-2); font-weight: 500; }
-.surge.calm::before { content: "•"; color: var(--muted); font-size: 14px; }
-
-/* ── Сэдэв сонгох товчнууд ── */
-/* .chips: "Бүх сэдэв"-ийн ангиллын чип. .picker-тэй ижил харагдана, утсанд ч мөр шилжинэ (хэвтээ гүйлгэхгүй, ADR 0013) */
-.picker, .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
-.pick { display: flex; align-items: center; gap: 8px; padding: 7px 8px 7px 12px; border: 1px solid var(--line);
-  border-radius: 999px; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-2);
-  transition: border-color .15s, background-color .15s; }
-.pick:hover { border-color: var(--muted); color: var(--text); }
-.pick[aria-pressed="true"], .pick[aria-current] { background: var(--blue-soft); border-color: var(--blue); color: var(--text); }
-a.pick { padding: 7px 12px; text-decoration: none; }
-.pick .surge, .pick .fcl { font-size: 12px; padding: 1px 7px; }
-/* Чипний таамгийн шошго (🔥 +35% / ↗ +20% / ≈ тогтвортой): сум нь API-ийн label дотор, ▲-ийн хэлбэртэй ижил */
-.fcl { display: inline-flex; align-items: center; border-radius: 999px; background: var(--bg); color: var(--text-2);
-  font-weight: 500; white-space: nowrap; }
-.fcl.fire { background: var(--forecast-soft); color: var(--text); font-weight: 600; }
-
-/* ── Сонгосон сэдэв ── */
-.focus { background: var(--surface); border-radius: 14px; padding: 24px 24px 18px; border: 1px solid var(--line); }
-.focus-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-.focus-title { margin: 0; font-size: clamp(24px, 3.2vw, 34px); font-weight: 700; letter-spacing: -.01em; }
-.focus-title a { text-decoration: none; } .focus-title a:hover { text-decoration: underline; }
-.focus-cat { color: var(--muted); font-size: 15px; }
-
-.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 8px; }
-.tile { border-radius: var(--r); padding: 12px 14px; background: var(--bg); }
-.tile dt { color: var(--muted); font-size: 13px; }
-.tile dd { margin: 2px 0 0; font-size: 26px; font-weight: 600; }
-.tile dd small { font-size: 14px; color: var(--text-2); font-weight: 500; margin-left: 6px; }
-.tile dd small.sub { display: block; margin: 2px 0 0; }
-.tile dd small.iv { display: block; margin: 2px 0 0; font-size: 13px; color: var(--muted); font-weight: 400; }
-.tile.t-blue { box-shadow: inset 3px 0 0 var(--blue); }
-.tile.t-forecast { box-shadow: inset 3px 0 0 var(--forecast); }
-
 .chart-h { margin: 20px 0 2px; font-size: 16px; font-weight: 600; color: var(--text); }
-.chart { position: relative; height: 260px; }
 .key { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--text-2); }
 .key li { display: flex; align-items: center; gap: 7px; }
 .key i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.key .k-blue { background: linear-gradient(#3d8ef0, #2a78d6); } .key .k-forecast { background: repeating-linear-gradient(45deg, #e63946 0 2px, #f6b0b5 2px 4px); outline: 1px solid #e63946; outline-offset: -1px; }
-.key .k-range { width: 2px; height: 14px; border-radius: 1px; background: var(--forecast-2); }
-.key .k-norm { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed #5b6170; }
 .hint { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 .chart-sub { margin: 0 0 6px; color: var(--muted); font-size: 13.5px; }
 
@@ -126,24 +79,8 @@ a.pick { padding: 7px 12px; text-decoration: none; }
 .more:hover { text-decoration: underline; }
 
 /* ── Бүх сэдэв ── */
-.rows { list-style: none; margin: 0; padding: 0; }
-.lsec { padding-top: 32px; scroll-margin-top: 12px; }   /* ангиллын хэсэг (ADR 0013) */
-.lsec .lead { margin-bottom: 0; }
-.lsec .rows { margin-top: 10px; }
-.lsec .more { margin-top: 12px; font-size: 14px; }
-.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: center;
-  padding: 14px 0; border-top: 1px solid var(--line); }
-.row .low { padding: 2px 8px; background: var(--line); cursor: help; }   /* "цөөн уншилттай": хэмжигдэх биш сэдэв (саарал) */
-.row h3 { margin: 0; font-size: 17px; font-weight: 600; }
-.row h3 a { text-decoration: none; } .row h3 a:hover { text-decoration: underline; }
-.row .meta { margin: 5px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--muted); font-size: 13px; }
-.row .meta b { color: var(--text-2); font-weight: 500; }
-.mini { height: 56px; position: relative; }
 
 /* ── Нэг сэдэв ── */
-.back { display: inline-block; margin-top: 22px; color: var(--muted); text-decoration: none; font-size: 14px; }
-.back:hover { color: var(--text); }
-.focus.topic .chart { height: 320px; }
 .fc { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: 15px; }
 .fc caption { text-align: left; color: var(--muted); font-size: 13px; padding-bottom: 8px; }
 .fc th, .fc td { padding: 9px 12px; text-align: right; border-top: 1px solid var(--line); }
@@ -184,28 +121,12 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
 .tip span { color: var(--text-2); }
 
 /* Ганцхан хөдөлгөөн: график ачаалагдахад баганууд доороосоо ургана (transform) */
-.focus .ch .bar { transform-box: fill-box; transform-origin: bottom; animation: grow .45s ease-out both;
-  animation-delay: calc(var(--i) * 12ms); }
 @keyframes grow { from { transform: scaleY(0); } }
-@media (prefers-reduced-motion: reduce) { .focus .ch .bar { animation: none; } .pick { transition: none; } }
-
-.state { color: var(--muted); padding: 60px 0; }
 
 @media (max-width: 760px) {
   .top { gap: 10px 20px; padding-top: 14px; }
   .asof { width: 100%; margin: 0; }
-  .picker { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px 16px; padding: 2px 16px 6px; scrollbar-width: none; }
-  .picker::-webkit-scrollbar { display: none; }
-  .pick { white-space: nowrap; }
-  .focus { padding: 16px 14px 12px; }
-  .tiles { grid-template-columns: 1fr 1fr; }
-  .tiles .tile:last-child { grid-column: 1 / -1; }
-  .tile dd { font-size: 21px; }
-  .chart { height: 210px; }
-  .row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .mini { grid-column: 1 / -1; height: 48px; }
   .mgrid { grid-template-columns: 1fr; }
-  .focus.topic .chart { height: 240px; }
 }
 
 /* ── Сонирхолтой ── */
@@ -437,4 +358,61 @@ details.cyc-list > div { padding: 0 16px 12px; }
 @media (max-width: 760px) {   /* 390×844-д эхний карт бүтнээрээ (ADR 0027): h1-ийн дээд зай ба treemap-ийг шахна */
   main .page-h:first-child { margin-top: 14px; }
   .tmap, .sk-map { height: 190px; }
+}
+
+/* Сэдвийн хуудас (3б) */
+.back { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; color: var(--muted); text-decoration: none; font-size: 14.5px; }
+.back:hover { color: var(--ink); }
+.topic-h { margin: 4px 0 2px; font-size: clamp(26px, 3.6vw, 36px); font-weight: 700; letter-spacing: -.012em; overflow-wrap: anywhere; }
+.topic-cat { color: var(--muted); font-size: 14.5px; margin: 0 0 8px; }
+.t-lines { margin: 0 0 4px; font-size: 17px; color: var(--text-2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; }
+.t-lines .c-verdict { margin: 0; font-size: 17px; }
+.t-lines .dot-mark { font-size: 15px; }
+.t-iv { margin: 0 0 4px; font-size: 15px; color: var(--muted); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 12px; margin-top: 12px; }
+.ch-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 4px; }
+.ch-title { margin: 0; font-size: 16px; font-weight: 600; }
+.panel > .ch-title { margin-bottom: 6px; }
+.main-ch { position: relative; height: 300px; touch-action: pan-y; }
+.ch .grid { stroke: var(--line); }
+.ch .axis { stroke: #c9cdd6; }
+.ch .lbl { fill: var(--text-2); font: 500 11.5px var(--font); }
+.ch .act-area { fill: rgba(29, 90, 158, .08); }
+.ch .basewin { fill: var(--base-win); }
+.main-ch .ch .norm { stroke: var(--muted); stroke-width: 1; stroke-dasharray: none; }
+.main-ch .ch .split { stroke: var(--muted); stroke-width: 1; stroke-dasharray: none; }
+.ch .rp-fc { fill: none; stroke: var(--ink); stroke-width: 1.75; stroke-dasharray: 5 4; }
+.ch .rp-band { fill: none; stroke: var(--ink); stroke-width: 1; stroke-dasharray: 2 3; }
+.ch .xh { stroke: var(--ink); stroke-width: 1; opacity: .45; }
+.ch .hit { fill: transparent; outline: none; }
+.ch .hit:focus-visible { stroke: var(--blue); stroke-width: 2; }
+.ch .hp { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.key .k-act { width: 16px; height: 0; border-radius: 0; border-top: 2px solid var(--data); }
+.key .k-fc { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed var(--data-fc); }
+.key .k-band { width: 14px; height: 10px; background: var(--band); border: 1px solid var(--data-fc); border-radius: 2px; }
+.main-ch ~ .key .k-dot { width: 9px; height: 9px; background: var(--ink); }
+.key .k-norm { width: 16px; height: 0; border-radius: 0; border-top: 1px solid var(--muted); }
+.key .k-rp { width: 16px; height: 0; border-radius: 0; border-top: 2px dashed var(--ink); }
+.key .k-base { width: 14px; height: 10px; background: rgba(21, 23, 28, .07); border-radius: 2px; }
+.replay { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.replay h3 { margin: 0 0 4px; font-size: 15px; }
+.rp-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; }
+.rp-ctl select { max-width: 100%; min-width: 0; flex: 1 1 180px; min-height: 44px; font: inherit; font-size: 15px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.rp-ctl .btn { min-width: 44px; padding: 0 12px; }
+.rp-out { font-size: 14.5px; color: var(--text-2); margin: 6px 0; }
+.rp-out b { color: var(--ink); }
+.rp-note { font-size: 13px; color: var(--muted); }
+details.tbl { margin-top: 12px; }
+details.tbl summary { cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; color: var(--blue); font-weight: 500; font-size: 14.5px; }
+table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.data th, table.data td { padding: 7px 8px; text-align: right; border-top: 1px solid var(--line); }
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data th { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+.tbl-wrap { overflow-x: auto; }
+.detail.flat { border: 0; padding-top: 0; margin: 0; }
+main > .neutral:last-child { margin-top: 14px; }
+@media (max-width: 760px) {
+  .main-ch { height: 240px; }
+  .panel { padding: 12px 12px 10px; }
 }

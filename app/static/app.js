@@ -12,15 +12,6 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
   const in3 = (t) => t.forecast[t.forecast.length - 1];
-  // Таамгийн хувь (ADR 0003/0004, 0014): backend-ийн pct(h3), сум, 🔥. Хувь = "анхаарал", тоо = "уншилт".
-  const tipped = (text, tip) => `<span class="anh" title="${esc(tip)}">${esc(text)}</span>`;
-  const pct = (t, d) => `${tipped("анхаарал", W.TIP.attention)} ${esc(W.forecastLabel(t.label, d.asof, d.age_days))}`;
-  const iv = (t) => {
-    const text = W.interval(t.interval_text), cut = text.indexOf(": ");   // tooltip нь "10 удаагийн 8-д" дээр
-    if (!text) return "";
-    return `<span class="iv">${cut < 0 ? tipped(text, W.TIP.interval) : tipped(text.slice(0, cut), W.TIP.interval) + esc(text.slice(cut))}</span>`;
-  };
-
   let redraws = [], rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => redraws.forEach((f) => f()), 150); });
   const draw = (fn) => { redraws.push(fn); fn(); return fn; };
@@ -38,33 +29,6 @@
     s.hidden = !text;
     s.textContent = text;
   }
-
-  // Сэдвийн дэлгэрэнгүй хэсэг (нүүр болон сэдвийн хуудсанд хоёуланд)
-  function focusHTML(t, d, { titleTag = "h2", link = true } = {}) {
-    const title = link ? `<a href="${href(t.article)}">${esc(t.title)}</a>` : esc(t.title);
-    return `
-      <div class="focus-head">
-        <${titleTag} class="focus-title">${title}</${titleTag}>
-        <span class="focus-cat">${cat(t.category)}</span>
-      </div>
-      <dl class="tiles">
-        <div class="tile t-blue"><dt>${W.dayTile(d.asof, d.age_days)}</dt><dd>${C.fmt(t.views)}<small>уншилт</small></dd></div>
-        <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${t.normal == null ? "—" : C.fmt(t.normal)}<small>${t.anomaly && t.ratio != null
-          ? tipped(`анхаарал ×${t.ratio}`, W.surgeTip(t, d.asof)) : ""}</small></dd></div>
-        <div class="tile t-forecast"><dt>${W.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>уншилт</small><small class="sub">${pct(t, d)}</small><small class="iv">${iv(t)}</small></dd></div>
-      </dl>
-      <p class="chart-h">Өдөр бүрийн уншилт</p>
-      <div class="chart" id="chart"></div>
-      <ul class="key">
-        <li><i class="k-blue"></i>Бодит</li>
-        <li><i class="k-forecast"></i>Таамаг</li>
-        <li><i class="k-norm"></i>Ердийн өдөр</li>
-        <li><i class="k-range"></i>Таамгийн хүрээ</li>
-      </ul>`;
-  }
-  const drawFocus = (t, d) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.normal,   // API-ийн ердийн өдрийн уншилт (ADR 0017)
-    day: W.day(d.asof, d.age_days),
-    label: `${t.title}: өдөр бүрийн уншилт ба ирэх 3 өдрийн таамаг` });
 
   // ═════════ Карт (давхарга 2, ADR 0027): нэр · ● ×N · дүгнэлт ба таамаг · spark · "Ямар нөхцөлд?" (3а) ═════════
   // ctx: { asof, T (хүчтэй өсөлтийн босго), src (track record-ын эх сурвалж эсвэл null), minN }
@@ -199,21 +163,95 @@
     });
   }
 
-  // ═════════ Нэг сэдэв ═════════
+  // ═════════ Сэдвийн хуудас (3б, ADR 0026, 0027): 2–3 мөр текст, 60 хоногийн гол график (180 сэлгэгч), replay, "Ямар нөхцөлд?" ═════════
   async function topic(article, tk) {
-    const t = await api("/api/topic/" + encodeURIComponent(article));
+    const T = W.TOPIC;
+    let t;
+    try { t = await api("/api/topic/" + encodeURIComponent(article)); } catch (e) {
+      if (e.status !== 404) throw e;
+      if (!alive(tk)) return;
+      main.innerHTML = `<a class="back" href="#/">${esc(T.back)}</a><h1 class="topic-h">${esc(article.replace(/_/g, " "))}</h1><p class="lead">${esc(T.missing)}</p>`;
+      return;
+    }
+    const tracks = await api("/api/track-record").catch(() => null);
     if (!alive(tk)) return;
     meta(t);
-    main.innerHTML = `
-      <a class="back" href="#/">← Нүүр рүү буцах</a>
-      <section class="focus topic" style="margin-top:14px">${focusHTML(t, t, { titleTag: "h1", link: false })}
-        <table class="fc">
-          <caption>Ирэх 3 өдрийн таамагласан уншилт. ${W.TIP.table}</caption>
-          <thead><tr><th>Өдөр</th><th>Доод</th><th>Таамаг</th><th>Дээд</th></tr></thead>
-          <tbody>${t.forecast.map((f) => `<tr><td>${W.longDate(f.d, t.asof)}</td><td>${C.fmt(f.lo)}</td><td class="y">${C.fmt(f.y)}</td><td>${C.fmt(f.hi)}</td></tr>`).join("")}</tbody>
-        </table>
-      </section>`;
-    draw(drawFocus(t, t));
+    const src = tracks ? (tracks.sources.find((x) => x.current && x.source_key === "recomputed") || null) : null;
+    const ctx = { asof: t.asof, T: t.T, src, minN: tracks ? tracks.min_n : null };
+    const view = { days: 60, rp: null };
+    const anomOf = Object.fromEntries((t.anom || []).map((a) => [a.d, a.r]));
+    main.innerHTML = `<a class="back" href="#/">${esc(T.back)}</a>
+      <h1 class="topic-h">${esc(t.title)}</h1><p class="topic-cat">${esc(catOnly(t.category))}</p>
+      <p class="t-lines">${markHTML(t, t.asof)}<span>${esc(T.dayLine(t, t.asof, C.fmt))}</span></p>
+      <p class="t-lines"><span class="c-verdict">${verdictHTML(t, ctx.T)}</span><span>${esc(T.fcLine(in3(t), C.fmt))}</span></p>
+      <p class="t-iv">${esc(T.iv80(t.interval))}</p>
+      <div class="panel">
+        <div class="ch-head"><h2 class="ch-title">${esc(T.chart)}</h2>
+          <div class="seg" role="group" aria-label="${esc(T.rangeLabel)}">${T.range.map(([n, l]) => `<button type="button" data-days="${n}" aria-pressed="${n === 60}">${esc(l)}</button>`).join("")}</div></div>
+        <div class="main-ch" id="main-ch"></div>
+        <ul class="key"><li><i class="k-act"></i>${esc(T.key.act)}</li><li><i class="k-fc"></i>${esc(T.key.fc)}</li><li><i class="k-band"></i>${esc(T.key.band)}</li>
+          <li><i class="k-dot"></i>${esc(T.key.dot)}</li><li><i class="k-norm"></i>${esc(T.key.norm)}</li><li><i class="k-base"></i>${esc(T.key.base)}</li>
+          <li id="rp-key" hidden><i class="k-rp"></i>${esc(T.key.rp)}</li></ul>
+        <section class="replay" aria-labelledby="rp-h"><h3 id="rp-h">${esc(T.replay)}</h3>
+          <div class="rp-ctl"><label class="vh" for="rp-sel">${esc(T.dayLabel)}</label>
+            <select id="rp-sel" disabled><option value="">${esc(T.loading)}</option></select>
+            <button class="btn ghost" type="button" id="rp-prev" aria-label="${esc(T.prev)}" disabled>←</button>
+            <button class="btn ghost" type="button" id="rp-next" aria-label="${esc(T.next)}" disabled>→</button></div>
+          <p class="rp-note" id="rp-note" hidden>${esc(T.only60)}</p>
+          <div class="rp-out" id="rp-out" aria-live="polite"></div></section>
+        <details class="tbl"><summary>${esc(T.table)}</summary><div class="tbl-wrap"><table class="data"><caption class="vh">${esc(T.caption)}</caption>
+          <thead><tr>${T.cols.map((c) => `<th scope="col">${esc(c)}</th>`).join("")}</tr></thead><tbody>
+          ${t.history.slice(-14).map((d) => `<tr><td>${W.md(d.d)}</td><td>${C.fmt(d.v)}</td><td></td><td></td><td></td><td>${d.d in anomOf ? esc(`● ×${anomOf[d.d]}`) : ""}</td></tr>`).join("")}
+          ${t.forecast.map((f) => `<tr><td>${W.md(f.d)}</td><td></td><td>${C.fmt(f.y)}</td><td>${C.fmt(f.lo)}</td><td>${C.fmt(f.hi)}</td><td></td></tr>`).join("")}</tbody></table></div></details>
+      </div>
+      <section class="panel" aria-labelledby="cond-h"><h2 class="ch-title" id="cond-h">${esc(W.MORE)}</h2><div class="detail flat">${detailHTML(t, ctx)}</div></section>
+      <p class="neutral">${esc(W.NEUTRAL)}</p>`;
+    const box = document.getElementById("main-ch");
+    const chart = () => V.mainChart(box, t, view);
+    draw(chart);
+    const sel = document.getElementById("rp-sel"), out = document.getElementById("rp-out");
+    function setDays(n) {
+      view.days = n;
+      main.querySelectorAll("[data-days]").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.days === n));
+      document.getElementById("rp-note").hidden = n === 60;
+      document.getElementById("rp-key").hidden = !(view.rp && n === 60);
+      chart();
+    }
+    main.querySelectorAll("[data-days]").forEach((b) => b.addEventListener("click", () => setDays(+b.dataset.days)));
+    // Өнгөрсөн таамаг: сэргээж тооцсон (ADR 0015), сэдвийн хуудаснаас тусдаа ачаална (нэг сэдэвт хэдэн секунд)
+    let rps = [];
+    function bandOutcome(r) {
+      const b = src && src.by_band.find((x) => x.key === T.bandKey(r.pct));
+      if (!b || r.pct == null) return "";
+      const [k, what] = T.bandWhat(b.key), v = k === "down" ? b.down10 : k === "up" ? b.up10 : 1 - b.up10 - b.down10;
+      const [x, y, z] = T.bandLine(b.label, v, what);
+      return `<div class="ia">${V.iconArray(v, `${esc(x)}<b>${esc(y)}</b>${esc(z)}`)}</div><p class="prov">${esc(W.prov(src, b.n))}</p>`;
+    }
+    function setRp(asof) {
+      const r = rps.find((x) => x.asof === asof) || null;
+      view.rp = r; sel.value = r ? r.asof : "";
+      if (r) {
+        const act = t.history.find((h) => h.d === r.forecast[r.forecast.length - 1].d);
+        const [said, got] = T.outcome(r, act, C.fmt);
+        out.innerHTML = `<p>${esc(said)}${got ? ` ${esc(got[0])}<b>${esc(got[1])}</b>${esc(got[2])}` : ""}</p>${bandOutcome(r)}<p class="rp-note">${esc(T.notOne)}</p>`;
+      } else out.innerHTML = "";
+      setDays(r ? 60 : view.days);
+    }
+    sel.addEventListener("change", () => setRp(sel.value));
+    const step = (k) => { const i = rps.findIndex((r) => r === view.rp); setRp(rps[Math.max(0, Math.min(rps.length - 1, i < 0 ? 0 : i + k))].asof); };
+    document.getElementById("rp-prev").addEventListener("click", () => step(1));    // rps: шинээс хуучин руу
+    document.getElementById("rp-next").addEventListener("click", () => step(-1));
+    try {
+      const d = await api("/api/topic/" + encodeURIComponent(article) + "/replay");
+      if (!alive(tk)) return;
+      rps = d.items;
+      sel.innerHTML = `<option value="">${esc(T.pick)}</option>${rps.map((r) => `<option value="${r.asof}">${esc(T.option(r))}</option>`).join("")}`;
+      [sel, ...main.querySelectorAll("#rp-prev, #rp-next")].forEach((x) => { x.disabled = !rps.length; });
+    } catch (e) {
+      if (!alive(tk)) return;
+      sel.closest(".rp-ctl").outerHTML = errorBox(e);
+      main.querySelector(".replay [data-retry]")?.addEventListener("click", () => { route({ keepScroll: true }); });
+    }
   }
 
   // ═════════ Загвар ═════════
