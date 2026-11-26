@@ -503,3 +503,17 @@ main.grown .grow, main.grown .ch .grow-y { transform: none; }
 .pf .stair { height: 280px; }
 main > .neutral { margin-top: 14px; }
 @media (max-width: 760px) { .pf .stair { height: 230px; } }
+
+/* Цэс (ADR 0027): flex-wrap, зүйл бүр ≥ 44px. Багтахгүй бол мөр шилжинэ (2×2), zoom 200%-д ч ажиллана (WCAG 1.4.10) */
+.top { gap: 4px 28px; padding-top: 14px; padding-bottom: 6px; }
+.brand { min-height: 44px; }
+.nav { flex-wrap: wrap; gap: 2px 4px; }
+.nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; }
+@media (max-width: 760px) {
+  .top { gap: 0 16px; padding-top: 8px; }
+  .nav { gap: 0 2px; }
+  .nav a { padding: 0 10px; font-size: 14.5px; }
+  .asof { margin: 0 0 2px; font-size: 13px; }
+}
+.fgrid > .fcard { min-width: 0; }
+@media (max-width: 360px) { .fcard { padding: 14px 12px 10px; } .minis { grid-template-columns: 1fr; } }

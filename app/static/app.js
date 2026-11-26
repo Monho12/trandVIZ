@@ -453,7 +453,7 @@
     }));
   }
 
-  // ═════════ Сонирхолтой ═════════
+  // ═════════ Хэв маяг (өмнө нь "Сонирхолтой", ADR 0022) ═════════
   async function facts(tk) {
     const d = await api("/api/insights");
     if (!alive(tk)) return;
@@ -465,7 +465,7 @@
     const lim = Math.max(...picks.flatMap((p) => off(p.key).map(Math.abs)));       // хоёр графикт нэг тэнхлэг
     const mn = d.mongolia[0], H = d.holidays;
     main.innerHTML = `
-      <h1 class="page-h">Сонирхолтой</h1>
+      <h1 class="page-h">Хэв маяг</h1>
       <p class="lead">${esc(W.factsLead(R.decay, d.topics_n))}</p>
       <div class="fgrid">
         <section class="fcard">
