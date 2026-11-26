@@ -1,6 +1,5 @@
-// Сайтын үг ба шошго (ADR 0014): тоо = "уншилт", таамгийн хувь = "анхаарал"; ▲ = өнгөрсөн, ↗/🔥 = таамаг.
-// "Өчигдөр" гэдэг үг зөвхөн эндээс, asof = өчигдөр (age_days = 1) үед л гарна; бусад үед огноо.
-// asof: "YYYY-MM-DD", age: /api/*-ийн age_days (серверийн өнөөдөр, Улаанбаатарын цагаар − asof).
+// Сайтын үг ба шошго (ADR 0014, 0022, 0024): тоо = "уншилт", таамгийн хувь = "анхаарал"; ● = өнгөрсөн (огцом өссөн), ↗/↘ = таамаг.
+// Огноо үргэлж тодорхой ("11.10"), "өчигдөр" гэж бичихгүй. asof: "YYYY-MM-DD", age: /api/*-ийн age_days.
 (function (root) {
   // ── Огноо (ADR 0018). Сайтын бүх огноо эндээс гарна (charts.js, app.js өөрөө огноо задлахгүй, test_words шалгана). ──
   // iso: "YYYY-MM-DD" (эсвэл "YYYY-MM-DDTHH:MM..."-ийн эхний 10 тэмдэгт).
@@ -17,21 +16,6 @@
   const fullDate = (iso) => { const [y, m, d] = ymd(iso); return `${y}.${pad(m)}.${pad(d)}`; };
   const span = (r) => `${fullDate(r.from)}–${fullDate(r.to)}`;
   const ym = (iso) => fullDate(iso).slice(0, 7);
-
-  const isYesterday = (age) => age === 1;
-  const day = (asof, age) => (isYesterday(age) ? "өчигдөр" : md(asof));                      // шошго, график
-  const dayTile = (asof, age) => (isYesterday(age) ? "Өчигдөр" : md(asof));
-
-  // t: /api/*-ийн сэдэв (ratio, views_ratio, typical_pct, similar_days). Түүхий уншилтын ×N хаалтанд (CONTEXT.md).
-  const surgeTip = (t, asof) => [
-    `${longDate(asof)}-нд анхаарал ердийн өдрөөс ${t.ratio} дахин их${t.views_ratio == null ? "" : ` (уншилт ×${t.views_ratio})`}.`,
-    `Энэ сэдэв ихэвчлэн ±${Math.round(t.typical_pct * 100)}%-иар л хэлбэлздэг.`,
-    `Сүүлийн 2 сард ийм өдөр ${t.similar_days ? `${t.similar_days} удаа гарсан` : "нэг ч удаа гараагүй"}.`].join(" ");
-
-  // API-ийн "80%: +10% … +85%" -> "10 удаагийн 8-д: +10% … +85%"
-  const interval = (text) => (text ? text.replace(/^80%:\s*/, "10 удаагийн 8-д: ") : "");
-  // API-ийн "— (өчигдөр уншилтгүй)" шошгыг хуучирсан өгөгдөлд огноотой болгоно
-  const forecastLabel = (label, asof, age) => (isYesterday(age) ? label : label.replace("өчигдөр", `${md(asof)}-нд`));
 
   // ── "Сонирхолтой" хуудас (issue #33). Юуг харуулахыг app/data/make_insights.py сонгоно, энд зөвхөн үг. ──
   const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];                                   // 0 = Даваа
@@ -210,23 +194,62 @@
     low: "цөөн уншилттай",
   };
 
-  const TIP = {
-    attention: "Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь",
-    interval: "80% интервал: model-ийн өмнөх алдаанаас тооцсон хүрээ",
-    normal: "ердийн түвшин (медиан): сүүлийн 2 сарын уншилт, сүүлийн 7 хоногийг оруулаагүй",
-    forecastBar: "таамагласан уншилт (Wikipedia-ийн нийт уншилт өөрчлөгдөхгүй гэж үзвэл)",
-    lowViews: "сүүлийн 7 хоногт Wikipedia-ийн сая уншилт тутмаас дунджаар 1-ээс бага",
-    table: "Доод–Дээд: 10 удаагийн 8-д бодит тоо энэ хооронд байдаг (80% интервал).",
-    other: "Сарын шилдэг 200-д 1–2 сар орсон, оргил өдөр нь ердийнхөөсөө 8+ дахин их",
+  // ── W7 (#52): сэдвийн хуудас (3б, ADR 0026, 0027) ──
+  const TOPIC = {
+    back: "← Нүүр",
+    dayLine: (t, asof, fmt) => (t.anomaly ? `${md(asof)}-нд` : `${md(asof)}-нд ${fmt(t.views)} уншилт (ердийн өдөр ≈ ${t.normal == null ? "—" : fmt(t.normal)})`),
+    fcLine: (f, fmt) => `${md(f.d)}-нд ≈ ${fmt(f.y)} уншилт`,
+    iv80: (iv) => `80% магадлалтай: ${signed(iv.lo)} … ${signed(iv.hi)}`,
+    chart: "Өдөр бүрийн уншилт",
+    range: [[60, "60 хоног"], [180, "180 хоног"]],
+    rangeLabel: "Хугацаа",
+    chartLabel: (t, days, fmt) => {
+      const h = t.history[t.history.length - 1], f = t.forecast[t.forecast.length - 1];
+      return `${t.title}: сүүлийн ${days} өдрийн уншилт ба ирэх 3 өдрийн таамаг. ${md(h.d)}-нд ${fmt(h.v)}, ${md(f.d)}-нд ≈ ${fmt(f.y)} (80%: ${fmt(f.lo)}–${fmt(f.hi)}).`;
+    },
+    key: { act: "Бодит", fc: "Таамаг", band: "80% магадлалтай хүрээ", dot: "Огцом өссөн өдөр", norm: "Ердийн өдөр",
+      base: "Ердийн түвшний суурь (сүүлийн 7 хоногоос өмнөх 53 өдөр)", rp: "Өнгөрсөн таамаг" },
+    norm: (v, fmt) => `ердийн өдөр ≈ ${fmt(v)}`,
+    hitLabel: "Өдөр сонгох: сум товчоор",
+    tipActual: (v, d, ref, fmt) => [`${fmt(v)} уншилт`, longDate(d, ref)],
+    tipFc: (f, ref, fmt) => [`≈ ${fmt(f.y)} уншилт (таамаг)`, longDate(f.d, ref), `80% магадлалтай: ${fmt(f.lo)} – ${fmt(f.hi)} хооронд`],
+    tipDot: (r) => `● огцом өссөн: ердийнхөөс ×${r}`,
+    tipRp: (asof, f, fmt) => [`${of(asof)} таамаг: ≈ ${fmt(f.y)} (80%: ${fmt(f.lo)}–${fmt(f.hi)})`, "сэргээж тооцсон: тухайн өдөр хэрэглэгчид харагдаагүй"],
+    tipBase: "Ердийн түвшинг энэ хугацаагаар тооцсон (сүүлийн 7 хоног ороогүй)",
+    replay: "Өнгөрсөн таамаг хэр зөв байсан бэ?",
+    pick: "Өдөр сонгох…",
+    loading: "Өнгөрсөн таамгийг тооцож байна…",
+    option: (r) => `${of(r.asof)} таамаг (${md(r.forecast[r.forecast.length - 1].d)} хүртэл)`,
+    prev: "Өмнөх өдөр", next: "Дараагийн өдөр", dayLabel: "Өдөр",
+    only60: "Өнгөрсөн таамгийг 60 хоногийн горимд харна. Өдөр сонговол 60 горим руу шилжинэ.",
+    outcome: (r, act, fmt) => {
+      const f = r.forecast[r.forecast.length - 1];
+      const where = !act ? "" : act.v < f.lo ? "80% хүрээнээс доогуур" : act.v > f.hi ? "80% хүрээнээс дээгүүр" : "80% хүрээн дотор";
+      return [`${md(r.asof)}-нд ${of(f.d)} уншилтыг ≈ ${fmt(f.y)} (80%: ${fmt(f.lo)}–${fmt(f.hi)}, ${arrow(r.pct)} ${signed(r.pct)}) гэж таамагласан.`,
+        act ? [`Бодит нь `, fmt(act.v), `: ${where}.`] : null];
+    },
+    // Таамгийн зурвасын track record (ADR 0020): replay-ийн хажууд нэгдсэн дүн үргэлж
+    bandKey: (p) => (p <= -0.2 ? "le_-20" : p <= -0.1 ? "-20_-10" : p < 0.1 ? "pm10" : p < 0.25 ? "10_25" : "ge_25"),
+    bandWhat: (key) => (key === "le_-20" || key === "-20_-10" ? ["down", "≥ 10% буурсан"] : key === "pm10" ? ["flat", "±10%-ийн дотор үлдсэн"] : ["up", "≥ 10% өссөн"]),
+    bandLine: (label, rate, what) => [`Энэ зурвасын (${label}) бүх таамгийн `, `10-аас ${tenOf(rate)}`, ` нь 3 өдрийн дараа ${what}`],
+    notOne: "Нэг өдөр төлөөлөл биш: дээрх нь бүх ижил таамгийн дүн.",
+    table: "Хүснэгтээр харах",
+    caption: "Сүүлийн 14 өдрийн уншилт ба ирэх 3 өдрийн таамаг",
+    cols: ["Өдөр", "Бодит", "Таамаг", "80% доод", "80% дээд", "Огцом"],
+    missing: "Энэ сэдэв манай жагсаалтад алга.",
   };
 
-  const Words = { md, longDate, day, dayTile, surgeTip, interval, forecastLabel, TIP,
+  const TIP = {
+    lowViews: "сүүлийн 7 хоногт Wikipedia-ийн сая уншилт тутмаас дунджаар 1-ээс бага",
+  };
+
+  const Words = { md, longDate, TIP,
     DAYS, span, factsLead, decayNote, catsNote, mongoliaNote, catsHeadline, weekdayTitle, weekdayLabel, WEEKDAY_NOTE,
     HOLIDAY_TITLE, holidayLabel, holidayNote,
     num, maePct, months, modelWords,
     of, signed, arrow, homeH1, homeSum, mapTitle, MAP_KEY, cellLabel, cellValue, cellTip, VERDICT, GROUP, groupEmpty, seeAllN,
     reviveTitle, REVIVE_LEAD, REVIVE_EMPTY, cycleTitle, CYCLE_LEAD, CYCLE_WORD, cycleTip, markText, markTip, byDay, MORE, CODE_TEXT,
-    DISCLAIM, NEUTRAL, tenOf, codeHit, codeBase, codeFew, prov, sparkLabel, incompleteNote, staleNote, COLD, waited, ERROR, LIST };
+    DISCLAIM, NEUTRAL, tenOf, codeHit, codeBase, codeFew, prov, sparkLabel, incompleteNote, staleNote, COLD, waited, ERROR, LIST, TOPIC };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;
 })(typeof window !== "undefined" ? window : globalThis);

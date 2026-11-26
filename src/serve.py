@@ -336,6 +336,35 @@ def attention_map(model, snap: Snapshot, today) -> dict:
             "items": [{k: v for k, v in item(r, hist[r.article], snap.asof).items() if k in keep} for r in top.itertuples()]}
 
 
+REPLAY_DAYS = range(3, 25)   # сэдвийн хуудасны replay: asof−3 … asof−24 (D+3-ын бодит утга харагдана), шинээс хуучин руу
+
+
+def replay(model, raw: RawCache, article: str, asof: pd.Timestamp) -> list[dict] | None:
+    """Өнгөрсөн өдөр бүрийн сэргээж тооцсон таамаг (ADR 0015): түүхий өгөгдлийг D хүртэл тайраад сервертэй ИЖИЛ замаар
+    (Snapshot.from_raw -> feature_rows -> predict). raw нь энэ сэдвийн мөрүүд + нийт уншилт л байж болно: цэвэрлэгээ, feature,
+    anomaly нь сэдэв бүрээр бие даасан (`clean_chunks`) тул бүх сэдвийнхтэй ижил. Сэдэв алга бол None."""
+    if not (raw.pageviews["article"] == article).any():
+        return None
+    out = []
+    for k in REPLAY_DAYS:
+        d = asof - pd.Timedelta(days=k)
+        upto = lambda df: df[df["date"] <= d].reset_index(drop=True)   # noqa: E731  (src/backtest.truncate-тэй ижил)
+        cut = RawCache(upto(raw.pageviews), upto(raw.alias), upto(raw.total))
+        if cut.pageviews.empty or cut.end != d:
+            continue
+        snap = Snapshot.from_raw(cut)
+        p = predict(model, feature_rows(snap.tail([article]), d))
+        if p.empty:
+            continue
+        r = next(p.itertuples())
+        out.append({"asof": d.strftime("%Y-%m-%d"), "pct": _r(r.pct_h3), "interval": {"lo": _r(r.lo_h3), "hi": _r(r.hi_h3)},
+                    "anomaly": bool(r.anomaly), "verdict": r.verdict,
+                    "forecast": [{"d": f.strftime("%Y-%m-%d"), "y": round(getattr(r, f"views_h{h}")),
+                                  "lo": round(getattr(r, f"views_lo_h{h}")), "hi": round(getattr(r, f"views_hi_h{h}"))}
+                                 for h, f in zip((1, 2, 3), forecast_dates(d))]})
+    return out
+
+
 def topic(model, snap: Snapshot, article: str, today) -> dict | None:
     """Нэг сэдэв: тэр сэдвийн feature-ийг хүсэлт бүрт тооцож, model ажиллуулна. Манай жагсаалтад байхгүй бол None."""
     tail = snap.tail([article])
@@ -347,4 +376,4 @@ def topic(model, snap: Snapshot, article: str, today) -> dict | None:
     r = next(p.itertuples())
     hist = _histories(snap, [article], TOPIC_DAYS)[article]
     anom = anomaly_days(snap.clean, snap.asof, TOPIC_DAYS, [article])
-    return {**day_block(snap, today), **item(r, hist, snap.asof, tracks=verdict_tracks(model), anom=anom)}
+    return {**day_block(snap, today), "T": model.meta["fire"]["T"], **item(r, hist, snap.asof, tracks=verdict_tracks(model), anom=anom)}

@@ -35,7 +35,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from src import evaluate, live, serve, train
+from src import evaluate, live, serve, situation, train
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -225,6 +225,37 @@ def topic(article: str):
     if t is None:
         raise HTTPException(404, "Ийм сэдэв манай жагсаалтад алга")
     return with_incomplete(t)
+
+
+def load_raw_article(article: str, end: pd.Timestamp) -> live.RawCache:
+    """Нэг сэдвийн түүхий мөрүүд (+ нийт уншилт) `end` хүртэл: replay-д бүх cache-ийг санах ойд уншихгүй (ADR 0012)."""
+    try:
+        src = LIVE_DIR if live.RawCache.end_on_disk(LIVE_DIR) > live.RawCache.end_on_disk(PROCESSED) else PROCESSED
+    except (FileNotFoundError, OSError, ValueError):
+        src = PROCESSED
+    one = [("article", "==", article)]
+    pv = pd.read_parquet(src / live.FILES["pageviews"], filters=one)
+    al = pd.read_parquet(src / live.FILES["alias"], filters=one)
+    tot = pd.read_parquet(src / live.FILES["total"])
+    upto = lambda df: df[df["date"] <= end].reset_index(drop=True)   # noqa: E731  snapshot-оос шинэ өдөр орохгүй
+    return live.RawCache(upto(pv), upto(al), upto(tot))
+
+
+@lru_cache(maxsize=32)
+def _replay(article: str, asof: pd.Timestamp, model_hash: str) -> list[dict] | None:
+    return serve.replay(state.model, load_raw_article(article, asof), article, asof)
+
+
+@app.get("/api/topic/{article}/replay")
+def topic_replay(article: str):
+    """Сэдвийн хуудасны "Өнгөрсөн таамаг" (ADR 0026, 0027): asof−3 … asof−24 өдөр бүрийн сэргээж тооцсон таамаг (ADR 0015).
+    Нэг сэдэвт ~2–5 секунд тул сэдвийн хуудаснаас тусдаа, дараа нь ачаална."""
+    asof = state.snapshot.asof
+    items = _replay(article, asof, state.model.model_hash)
+    if items is None:
+        raise HTTPException(404, "Ийм сэдэв манай жагсаалтад алга")
+    return {"asof": asof.strftime("%Y-%m-%d"), "source": situation.SOURCES["recomputed"],
+            "model_version": train.short_version(state.model.model_hash), "items": items}
 
 
 @app.get("/api/map")

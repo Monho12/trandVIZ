@@ -344,3 +344,33 @@ def test_responses_name_the_day_that_has_not_arrived_complete(client, monkeypatc
         d = client.get(ep).json()
         want = (pd.Timestamp(d["asof"]) + pd.Timedelta(days=1)).strftime("%Y-%m-%d") if incomplete else None
         assert d["incomplete"] == want, ep
+
+
+# ---------------------------------------------------------------- W7 (#52): сэдвийн хуудасны replay (ADR 0015, 0026, 0027)
+
+def test_topic_replay_is_the_as_of_forecast_of_each_past_day(client):
+    """Өнгөрсөн өдөр D (asof−3 … asof−24) бүрийн таамаг = D хүртэл тайрсан түүхий өгөгдлөөр сервертэй ижил замаар тооцсон
+    сэргээж тооцсон таамаг (`src.backtest.replay`, ADR 0015). D+3-ын бодит утга харагдах өдрүүд л: шинээс хуучин руу."""
+    from app import main as m
+    from src import backtest, live
+    d = client.get("/api/topic/ChatGPT/replay").json()
+    asof = pd.Timestamp(d["asof"])
+    days = [r["asof"] for r in d["items"]]
+    assert days == [(asof - pd.Timedelta(days=k)).strftime("%Y-%m-%d") for k in range(3, 25)]
+    assert d["source"] == "сэргээж тооцсон" and d["model_version"].startswith("v")
+    raw = live.RawCache.load(m.PROCESSED)
+    for r in (d["items"][0], d["items"][-1]):
+        want = backtest.replay(raw, m.state.model, pd.Timestamp(r["asof"])).set_index("article").loc["ChatGPT"]
+        assert [f["d"] for f in r["forecast"]] == [(pd.Timestamp(r["asof"]) + pd.Timedelta(days=h)).strftime("%Y-%m-%d") for h in (1, 2, 3)]
+        assert [f["y"] for f in r["forecast"]] == [round(want[f"views_h{h}"]) for h in (1, 2, 3)]
+        assert [(f["lo"], f["hi"]) for f in r["forecast"]][2] != (None, None)
+        assert r["anomaly"] == bool(want["anomaly"]) and r["verdict"] == (None if pd.isna(want["verdict"]) else want["verdict"])
+
+
+def test_replay_of_an_unknown_topic_is_404(client):
+    assert client.get("/api/topic/No_such_topic_xyz/replay").status_code == 404
+
+
+def test_topic_page_carries_the_strong_rise_threshold_of_the_list(client):
+    """Хүчтэй өсөлт тод (ADR 0026): сэдвийн хуудас нүүртэй ижил босгоор (`T`) тодруулна."""
+    assert client.get("/api/topic/ChatGPT").json()["T"] == client.get("/api/trending").json()["T"]

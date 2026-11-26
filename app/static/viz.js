@@ -137,5 +137,77 @@
       <span class="ia-t">${text}</span>`;
   };
 
-  window.Viz = { el, svg, poly, showTip, hideTip, spark, treemap, tmKey, flash, linkHover, iconArray, reduced };
+  // ═════════ Сэдвийн хуудасны гол график (3б, ADR 0026, 0027): шугам + area (бодит), тасархай + band (таамаг), ●, ердийн өдөр,
+  // суурь цонх (t−59 … t−7) бүдэг дэвсгэр, түүх/таамгийн зааг. y 0-ээс, шугаман. rp = өнгөрсөн таамаг (зөвхөн 60 горимд). ═════════
+  const niceMax = (m) => { const e = 10 ** Math.floor(Math.log10(m || 1)), f = m / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; };
+  function mainChart(box, t, { days, rp }) {
+    const T = W.TOPIC, hist = t.history.slice(-days), fc = t.forecast, H = hist.length, N = H + fc.length;
+    if (!H) return;
+    const { s, w, h } = svg(box, T.chartLabel(t, days, fmt));
+    const pad = { l: 52, r: 12, t: 14, b: 24 }, step = (w - pad.l - pad.r) / N;
+    const X = (i) => pad.l + (i + 0.5) * step;
+    const max = niceMax(Math.max(...hist.map((d) => d.v), ...fc.map((f) => f.hi), ...(rp ? rp.forecast.map((f) => f.hi) : [])) * 1.04);
+    const Y = (v) => h - pad.b - (v / max) * (h - pad.t - pad.b);
+    for (let k = 0; k <= 4; k++) {
+      const v = (max / 4) * k;
+      el("line", { class: k ? "grid" : "axis", x1: pad.l, x2: w - pad.r, y1: Y(v), y2: Y(v) }, s);
+      el("text", { class: "tick", x: pad.l - 6, y: Y(v) + 4, "text-anchor": "end" }, s).textContent = k ? fmt(v).replace(" мянга", " мян.") : "0";
+    }
+    const a0 = Math.max(0, H - 60), b0 = H - 8;   // суурь цонх t−59 … t−7 (ADR 0017)
+    if (b0 > a0) el("rect", { class: "basewin", x: X(a0) - step / 2, y: pad.t, width: X(b0) - X(a0) + step, height: h - pad.t - pad.b }, s);
+    const xs = days === 60 ? 10 : 30;
+    hist.forEach((d, i) => { if (i < H - 4 && (H - 1 - i) % xs === 0) el("text", { class: "tick", x: X(i), y: h - 6, "text-anchor": "middle" }, s).textContent = W.md(d.d); });
+    el("text", { class: "tick", x: X(N - 1), y: h - 6, "text-anchor": "end" }, s).textContent = W.md(fc[fc.length - 1].d);
+    const last = [X(H - 1), Y(hist[H - 1].v)];
+    el("path", { class: "act-area", d: poly([[X(0), Y(0)], ...hist.map((d, i) => [X(i), Y(d.v)]), [X(H - 1), Y(0)]]) + "Z" }, s);
+    el("path", { class: "band", d: poly([last, ...fc.map((f, i) => [X(H + i), Y(f.hi)]), ...fc.map((f, i) => [X(H + i), Y(f.lo)]).reverse()]) + "Z" }, s);
+    el("path", { class: "act", d: poly(hist.map((d, i) => [X(i), Y(d.v)])) }, s);
+    el("path", { class: "fc", d: poly([last, ...fc.map((f, i) => [X(H + i), Y(f.y)])]) }, s);
+    if (t.normal != null) {
+      el("line", { class: "norm", x1: pad.l, x2: X(H - 1), y1: Y(t.normal), y2: Y(t.normal) }, s);
+      el("text", { class: "lbl", x: pad.l + 4, y: Y(t.normal) - 5 }, s).textContent = T.norm(t.normal, fmt);
+    }
+    el("line", { class: "split", x1: X(H - 1) + step / 2, x2: X(H - 1) + step / 2, y1: pad.t, y2: h - pad.b }, s);
+    if (rp) {   // өнгөрсөн таамаг = дүүргэлтгүй: бэх тасархай шугам + band-ийн outline (ADR 0026). Цэгтэй шугам биш (● = Anomaly)
+      const iD = hist.findIndex((d) => d.d === rp.asof);
+      if (iD >= 0) {
+        const at = (k) => iD + 1 + k, o = [X(iD), Y(hist[iD].v)];
+        el("path", { class: "rp-band", d: poly([o, ...rp.forecast.map((f, k) => [X(at(k)), Y(f.hi)]), ...rp.forecast.map((f, k) => [X(at(k)), Y(f.lo)]).reverse()]) + "Z" }, s);
+        el("path", { class: "rp-fc", d: poly([o, ...rp.forecast.map((f, k) => [X(at(k)), Y(f.y)])]) }, s);
+      }
+    }
+    const an = Object.fromEntries((t.anom || []).map((a) => [a.d, a.r]));
+    hist.forEach((d, i) => { if (d.d in an) el("circle", { class: "dot", cx: X(i), cy: Y(d.v), r: days === 60 ? 3.5 : 2.5 }, s); });
+    // Crosshair: tap / hover / гар (← →). Босоо чирэлт = гүйлгэх (touch-action: pan-y, ADR 0027)
+    const xh = el("line", { class: "xh", y1: pad.t, y2: h - pad.b, visibility: "hidden" }, s);
+    const hp = el("circle", { class: "hp", r: 4.5, visibility: "hidden" }, s);
+    const hit = el("rect", { class: "hit", x: pad.l, y: 0, width: w - pad.l - pad.r, height: h, tabindex: 0, role: "slider",
+      "aria-label": T.hitLabel, "aria-valuemin": 0, "aria-valuemax": N - 1, "aria-valuenow": H - 1 }, s);
+    let cur = -1;
+    const who = { box, kind: "main", clear: () => { xh.setAttribute("visibility", "hidden"); hp.setAttribute("visibility", "hidden"); cur = -1; } };
+    function at(i, cx, cy) {
+      cur = i = Math.max(0, Math.min(N - 1, i));
+      const isF = i >= H, f = isF ? fc[i - H] : null, dd = isF ? f.d : hist[i].d, v = isF ? f.y : hist[i].v;
+      xh.setAttribute("x1", X(i)); xh.setAttribute("x2", X(i)); xh.setAttribute("visibility", "visible");
+      hp.setAttribute("cx", X(i)); hp.setAttribute("cy", Y(v)); hp.setAttribute("visibility", "visible");
+      const lines = isF ? T.tipFc(f, t.asof, fmt) : T.tipActual(v, dd, t.asof, fmt);
+      if (!isF && dd in an) lines.push(T.tipDot(an[dd]));
+      if (rp) { const k = rp.forecast.findIndex((x) => x.d === dd); if (k >= 0) lines.push(...T.tipRp(rp.asof, rp.forecast[k], fmt)); }
+      if (!isF && i >= a0 && i <= b0) lines.push(T.tipBase);
+      hit.setAttribute("aria-valuenow", i); hit.setAttribute("aria-valuetext", lines.join(", "));
+      const r = box.getBoundingClientRect();
+      showTip(`<b>${esc(lines[0])}</b>${lines.slice(1).map((x) => `<span>${esc(x)}</span>`).join("")}`, cx ?? r.left + X(i), cy ?? r.top + Y(v), who);
+    }
+    const idx = (e) => Math.round((e.clientX - box.getBoundingClientRect().left - pad.l) / step - 0.5);
+    hit.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") at(idx(e), e.clientX, e.clientY); });
+    hit.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hideTip(); });
+    hit.addEventListener("click", (e) => at(idx(e), e.clientX, e.clientY));
+    hit.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); at((cur < 0 ? H - 1 : cur) + (e.key === "ArrowLeft" ? -1 : 1)); }
+    });
+    hit.addEventListener("focus", () => at(H - 1));
+    hit.addEventListener("blur", hideTip);
+  }
+
+  window.Viz = { el, svg, poly, showTip, hideTip, spark, treemap, tmKey, flash, linkHover, iconArray, reduced, mainChart };
 })();
