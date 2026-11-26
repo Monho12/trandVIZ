@@ -49,6 +49,8 @@
   const holidayNote = (r, incompleteYear) => `Сар бүрийн өдрийн дундаж уншилт, ${year(r.from)} оноос.`
     + (incompleteYear ? ` ${incompleteYear} он дуусаагүй.` : "");
 
+  // h1-д "загвар" үг үлдээхгүй; "байсан": track record бол өнгөрсөн өгөгдөл (ADR 0022, 0027)
+  const MODEL_TITLE = "Таамаг өмнө нь хэр зөв байсан бэ?";
   // ── "Загвар" хуудас (issue #34, PLAN "Загвар"). Уншигч: ADR уншаагүй багш, оюутан. Дотоод шошго ((а)/(б)/(в), valid) байхгүй,
   // мэргэжлийн үг англиар, анх гарахдаа тайлбартай. Бүх тоо, огноо /api/model-оос (m). Буцаах мөрүүд энгийн текст (HTML биш),
   // талбаруудын дараалал = хуудасны дараалал (test_model_words "анх гарахад"-ыг үүгээр шалгана). ──
@@ -103,8 +105,7 @@
         + "Model-ийг сайт дээр дахин сургадаггүй."],
     ].map(([title, value, unit, line, more]) => ({ title, value, unit, line, more }));
     return {
-      // h1-д "загвар" үг үлдээхгүй; "байсан": track record бол өнгөрсөн өгөгдөл (ADR 0022, 0027)
-      title: "Таамаг өмнө нь хэр зөв байсан бэ?",
+      title: MODEL_TITLE,
       errHint: `Дунджаар хэдэн хувиар зөрдөг вэ (${testSpan}, model огт хараагүй ${testMonths} сарын test өгөгдөл, ${chosen}). Ойр = илүү зөв.`,
       overfitSub: "Overfit = сургалтын өгөгдлөө цээжлээд шинэ өгөгдөл дээр муу таамаглах. Хоёр шугам ойрхон бол цээжлээгүй.",
       overfitNote: `Validation (сургалтад ороогүй шалгах өгөгдөл) дээрх алдаа сургалтынхаас бага гарсан нь алдаа биш: тэр ${validMonths} сар илүү тайван байсан. `
@@ -184,7 +185,7 @@
   const staleNote = (asof, age) => `Өгөгдөл ${age} өдрийн өмнөх (${longDate(asof)} хүртэл): Wikimedia-аас шинэчилж амжаагүй байна.`;
   const COLD = "Сервер унтаж байсан бол сэрэхэд хэсэг хугацаа шаардана. Хуудас өөрөө ачаалагдана.";
   const waited = (sec) => `${sec} секунд болж байна`;
-  const ERROR = { what: "Өгөгдөл ирсэнгүй.", why: "Сервер түр ажиллахгүй байж магадгүй.", retry: "Дахин оролдох", retrying: "Оролдож байна…" };
+  const ERROR = { what: "Өгөгдөл ирсэнгүй.", why: "Сервер түр ажиллахгүй байж магадгүй.", bug: "Хуудсыг харуулж чадсангүй.", retry: "Дахин оролдох", retrying: "Оролдож байна…" };
   const LIST = {
     title: "Бүх сэдэв",
     lead: (asof, n, dates) => `${md(asof)}-ний ${n} сэдэв, ирэх 3 өдрийн (${dates}) таамагтай.`,
@@ -239,6 +240,73 @@
     missing: "Энэ сэдэв манай жагсаалтад алга.",
   };
 
+  // ── W7 (#52): "Загвар" хуудас, график түрүүлнэ (ADR 0020, 0027 "Загвар хуудас: график түрүүлнэ", Майк 2026-11-26) ──
+  // Тоо бүр /api/track-record-оос (src: сэргээж тооцсон, ачаалсан model). Дүгнэлтийн мөр тооноос үүснэ.
+  const pc = (x) => `${Math.round(x * 100)}%`;
+  const times = (k) => String(Math.round(k * 2) / 2);   // 1.99 -> "2", 1.6 -> "1.5"
+  const PROOF = {
+    lead: "Өнгөрсөн өдрүүдэд model юу гэж хэлсэн, 3 өдрийн дараа юу болсон.",
+    provAll: (src) => `${src.source} · ${fullDate(src.from)}–${fullDate(src.through)}, ${src.days} өдөр · model ${src.model_version}`,
+    pc,
+    continue: {
+      q: "“Үргэлжлэх” гэвэл үнэхээр үргэлжилдэг үү?",
+      say: (v) => { const k = v.hit / v.base_hit; return k >= 1.15 ? `Ердийнхөөс ${times(k)} дахин олон удаа зөв.` : "Ердийн үеэс бараг ялгаагүй."; },
+      model: "Model “үргэлжлэх” гэсэн үед",
+      base: "Ердийн үед (огцом өссөн бүх сэдэв)",
+      what: "Үргэлжилсэн = 3 өдрийн дараа 10%-иас илүү буураагүй.",
+    },
+    fade: {
+      q: "“Унтрах” гэвэл унтардаг уу?",
+      say: (v) => (v.hit - v.base_hit < 0.1 ? "Ихэнх нь ер нь унтардаг. Model-ийн нэмэр нь цөөн “үргэлжлэх”-ийг олоход."
+        : `Ердийнхөөс ${Math.round((v.hit - v.base_hit) * 100)} пунктээр олон удаа зөв.`),
+      model: "Model “унтрах” гэсэн үед",
+      base: "Ердийн үед (огцом өссөн бүх сэдэв)",
+      what: "Унтарсан = 3 өдрийн дараа 10%+ буурсан.",
+    },
+    nOf: (n, nb) => `n ${num(n)} · ердийн үед n ${num(nb)}`,
+    barTip: (label, v, n) => [label, `${pc(v)} (10-аас ${tenOf(v)})`, `n ${num(n)}`],
+    bands: {
+      q: "Таамаг өндөр байх тусам үнэхээр өсдөг үү?",
+      say: (lo, hi) => `Таамаг ${hi.label} бол 10-аас ${tenOf(hi.up10)} нь өссөн, ${lo.label} бол 10-аас ${tenOf(lo.up10)}.`,
+      axis: "Таамагласан өөрчлөлт (3 өдөр)",
+      up: "Өссөн (≥ +10%)", down: "Буурсан (≥ −10%)",
+      what: "Бодит өөрчлөлт 3 өдрийн дараа. Үлдсэн хэсэг нь ±10%-ийн дотор.",
+      tip: (b) => [`Таамаг ${b.label}`, `Өссөн ${pc(b.up10)} · буурсан ${pc(b.down10)}`, `n ${num(b.n)}`],
+    },
+    codes: {
+      q: "Нөхцөл байдал бүрт юу болдог вэ?",
+      say: (best, worst) => `${best.label} үед хамгийн их өсдөг (10-аас ${tenOf(best.up10)}), ${worst.label.toLowerCase()} үед хамгийн их буурдаг (10-аас ${tenOf(worst.down10)}).`,
+      down: "← буурсан", up: "өссөн →",
+      few: "тоо хангалтгүй",
+      what: "3 өдрийн дараах бодит үр дүн, ±10%-иас их өөрчлөлт. Нөхцөл нь шалтгаан биш: ийм үед өмнө нь юу болж байсныг л харуулна.",
+      tip: (c) => [c.label, `Өссөн ${pc(c.up10)} · буурсан ${pc(c.down10)}`, `n ${num(c.n)}${c.enough ? "" : " (хангалтгүй)"}`],
+    },
+    example: {
+      q: "Нэг жишээ",
+      say: (r, act, fmt) => {
+        const f = r.forecast[r.forecast.length - 1];
+        const where = !act ? "" : act.v < f.lo ? "80% хүрээнээс доогуур" : act.v > f.hi ? "80% хүрээнээс дээгүүр" : "80% хүрээн дотор";
+        return [`${md(r.asof)}-нд ${of(f.d)} уншилтыг ≈ ${fmt(f.y)} гэж таамагласан`, act ? `бодит нь ${fmt(act.v)} (${where})` : ""];
+      },
+      day: (r) => `${md(r.asof)}-ны таамаг`,
+      prev: "Өмнөх өдөр", next: "Дараагийн өдөр",
+      what: "Нэг өдөр төлөөлөл биш: дээрх графикууд бүх таамгийн дүн.",
+      open: "Сэдвийн хуудас →",
+      label: (title, r) => `${title}: ${md(r.asof)}-ны таамаг ба бодит уншилт`,
+      key: { act: "Бодит", fc: "Тэр өдрийн таамаг", band: "80% магадлалтай хүрээ" },
+    },
+    tech: "Техникийн хэсэг",
+    techLead: "Алдаа, skill score, алгоритмын харьцуулалт, overfit, model юуг хардаг вэ.",
+    skill: {
+      q: "Энгийн аргаас хэр бага алддаг вэ?",
+      say: (s) => `3 өдрийн дараах таамаг ${Math.round(s.h3.point)}% бага алддаг (95%: ${s.h3.lo}–${s.h3.hi}%).`,
+      row: (h) => `${h} өдрийн дараа`,
+      tip: (h, v) => [`${h} өдрийн дараа`, `skill score ${v.point}%`, `95% интервал: ${v.lo}–${v.hi}%`],
+      what: "Skill score = \"Одоогийнхтой адилхан\" аргаас хэдэн хувь бага алддаг. Зураас = 95% интервал (bootstrap).",
+    },
+    table: "Хүснэгтээр харах",
+  };
+
   const TIP = {
     lowViews: "сүүлийн 7 хоногт Wikipedia-ийн сая уншилт тутмаас дунджаар 1-ээс бага",
   };
@@ -249,7 +317,7 @@
     num, maePct, months, modelWords,
     of, signed, arrow, homeH1, homeSum, mapTitle, MAP_KEY, cellLabel, cellValue, cellTip, VERDICT, GROUP, groupEmpty, seeAllN,
     reviveTitle, REVIVE_LEAD, REVIVE_EMPTY, cycleTitle, CYCLE_LEAD, CYCLE_WORD, cycleTip, markText, markTip, byDay, MORE, CODE_TEXT,
-    DISCLAIM, NEUTRAL, tenOf, codeHit, codeBase, codeFew, prov, sparkLabel, incompleteNote, staleNote, COLD, waited, ERROR, LIST, TOPIC };
+    DISCLAIM, NEUTRAL, tenOf, codeHit, codeBase, codeFew, prov, sparkLabel, incompleteNote, staleNote, COLD, waited, ERROR, LIST, TOPIC, PROOF, MODEL_TITLE };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;
 })(typeof window !== "undefined" ? window : globalThis);

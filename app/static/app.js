@@ -79,7 +79,7 @@
   const TOP = 3;   // нүүрэнд хэсэг бүрт (ADR 0027, 2026-11-26)
 
   // Төлөвүүд (ADR 0027): алдаа + "Дахин оролдох" (зөвхөн хүсэлтийг давтана), cold start-ийн skeleton
-  const errorBox = (e) => `<div class="state-box" role="alert"><p><b>${esc(W.ERROR.what)}</b> ${esc(W.ERROR.why)}</p>
+  const errorBox = (e) => `<div class="state-box" role="alert"><p>${e && e.path ? `<b>${esc(W.ERROR.what)}</b> ${esc(W.ERROR.why)}` : `<b>${esc(W.ERROR.bug)}</b>`}</p>
       <p><button class="btn" type="button" data-retry>${esc(W.ERROR.retry)}</button></p>
       <p class="code">HTTP ${esc(e && (e.status || e.message))}${e && e.path ? ` · ${esc(e.path)}` : ""}</p></div>`;
   function bindRetry(root) {
@@ -262,10 +262,91 @@
     roll_std_28: "28 хоногийн савлагаа", roll_mean_7: "7 хоногийн дундаж", roll_max_28: "28 хоногийн оргил",
     from_max_28: "28 хоногийн оргилоос хэр доор", days_since_peak: "Оргилоос хойш хэдэн хоног",
     doy_sin: "Жилийн аль үе", doy_cos: "Жилийн аль үе", level_365: "Жилийн ердийн түвшин", month: "Сар", is_weekend: "Амралтын өдөр эсэх" };
+  // ═════════ "Загвар" (ADR 0027, Майк 2026-11-26): график түрүүлнэ, хүснэгт нөөцөнд. Гарчиг = асуулт, нэг мөр дүгнэлт, саарал тайлбар ═════════
+  const tableHTML = (head, rows) => `<details class="tbl"><summary>${esc(W.PROOF.table)}</summary><div class="tbl-wrap"><table class="data">
+    <thead><tr>${head.map((x) => `<th scope="col">${esc(x)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${r.map((x) => `<td>${esc(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+  function proofHTML(src) {
+    const P = W.PROOF, pc = P.pc, v = (k) => src.by_verdict.find((x) => x.key === k), ab = src.anomaly_base;
+    const verdict = (k, big) => {
+      const x = v(k), w = P[k];
+      if (!x) return "";
+      return `<section class="pf${big ? " hero" : ""}" aria-labelledby="pf-${k}"><h2 id="pf-${k}">${esc(w.q)}</h2><p class="say">${esc(w.say(x))}</p>
+        ${V.compare([{ label: w.model, v: x.hit, n: x.n }, { label: w.base, v: x.base_hit, n: ab.n, base: true }], big)}
+        <p class="prov">${esc(w.what)} ${esc(P.nOf(x.n, ab.n))} · ${esc(W.prov(src))}</p>
+        ${tableHTML(["", "%", "n"], [[w.model, pc(x.hit), num(x.n)], [w.base, pc(x.base_hit), num(ab.n)]])}</section>`;
+    };
+    const bands = src.by_band, codes = [...src.by_code].sort((a, b) => (b.up10 - b.down10) - (a.up10 - a.down10));
+    const ok = codes.filter((c) => c.enough), best = ok[0], worst = [...ok].sort((a, b) => b.down10 - a.down10)[0];
+    return `${verdict("continue", true)}${verdict("fade", false)}
+      <section class="pf" aria-labelledby="pf-bands"><h2 id="pf-bands">${esc(P.bands.q)}</h2><p class="say">${esc(P.bands.say(bands[0], bands[bands.length - 1]))}</p>
+        <ul class="key"><li><i class="k-up"></i>${esc(P.bands.up)}</li><li><i class="k-dn"></i>${esc(P.bands.down)}</li></ul>
+        <div class="stair" id="pf-stair"></div><p class="axis-t">${esc(P.bands.axis)}</p>
+        <p class="prov">${esc(P.bands.what)} · ${esc(W.prov(src))}</p>
+        ${tableHTML(["", P.bands.up, P.bands.down, "n"], bands.map((b) => [b.label, pc(b.up10), pc(b.down10), num(b.n)]))}</section>
+      <section class="pf" aria-labelledby="pf-codes"><h2 id="pf-codes">${esc(P.codes.q)}</h2>${best && worst ? `<p class="say">${esc(P.codes.say(best, worst))}</p>` : ""}
+        ${V.diverge(codes)}
+        <p class="prov">${esc(P.codes.what)} · ${esc(W.prov(src))}</p>
+        ${tableHTML(["", P.bands.up, P.bands.down, "n"], codes.map((c) => [c.label, pc(c.up10), pc(c.down10), num(c.n)]))}</section>`;
+  }
+  const num = (n) => W.num(n);
+  // Нэг жишээ: хамгийн их уншигдсан сэдвийн өнгөрсөн өдрийн таамаг (replay, ADR 0015) ба бодит
+  async function example(tk, tr) {
+    const box = document.getElementById("pf-ex");
+    if (!box || !tr) return;
+    const X = W.PROOF.example, top = [...tr.items].sort((a, b) => b.views - a.views)[0];
+    let t, rp;
+    try { [t, rp] = await Promise.all([api("/api/topic/" + encodeURIComponent(top.article)), api("/api/topic/" + encodeURIComponent(top.article) + "/replay")]); }
+    catch (e) { if (alive(tk)) { box.innerHTML = errorBox(e); bindRetry(box); } return; }
+    if (!alive(tk) || !rp.items.length) return;
+    let i = 0;
+    box.innerHTML = `<div class="ex-ctl"><button class="btn ghost" type="button" id="ex-prev" aria-label="${esc(X.prev)}">←</button>
+        <p class="ex-day" id="ex-day" aria-live="polite"></p><button class="btn ghost" type="button" id="ex-next" aria-label="${esc(X.next)}">→</button></div>
+      <p class="say" id="ex-say"></p><div class="ex-ch" id="ex-ch"></div>
+      <ul class="key"><li><i class="k-act"></i>${esc(X.key.act)}</li><li><i class="k-fc"></i>${esc(X.key.fc)}</li><li><i class="k-band"></i>${esc(X.key.band)}</li></ul>
+      <p class="prov">${esc(X.what)} · ${esc(rp.source)} · model ${esc(rp.model_version)}</p>
+      <p class="see-all"><a href="${href(t.article)}">${esc(X.open)}</a></p>`;
+    const show = () => {
+      const r = rp.items[i], act = t.history.find((h) => h.d === r.forecast[r.forecast.length - 1].d), [a, b] = X.say(r, act, C.fmt);
+      document.getElementById("ex-day").textContent = `${t.title} · ${X.day(r)}`;
+      document.getElementById("ex-say").innerHTML = `${esc(a)}${b ? ` → <b>${esc(b)}</b>` : ""}`;
+      document.getElementById("ex-prev").disabled = i >= rp.items.length - 1;
+      document.getElementById("ex-next").disabled = i <= 0;
+      V.replayMini(document.getElementById("ex-ch"), t, r);
+    };
+    document.getElementById("ex-prev").addEventListener("click", () => { i = Math.min(rp.items.length - 1, i + 1); show(); });   // items: шинээс хуучин руу
+    document.getElementById("ex-next").addEventListener("click", () => { i = Math.max(0, i - 1); show(); });
+    draw(show);
+  }
+
   async function model(tk) {
-    const m = await api("/api/model");
+    const [mR, srcR, trR] = await Promise.allSettled([api("/api/model"), api("/api/track-record"), api("/api/trending")]);
     if (!alive(tk)) return;
-    meta(m);
+    if (mR.status === "rejected" && srcR.status === "rejected") throw mR.reason;
+    const m = mR.value, tracks = srcR.value, tr = trR.value;
+    if (m || tr) meta(m || tr);
+    const src = tracks ? (tracks.sources.find((x) => x.current && x.source_key === "recomputed") || null) : null;
+    const P = W.PROOF;
+    main.innerHTML = `<h1 class="page-h">${esc(W.MODEL_TITLE)}</h1>
+      <p class="lead">${esc(P.lead)}${src ? ` <span class="prov">${esc(P.provAll(src))}</span>` : ""}</p>
+      ${src ? proofHTML(src) : tracks ? "" : errorBox(srcR.reason)}
+      ${tr ? `<section class="pf" aria-labelledby="pf-ex-h"><h2 id="pf-ex-h">${esc(P.example.q)}</h2><div id="pf-ex"><div class="sk ex-sk" aria-hidden="true"></div></div></section>` : ""}
+      <p class="neutral">${esc(W.NEUTRAL)}</p>
+      <details class="tech" id="tech"><summary>${esc(P.tech)}</summary><div class="tech-body" id="tech-body">${m ? `<p class="lead">${esc(P.techLead)}</p>` : errorBox(mR.reason)}</div></details>`;
+    bindRetry(main);
+    if (src) {
+      draw(() => V.stair(document.getElementById("pf-stair"), src.by_band));
+      main.querySelectorAll(".cmp, .dv").forEach(V.bindTips);
+      requestAnimationFrame(() => requestAnimationFrame(() => main.classList.add("grown")));   // нэг хөдөлгөөн: баганууд ургана
+    }
+    example(tk, tr);
+    if (!m) return;
+    const tech = document.getElementById("tech");
+    tech.addEventListener("toggle", () => { if (tech.open && !tech.dataset.drawn) { tech.dataset.drawn = "1"; technical(m); } });
+  }
+
+  // Техникийн хэсэг (хаалттай, нээхэд зурагдана): skill score + 95% интервал, өмнөх "Загвар" хуудасны графикууд
+  function technical(m) {
     const p = m.pipeline, v = m.valid, N = m.names;
     const mdl = esc(N.model), nv = esc(N.naive);
     const h3 = m.metrics.find((r) => r.h === 3), e = Math.round(h3[m.winner]);
@@ -274,9 +355,9 @@
     const spread = Math.max(...v.rows.map((r) => Math.max(...v.algos.map((a) => r[a])) - Math.min(...v.algos.map((a) => r[a]))));
     const vsNaive = Math.min(...v.rows.map((r) => r.naive - r[m.winner]));
     const T = W.modelWords(m), steps = T.steps;   // хуудасны үг (#34): words.js
-    main.innerHTML = `
-      <h1 class="page-h">${esc(T.title)}</h1>
-      <p class="lead">Энгийн аргаас илүү зөв үү?</p>
+    document.getElementById("tech-body").insertAdjacentHTML("beforeend", `
+      <section class="pf flat" aria-labelledby="sk-h"><h2 id="sk-h">${esc(W.PROOF.skill.q)}</h2><p class="say">${esc(W.PROOF.skill.say(m.skill))}</p>
+        <div class="skill" id="m-skill"></div><p class="prov">${esc(W.PROOF.skill.what)}</p></section>
       <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b> ${esc(m.live.version)}, сургасан ${W.longDate(m.live.trained_at, m.live.data_asof)},
         өгөгдөл ${W.longDate(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
       <div class="mgrid">
@@ -348,8 +429,9 @@
             <div class="mchart" id="m-imp" style="height:220px"></div>
           </div>
         </div>
-      </section>`;
+      </section>`);
 
+    draw(() => V.skillCI(document.getElementById("m-skill"), m.skill));
     draw(() => C.dumbbell(document.getElementById("m-err"), rows, { names: N, label: `${N.model} ба ${N.naive}: алдааг хувиар, 1–3 өдрийн дараа` }));
     draw(() => C.curve(document.getElementById("m-curve"), m.curve, m.best_iter, `Сургалт ба validation алдааны муруй, ${m.curve_h} өдрийн дараах model`));
     draw(() => C.hbarsV(document.getElementById("m-algo"), [...order, "naive"].map((a) => ({
