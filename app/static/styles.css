@@ -416,3 +416,90 @@ main > .neutral:last-child { margin-top: 14px; }
   .main-ch { height: 240px; }
   .panel { padding: 12px 12px 10px; }
 }
+
+/* "Загвар" хуудас: график түрүүлнэ (ADR 0027, 2026-11-26). Өссөн = --data, буурсан / ердийн үед = саарал (--gray-data) */
+:root { --gray-data: #8a909c; }   /* цагаан дээр 3.3:1 (график объект ≥ 3:1); улаан-ногоон үгүй */
+.pf { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 20px 12px; margin-top: 14px; }
+.pf h2 { margin: 0 0 4px; font-size: 18px; font-weight: 650; letter-spacing: -.005em; text-wrap: balance; }
+.pf.hero { padding: 24px 24px 14px; }
+.pf.hero h2 { font-size: clamp(20px, 2.6vw, 26px); }
+.pf .say { margin: 0 0 14px; font-size: 16px; color: var(--ink); max-width: 60ch; }
+.pf.hero .say { font-size: clamp(19px, 2.2vw, 22px); font-weight: 600; }
+.pf .prov { margin: 10px 0 0; max-width: 80ch; }
+.pf .key { margin: 0 0 8px; }
+.pf.flat { border: 0; padding: 4px 0 8px; background: none; }
+.cmp { display: grid; gap: 4px; }
+.cmp-row { display: grid; gap: 4px; padding: 6px 0; min-height: 44px; cursor: default; border-radius: 6px; outline-offset: 4px; }
+.cmp-l { font-size: 14px; color: var(--text-2); }
+.cmp-bar { display: flex; align-items: center; gap: 10px; }
+.cmp-bar i { display: block; height: 18px; width: calc(var(--v) * (100% - 72px)); background: var(--data); border-radius: 0 4px 4px 0; }
+.cmp-row.base .cmp-bar i { background: var(--gray-data); }
+.cmp-bar b { font-size: 17px; font-weight: 700; color: var(--ink); }
+.cmp-row.base .cmp-bar b { color: var(--text-2); font-weight: 600; }
+.cmp.big .cmp-bar i { height: 34px; }
+.cmp.big .cmp-bar b { font-size: 28px; letter-spacing: -.01em; }
+.cmp.big .cmp-row.base .cmp-bar b { font-size: 22px; }
+.stair { position: relative; height: 250px; }
+.axis-t { margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
+.ch .st-up { fill: var(--data); }
+.ch .st-dn { fill: var(--gray-data); }
+.ch .hitbox { fill: transparent; }
+.ch .st-col { outline: none; }
+.ch .st-col:focus-visible .hitbox { stroke: var(--blue); stroke-width: 2; }
+.ch .lbl2 { fill: var(--text-2); font: 500 13px var(--font); }
+.ch .ci { stroke: var(--data); stroke-width: 3; stroke-linecap: round; }
+.ch .ci-dot { fill: var(--data); stroke: var(--surface); stroke-width: 2; }
+.key .k-up { background: var(--data); }
+.key .k-dn { background: var(--gray-data); }
+.dv { display: grid; gap: 2px; }
+.dv-head, .dv-row { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 1fr; align-items: center; column-gap: 0; }
+.dv-head span { font-size: 12.5px; color: var(--muted); padding-bottom: 2px; }
+.dv-head span:nth-child(2) { text-align: right; padding-right: 8px; }
+.dv-head span:nth-child(3) { padding-left: 8px; }
+.dv-row { min-height: 44px; border-radius: 6px; outline-offset: 2px; }
+.dv-l { font-size: 14.5px; color: var(--ink); padding-right: 12px; }
+.dv-l em { font-style: normal; font-size: 12.5px; color: var(--muted); }
+.dv-dn, .dv-up { display: flex; align-items: center; gap: 6px; height: 22px; }
+.dv-dn { border-right: 1px solid #c9cdd6; }
+.dv-dn { flex-direction: row-reverse; }
+.dv-dn i, .dv-up i { display: block; height: 18px; width: calc(var(--v) * (100% - 44px)); }
+.dv-dn i { background: var(--gray-data); border-radius: 4px 0 0 4px; }
+.dv-up i { background: var(--data); border-radius: 0 4px 4px 0; }
+.dv-dn b, .dv-up b { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.dv-row.few { opacity: .45; }
+.ex-ctl { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ex-ctl .btn { min-width: 44px; padding: 0 12px; }
+.ex-day { flex: 1; margin: 0; text-align: center; font-weight: 600; font-size: 15px; }
+.ex-ch, .ex-sk { position: relative; height: 200px; }
+.skill { position: relative; height: 162px; max-width: 640px; }   /* мөр бүр ≥ 44px (tap) */
+details.tech { margin-top: 22px; border-top: 1px solid var(--line); }
+details.tech > summary { cursor: pointer; min-height: 56px; display: flex; align-items: center; font-size: 18px; font-weight: 650; list-style: none; gap: 10px; }
+details.tech > summary::-webkit-details-marker { display: none; }
+details.tech > summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg); transition: transform .2s var(--ease-out); }
+details.tech[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
+.tech-body > .lead { margin-bottom: 10px; }
+/* Нэг хөдөлгөөн: баганууд суурийнхаа шугамаас ургана (анх нэг удаа) */
+.grow { transform: scaleX(0); transform-origin: left center; transition: transform .6s var(--ease-out); }
+.grow.rtl { transform-origin: right center; }
+.ch .grow-y { transform-box: fill-box; transform: scaleY(0); transform-origin: bottom; transition: transform .6s var(--ease-out); }
+.ch .grow-y.dn { transform-origin: top; }
+main.grown .grow, main.grown .ch .grow-y { transform: none; }
+@media (prefers-reduced-motion: reduce) { .grow, .ch .grow-y { transform: none; transition: none; } }
+@media (max-width: 760px) {
+  .pf, .pf.hero { padding: 16px 14px 10px; }
+  .dv-head, .dv-row { grid-template-columns: 1fr 1fr; }
+  .dv-head span:first-child { display: none; }
+  .dv-l { grid-column: 1 / -1; padding: 6px 0 2px; }
+  .stair { height: 230px; }
+  .stair .tick { font-size: 10px; }
+}
+
+/* Техникийн хэсэг (хуучин "Загвар" хуудасны картууд): 390px-д хэвтээ гүйлгэлтгүй */
+.mgrid > .mcard { min-width: 0; }
+.mcard .fc.vt { display: block; overflow-x: auto; }
+.why li { overflow-wrap: anywhere; }
+.pf .stair, .pf .cmp, .pf .dv, .pf .ex-ch { max-width: 760px; }
+.pf .stair { height: 280px; }
+main > .neutral { margin-top: 14px; }
+@media (max-width: 760px) { .pf .stair { height: 230px; } }
