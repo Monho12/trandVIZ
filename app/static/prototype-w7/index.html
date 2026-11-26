@@ -1,0 +1,53 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway (W7 #52, 1-р шат: бүтэц, theme 1). Production-д холбогдохгүй, main-д орохгүй.
+  Асуулт: нүүр / сэдвийн хуудас / "Нотолгоо" хуудас ямар бүтэцтэй байх вэ? 2 бүтэн хувилбар (а)/(г) = нүүрний treemap-ийн байршил,
+  бусад нь variant panel-ийн toggle (анхдагч = UI grill-ийн санал). Сонголтыг JSON болгон татаж ADR-ийг шинэчилнэ (docs/PLAN.md).
+  Ажиллуулах:  SHUUGIAN_REFRESH=0 uvicorn app.main:app   ->   http://127.0.0.1:8000/static/prototype-w7/
+  Өгөгдөл: scripts/prototype_w7_fixtures.py (бодит snapshot, хүнд тохиолдлын өдрүүд).
+-->
+<html lang="mn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Шуугиан — англи Wikipedia-д юу огцом уншигдав</title>
+  <meta name="description" content="Англи Wikipedia-ийн өдөр тутмын уншилтаас огцом өссөн сэдвийг олж, ирэх 3 өдөрт үргэлжлэх үү, унтрах уу гэдгийг таамагладаг.">
+  <meta property="og:title" content="Шуугиан — англи Wikipedia-д юу огцом уншигдав">
+  <meta property="og:description" content="Англи Wikipedia-ийн өдөр тутмын уншилтаас огцом өссөн сэдвийг олж, ирэх 3 өдөрт үргэлжлэх үү, унтрах уу гэдгийг таамагладаг.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f4f5f7">
+  <link rel="stylesheet" href="../fonts.css">
+  <link rel="stylesheet" href="proto.css">
+</head>
+<body>
+  <a class="skip" href="#main">Үндсэн агуулга руу шилжих</a>
+  <header class="top">
+    <a class="brand" href="#/" aria-label="Шуугиан — нүүр">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2" y="12" width="3.5" height="8" rx="1.5" fill="var(--brand-blue)"/>
+        <rect x="7.5" y="7" width="3.5" height="13" rx="1.5" fill="var(--brand-blue)"/>
+        <rect x="13" y="3" width="3.5" height="17" rx="1.5" fill="var(--brand-blue)"/>
+        <rect x="18.5" y="9" width="3.5" height="11" rx="1.5" fill="var(--brand-red)"/>
+      </svg>
+      <span>Шуугиан</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Хуудсууд"></nav>
+    <p class="asof" id="asof"></p>
+  </header>
+  <p class="stale-note" id="stale-note" role="status" hidden></p>
+  <main id="main" tabindex="-1"></main>
+  <footer class="foot">
+    <p>Өгөгдөл: англи Wikipedia-ийн өдөр тутмын уншилт, зөвхөн хүн (bot биш), Wikimedia Pageviews API.
+      Таамаг: CatBoost, ирэх 3 өдөр. <a href="https://github.com/Monho12/trandVIZ">Эх код</a></p>
+  </footer>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+
+  <!-- Prototype-ийн хэрэгсэл (дизайны хэсэг биш) -->
+  <div class="pt-bar" id="pt-bar" aria-label="Prototype-ийн хувилбар"></div>
+  <aside class="pt-panel" id="pt-panel" hidden aria-label="Variant panel"></aside>
+
+  <script src="../words.js"></script>
+  <script src="proto.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
