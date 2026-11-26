@@ -1,6 +1,6 @@
 // Шуугиан — энгийн hash router + хуудсууд
 (function () {
-  const C = window.Charts, W = window.Words, L = window.Listing;
+  const C = window.Charts, W = window.Words, V = window.Viz;
   const main = document.getElementById("main");
   const CATS = {
     politics: ["🏛️", "Улс төр"], film_tv: ["🎬", "Кино, цуврал"], true_crime: ["🕯️", "True crime"],
@@ -8,20 +8,9 @@
     games_anime: ["🎮", "Тоглоом, anime"], celebs: ["💅", "Алдартнууд"], society: ["👥", "Нийгэм"],
     mongolia: ["🇲🇳", "Монгол"], "Бусад": ["🌐", "Бусад"],   // вирал сэдвийн ангилал (ADR 0005)
   };
-  const OTHER = "Бусад";
-  const ORDER = Object.keys(CATS).filter((k) => k !== OTHER);
-  const cat = (k) => (CATS[k] || ["", k]).join(" ");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
-  // ▲ = өнгөрсөн (ADR 0014). Anomaly ⇔ анхаарлын robust z ≥ 3, ×N нь анхаарал дээр (ADR 0017, API-ийн t.anomaly, t.ratio).
-  // t: /api/*-ийн сэдэв, d: asof ба age_days-тэй хариу (meta_block)
-  const surge = (t, d, short) => t.anomaly && t.ratio != null   // ×N тодорхойгүй (ердийн өдөр 0 анхаарал) бол тэмдэггүй
-    ? `<span class="surge" title="${esc(W.surgeTip(t, d.asof))}">${esc(W.surgeText(t.ratio, d.asof, d.age_days, short))}</span>`
-    : `<span class="surge calm">ердийн</span>`;
-  const last = (t) => t.history[t.history.length - 1].v;
   const in3 = (t) => t.forecast[t.forecast.length - 1];
-  // Нүүрний чип: таамгийн шошго (API-ийн label, сум нь дотроо), ▲ биш (#31)
-  const chip = (t, d) => `<span class="fcl${t.fire ? " fire" : ""}">${esc(W.forecastLabel(t.label, d.asof, d.age_days))}</span>`;
   // Таамгийн хувь (ADR 0003/0004, 0014): backend-ийн pct(h3), сум, 🔥. Хувь = "анхаарал", тоо = "уншилт".
   const tipped = (text, tip) => `<span class="anh" title="${esc(tip)}">${esc(text)}</span>`;
   const pct = (t, d) => `${tipped("анхаарал", W.TIP.attention)} ${esc(W.forecastLabel(t.label, d.asof, d.age_days))}`;
@@ -35,13 +24,18 @@
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => redraws.forEach((f) => f()), 150); });
   const draw = (fn) => { redraws.push(fn); fn(); return fn; };
 
+  // Хүсэлт бүр нэг удаа (cache). Амжилтгүй хүсэлт cache-д үлдэхгүй: "Дахин оролдох" зөвхөн түүнийг давтана (ADR 0027).
   const cache = {};
-  const api = (p) => (cache[p] ||= fetch(p).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }));
+  const api = (p) => (cache[p] ||= fetch(p).then((r) => {
+    if (!r.ok) throw Object.assign(new Error(String(r.status)), { status: r.status });
+    return r.json();
+  }).catch((e) => { delete cache[p]; e.path = p; throw e; }));
+  // Толгойн огноо ба мэдэгдэл: өгөгдөл дутуу (ADR 0022) > хуучирсан (ADR 0008)
   function meta(d) {
     document.getElementById("asof").textContent = `Өгөгдөл: ${W.longDate(d.asof)} хүртэл`;
-    const s = document.getElementById("stale-note");
-    s.hidden = !d.stale;
-    if (d.stale) s.textContent = `Өгөгдөл ${d.age_days} өдрийн өмнөх (${W.longDate(d.asof)} хүртэл): Wikimedia-аас шинэчилж амжаагүй байна.`;
+    const s = document.getElementById("stale-note"), text = d.incomplete ? W.incompleteNote(d.incomplete, d.asof) : d.stale ? W.staleNote(d.asof, d.age_days) : "";
+    s.hidden = !text;
+    s.textContent = text;
   }
 
   // Сэдвийн дэлгэрэнгүй хэсэг (нүүр болон сэдвийн хуудсанд хоёуланд)
@@ -71,119 +65,143 @@
     day: W.day(d.asof, d.age_days),
     label: `${t.title}: өдөр бүрийн уншилт ба ирэх 3 өдрийн таамаг` });
 
-  // ═════════ Нүүр ═════════
-  async function home() {
-    const [tr, cs, mp] = await Promise.all([api("/api/trending"), api("/api/categories"), api("/api/map")]);
-    meta(tr);
-    const beyond = tr.items.filter((t) => t.rank != null);   // Давж өсөх жагсаалт (ADR 0019): ≤ 10, цөөн бол цөөн, 0 байж болно
-    const count = (k) => tr.items.filter((t) => t.category === k).length;   // ангиллын бодит сэдвийн тоо
-    const chans = ORDER.map((k) => cs.categories.find((c) => c.key === k)).filter(Boolean);
-    const EMO = Object.fromEntries(Object.entries(CATS).map(([k, v]) => [k, v[0]]));
-    main.innerHTML = `
-      <h1 class="page-h">${W.homeTitle(tr.asof, tr.age_days)}</h1>
-      <div class="map-key">
-        <span><b>Том</b> = олон хүн уншсан</span>
-        <span class="scale"><b>Өнгө</b> = ердийнхөөс
-          <i style="background:#2a78d6"></i><em>бага</em>
-          <i style="background:#eef1f5;outline:1px solid #d5dae3;outline-offset:-1px"></i><em>ердийн</em>
-          <i style="background:#f4a3a9"></i><i style="background:#b5222e"></i><em>их шуугиж байна</em></span>
-        <span>${esc(W.mapScope(tr.items.length, mp.items.length))}</span>
-      </div>
-      <div class="tmap" id="tmap"></div>
-      <h2 class="sub-h">Ирэх 3 өдөрт юу өсөх вэ?</h2>
-      <p class="lead">${esc(W.trendLead(tr.dates, tr.fires, tr.T, beyond.length))}${beyond.length ? ` ${tipped(W.LOW_VIEWS, W.TIP.lowViews)}` : ""}</p>${beyond.length ? `
-      <ul class="picker" aria-label="Сэдэв сонгох">${beyond.map((t, i) => `
-        <li><button class="pick" data-i="${i}" aria-pressed="${i === 0}">${esc(t.title)} ${chip(t, tr)}</button></li>`).join("")}
-      </ul>
-      <section class="focus" id="focus" aria-live="polite"></section>` : ""}
-      <section class="sec" aria-labelledby="cat-h">
-        <h2 id="cat-h">Ангилал бүрт юу уншигдав?</h2>
-        <p class="lead">${esc(W.catLead(chans.length, chans.reduce((n, c) => n + count(c.key), 0) / chans.length, Math.max(...chans.map((c) => c.topics.length)),
-          cs.asof, cs.age_days, W.CAT_REASON))}</p>
-        <div class="cats">${chans.map((c) => `
-          <div class="cat">
-            <h3>${cat(c.key)}</h3>
-            <ul>${c.topics.map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span class="sp" data-a="${esc(t.article)}" data-k="${c.key}"></span>${surge(t, cs, true)}</li>`).join("")}</ul>
-            <a class="more" href="#/list/${encodeURIComponent(c.key)}">${esc(W.seeAll(count(c.key)))}</a>
-          </div>`).join("")}
-        </div>
-      </section>`;
+  // ═════════ Карт (давхарга 2, ADR 0027): нэр · ● ×N · дүгнэлт ба таамаг · spark · "Ямар нөхцөлд?" (3а) ═════════
+  // ctx: { asof, T (хүчтэй өсөлтийн босго), src (track record-ын эх сурвалж эсвэл null), minN }
+  const strong = (t, T) => t.measurable && t.pct != null && t.pct >= T && !t.cyclical;   // ADR 0026: тод = хүчтэй, мөчлөгийнх хэзээ ч биш
+  function fcHTML(t, T) {
+    if (!t.measurable) return `<span class="num" title="${esc(W.TIP.lowViews)}">${esc(W.LIST.low)}</span>`;
+    const num = `<span class="num${strong(t, T) ? " bold" : ""}">${esc(`${W.arrow(t.pct)} ${W.signed(t.pct)}`)}</span>`;
+    return t.cyclical && t.cycle != null ? `${num} <span class="cyc" title="${esc(W.cycleTip(t.cycle))}">· ${esc(W.CYCLE_WORD)}</span>` : num;
+  }
+  const verdictHTML = (t, T) => (t.verdict
+    ? `<span class="w${t.verdict === "continue" ? " bold" : ""}">${esc(W.VERDICT[t.verdict])}</span> ${fcHTML(t, T)}` : fcHTML(t, T));
+  const markHTML = (t, asof) => (t.anomaly
+    ? `<span class="dot-mark" title="${esc(W.markTip(t, asof))}"><i aria-hidden="true">●</i>${esc(W.markText(t.ratio))}<span class="vh">: ${esc(W.markTip(t, asof))}</span></span>` : "");
+  function codeTrack(t, ctx) {
+    const c = ctx.src && ctx.src.by_code.find((x) => x.key === t.situation);
+    if (!c) return "";
+    if (!c.enough) return `<p>${esc(W.codeFew(ctx.minN))}</p>`;
+    const v = t.anomaly ? c.down10 : c.excess10, b = t.anomaly ? ctx.src.base.down10 : ctx.src.base.excess10;
+    const [hb, rest] = W.codeHit(v, t.anomaly);
+    return `<div class="ia">${V.iconArray(v, `<b>${esc(hb)}</b>${esc(rest)}`)}${V.iconArray(b, esc(W.codeBase(b)), true)}</div>
+      <p class="prov">${esc(W.prov(ctx.src, c.n))}</p>`;
+  }
+  const detailHTML = (t, ctx) => `<p class="code">${esc(t.situation_label)}</p><p>${esc(W.CODE_TEXT[t.situation] || "")}</p>${codeTrack(t, ctx)}<p class="disclaim">${esc(W.DISCLAIM)}</p>`;
+  const slug = (a) => "c-" + a.replace(/[^A-Za-z0-9]/g, "_");
+  const cardHTML = (t, ctx) => `<li class="card" id="${slug(t.article)}" data-a="${esc(t.article)}">
+      <div class="c-top"><h3 class="c-name"><a href="${href(t.article)}">${esc(t.title)}</a></h3>${markHTML(t, ctx.asof)}</div>
+      <p class="c-verdict">${verdictHTML(t, ctx.T)}</p>
+      <div class="spark" data-a="${esc(t.article)}"></div>
+      <div class="c-foot"><button class="more-btn" type="button" aria-expanded="false" aria-controls="d-${slug(t.article)}">${esc(W.MORE)}</button>
+        <span class="c-dates">${esc(W.byDay(in3(t).d))}</span></div>
+      <div class="detail" id="d-${slug(t.article)}" hidden>${detailHTML(t, ctx)}</div>
+    </li>`;
+  // Картын spark-ийг зурах, "Ямар нөхцөлд?"-ийг холбох (3а зэрэг олон дэлгэгдэнэ)
+  function bindCards(root, items) {
+    const byA = Object.fromEntries(items.map((t) => [t.article, t]));
+    draw(() => root.querySelectorAll(".card .spark[data-a]").forEach((b) => byA[b.dataset.a] && V.spark(b, byA[b.dataset.a])));
+    root.querySelectorAll(".more-btn:not([data-bound])").forEach((b) => {
+      b.dataset.bound = "1";
+      b.addEventListener("click", () => {
+        const open = b.getAttribute("aria-expanded") !== "true";
+        b.setAttribute("aria-expanded", open);
+        document.getElementById(b.getAttribute("aria-controls")).hidden = !open;
+      });
+    });
+  }
+  const sum = (s) => W.homeSum(s).map(([a, n, b]) => `${esc(a)}${n == null ? "" : `<b>${n}</b>`}${esc(b || "")}`).join("");
+  const byRatio = (a, b) => (b.ratio ?? 0) - (a.ratio ?? 0) || (b.pct ?? -9) - (a.pct ?? -9);   // ×N их нь эхэнд, тэнцвэл pct
+  const TOP = 3;   // нүүрэнд хэсэг бүрт (ADR 0027, 2026-11-26)
 
-    draw(() => C.treemap(document.getElementById("tmap"), mp.items, { emoji: EMO, label: `Уншилтын газрын зураг, ${W.longDate(mp.asof)}` }));
-    const byKey = Object.fromEntries(cs.categories.map((c) => [c.key, c.topics]));
-    draw(() => main.querySelectorAll(".sp").forEach((b) => {
-      const t = byKey[b.dataset.k].find((x) => x.article === b.dataset.a);
-      if (t) C.spark(b, t.history);
+  // Төлөвүүд (ADR 0027): алдаа + "Дахин оролдох" (зөвхөн хүсэлтийг давтана), cold start-ийн skeleton
+  const errorBox = (e) => `<div class="state-box" role="alert"><p><b>${esc(W.ERROR.what)}</b> ${esc(W.ERROR.why)}</p>
+      <p><button class="btn" type="button" data-retry>${esc(W.ERROR.retry)}</button></p>
+      <p class="code">HTTP ${esc(e && (e.status || e.message))}${e && e.path ? ` · ${esc(e.path)}` : ""}</p></div>`;
+  function bindRetry(root) {
+    root.querySelectorAll("[data-retry]").forEach((b) => b.addEventListener("click", () => {
+      b.disabled = true; b.textContent = W.ERROR.retrying;
+      route({ keepScroll: true });
     }));
-    const btns = [...main.querySelectorAll(".pick")];
-    let fn = null;
-    function select(i) {
-      btns.forEach((b, j) => b.setAttribute("aria-pressed", j === i));
-      const t = beyond[i];
-      document.getElementById("focus").innerHTML = focusHTML(t, tr);
-      redraws = redraws.filter((f) => f !== fn);
-      fn = draw(drawFocus(t, tr));
-    }
-    btns.forEach((b) => b.addEventListener("click", () => select(+b.dataset.i)));
-    if (beyond.length) select(0);
   }
 
-  // ═════════ Бүх сэдэв (ADR 0013) ═════════
-  // open: `#/list/<ангилал>`-ийн ангилал; тэр хэсэг дэлгэгдсэн байна. Буцаах утга: router гүйлгэх хэсэг (байхгүй бол undefined).
-  async function list(open) {
-    const tr = await api("/api/trending");
-    meta(tr);
-    const secs = L.sections(tr.items, ORDER, OTHER);
-    const row = (t) => `
-        <li class="row">
-          <div>
-            <h3><a href="${href(t.article)}">${esc(t.title)}</a></h3>
-            <p class="meta">${surge(t, tr)}<span><b>${C.fmt(t.views)}</b> уншилт</span>${
-              t.measurable ? "" : `<span class="fcl low" title="${esc(W.TIP.lowViews)}">${esc(W.LOW_TAG)}</span>`
-              }<span>${esc(t.dates)}: ${pct(t, tr)} ${iv(t)}</span></p>
-          </div>
-          <div class="mini" data-i="${tr.items.indexOf(t)}"></div>
-        </li>`;
-    const rows = (s, all) => s.topics.slice(0, all ? undefined : L.SHOWN).map(row).join("");
-    const moreText = (s, all) => (all ? W.COLLAPSE : W.expand(s.topics.length));
-    main.innerHTML = `
-      <h1 class="page-h">Бүх сэдэв</h1>
-      <p class="lead">${esc(W.listLead(tr.asof, tr.age_days))}</p>
-      <ul class="chips" aria-label="Ангилал руу үсрэх">${secs.map((s) => `
-        <li><a class="pick" href="#/list/${encodeURIComponent(s.key)}"${s.key === open ? ' aria-current="true"' : ""}>${cat(s.key)}</a></li>`).join("")}
-      </ul>${secs.map((s, i) => {
-        const all = s.key === open;   // `#/list/<ангилал>`-аар ирсэн хэсэг дэлгэгдсэн
-        return `
-      <section class="sec lsec" data-k="${esc(s.key)}" aria-labelledby="ls-${i}">
-        <h2 id="ls-${i}">${cat(s.key)} <span class="h-sub">${s.topics.length} сэдэв</span></h2>${
-          s.key === OTHER ? `
-        <p class="lead">${tipped(W.OTHER_NOTE.how, W.TIP.other)} ${esc(W.OTHER_NOTE.why)}</p>` : ""}
-        <ul class="rows">${rows(s, all)}</ul>${s.topics.length > L.SHOWN ? `
-        <button class="more" data-s="${i}" aria-expanded="${all}">${esc(moreText(s, all))}</button>` : ""}
-      </section>`; }).join("")}`;
-
-    const minis = (root) => root.querySelectorAll(".mini").forEach((b) => {
-      const t = tr.items[+b.dataset.i];
-      C.columns(b, { history: t.history, forecast: t.forecast, label: `${t.title}: 30 хоног ба таамаг` });
+  // ═════════ Нүүр (ADR 0022, 0027): h1 → treemap → үргэлжлэх / унтрах (top 3) → сэргэх → долоо хоногийн ердийн өсөлт ═════════
+  async function home(tk) {
+    const [trR, mpR, srcR] = await Promise.allSettled([api("/api/trending"), api("/api/map"), api("/api/track-record")]);
+    if (!alive(tk)) return;
+    if (trR.status === "rejected" && mpR.status === "rejected") throw trR.reason;
+    const tr = trR.value, mp = mpR.value;
+    meta(tr || mp);
+    const tracks = srcR.value, src = tracks ? (tracks.sources.find((x) => x.current && x.source_key === "recomputed") || null) : null;
+    const tmSec = (asof) => `<section class="tm-sec" aria-labelledby="tm-h"><h2 class="vh" id="tm-h">${esc(W.mapTitle(asof))}</h2>
+      ${V.tmKey()}<div class="tmap" id="tmap"></div></section>`;
+    const tmBody = mp ? tmSec(mp.asof) : `<section class="tm-sec">${errorBox(mpR.reason)}</section>`;
+    if (!tr) {   // хэсэгчилсэн алдаа: treemap ажилласаар
+      main.innerHTML = `<h1 class="page-h">${esc(W.mapTitle(mp.asof))}</h1>${tmBody}${errorBox(trR.reason)}`;
+    } else {
+      const items = tr.items, ctx = { asof: tr.asof, T: tr.T, src, minN: tracks ? tracks.min_n : null };
+      const by = (v) => items.filter((t) => t.anomaly && t.verdict === v).sort(byRatio);
+      const s = tr.anomalies, quiet = s.n === 0;
+      const group = (v) => {
+        const all = by(v), id = `g-${v}`;
+        return `<section class="grp" aria-labelledby="${id}"><h2 class="grp-h" id="${id}">${esc(W.GROUP[v])} (${all.length})</h2>${all.length
+          ? `<ul class="cards">${all.slice(0, TOP).map((t) => cardHTML(t, ctx)).join("")}</ul>${all.length > TOP
+            ? `<p class="see-all"><a href="#/list?f=${v}">${esc(W.seeAllN(all.length))}</a></p>` : ""}`
+          : `<p class="neutral">${esc(W.groupEmpty(tr.asof, v))}</p>`}</section>`;
+      };
+      const beyond = tr.beyond.map((a) => items.find((t) => t.article === a)).filter(Boolean);
+      const cyc = tr.cyclical_rise.map((a) => items.find((t) => t.article === a)).filter(Boolean);
+      main.innerHTML = `<h1 class="page-h">${esc(W.homeH1(tr.asof, s.n))}</h1>${tmBody}
+        <p class="sum">${sum(s)}</p>
+        ${quiet ? "" : group("continue") + group("fade")}
+        <section aria-labelledby="by-h"><h2 class="sec-h" id="by-h">${esc(W.reviveTitle(tr.dates))}</h2><p class="lead">${esc(W.REVIVE_LEAD)}</p>
+          ${beyond.length ? `<ul class="cards">${beyond.map((t) => cardHTML(t, ctx)).join("")}</ul>` : `<p class="neutral">${esc(W.REVIVE_EMPTY)}</p>`}</section>
+        ${cyc.length ? `<details class="cyc-list"><summary>${esc(W.cycleTitle(cyc.length))}</summary><div><p class="neutral">${esc(W.CYCLE_LEAD)}</p>
+          <ul class="rowlist">${cyc.map((t) => `<li><a href="${href(t.article)}">${esc(t.title)}</a><span>${fcHTML(t, tr.T)}</span></li>`).join("")}</ul></div></details>` : ""}`;
+      bindCards(main, items);
+    }
+    bindRetry(main);
+    if (mp) draw(() => {
+      V.treemap(document.getElementById("tmap"), mp.items, { asof: mp.asof, href, onCell: (a, e) => {
+        const card = document.getElementById(slug(a));   // нэг tap = нэг үйлдэл: карт нь нүүрэнд байвал карт руу, үгүй бол сэдвийн хуудас
+        if (card) { e.preventDefault(); V.flash(card); }
+      } });
+      V.linkHover(main);
     });
-    draw(() => minis(main));
-    // "Бүгдийг харах (N)" / "Хураах": хэсгийн мөрүүдийг дахин зурна. Хураахад хэсгийн эхэнд буцна (урт жагсаалтын доор үлдэхгүй).
-    main.querySelectorAll("button.more").forEach((b) => b.addEventListener("click", () => {
-      const s = secs[+b.dataset.s], all = b.getAttribute("aria-expanded") !== "true", ul = b.previousElementSibling;
-      b.setAttribute("aria-expanded", all);
-      b.textContent = moreText(s, all);
-      ul.innerHTML = rows(s, all);
-      minis(ul);
-      if (!all) b.closest(".lsec").scrollIntoView();
-    }));
-    // Аль хэдийн тэр ангилал дээр байхад чипийг дахин дарвал hashchange гарахгүй: гараар дахин гүйлгэнэ
-    main.querySelectorAll(".chips a").forEach((a) => a.addEventListener("click", () => { if (a.hash === location.hash) route(); }));
-    return [...main.querySelectorAll(".lsec")].find((el) => el.dataset.k === open);
+  }
+
+  // ═════════ Бүх сэдэв (ADR 0013, 0027): шүүлтүүр Бүгд / Үргэлжлэх / Унтрах, эрэмбэ. Хоёул URL-д: #/list?f=continue&s=views ═════════
+  const LIST_SHOWN = 30;
+  async function list(q, tk) {
+    const [tr, tracks] = await Promise.all([api("/api/trending"), api("/api/track-record").catch(() => null)]);
+    if (!alive(tk)) return;
+    meta(tr);
+    const L = W.LIST, has = (arr, k) => arr.some(([x]) => x === k);
+    const f = has(L.filters, q.get("f")) ? q.get("f") : "all", srt = has(L.sorts, q.get("s")) ? q.get("s") : "views";
+    const SORT = { views: (a, b) => b.views - a.views, up: (a, b) => (b.pct ?? -9) - (a.pct ?? -9) || b.views - a.views,
+      down: (a, b) => (a.pct ?? 9) - (b.pct ?? 9) || b.views - a.views };
+    const items = tr.items.filter((t) => f === "all" || (t.anomaly && t.verdict === f)).sort(SORT[srt]);
+    const src = tracks ? (tracks.sources.find((x) => x.current && x.source_key === "recomputed") || null) : null;
+    const ctx = { asof: tr.asof, T: tr.T, src, minN: tracks ? tracks.min_n : null };
+    const link = (ff, ss) => `#/list?f=${ff}&s=${ss}`;
+    const seg = (label, id, opts, cur, to) => `<div class="ctl"><span class="lbl" id="${id}">${esc(label)}</span><div class="seg" role="group" aria-labelledby="${id}">${opts.map(([k, n]) =>
+      `<a href="${to(k)}" aria-current="${k === cur}">${esc(n)}</a>`).join("")}</div></div>`;
+    main.innerHTML = `<h1 class="page-h">${esc(L.title)}</h1><p class="lead">${esc(L.lead(tr.asof, tr.items.length, tr.dates))}</p>
+      <div class="sortbar">${seg(L.filterLabel, "f-l", L.filters, f, (k) => link(k, srt))}${seg(L.sortLabel, "s-l", L.sorts, srt, (k) => link(f, k))}</div>
+      ${items.length ? `<ul class="cards" id="lcards">${items.slice(0, LIST_SHOWN).map((t) => cardHTML(t, ctx)).join("")}</ul>
+        ${items.length > LIST_SHOWN ? `<p class="more-rows"><button class="btn ghost" type="button" id="lmore">${esc(L.more(items.length - LIST_SHOWN))}</button></p>` : ""}`
+        : `<p class="neutral">${esc(L.none(tr.asof, f))}</p>`}`;
+    bindCards(main, items);
+    document.getElementById("lmore")?.addEventListener("click", (e) => {
+      document.getElementById("lcards").insertAdjacentHTML("beforeend", items.slice(LIST_SHOWN).map((t) => cardHTML(t, ctx)).join(""));
+      e.target.closest("p").remove();
+      bindCards(main, items);
+    });
   }
 
   // ═════════ Нэг сэдэв ═════════
-  async function topic(article) {
+  async function topic(article, tk) {
     const t = await api("/api/topic/" + encodeURIComponent(article));
+    if (!alive(tk)) return;
     meta(t);
     main.innerHTML = `
       <a class="back" href="#/">← Нүүр рүү буцах</a>
@@ -205,8 +223,9 @@
     roll_std_28: "28 хоногийн савлагаа", roll_mean_7: "7 хоногийн дундаж", roll_max_28: "28 хоногийн оргил",
     from_max_28: "28 хоногийн оргилоос хэр доор", days_since_peak: "Оргилоос хойш хэдэн хоног",
     doy_sin: "Жилийн аль үе", doy_cos: "Жилийн аль үе", level_365: "Жилийн ердийн түвшин", month: "Сар", is_weekend: "Амралтын өдөр эсэх" };
-  async function model() {
+  async function model(tk) {
     const m = await api("/api/model");
+    if (!alive(tk)) return;
     meta(m);
     const p = m.pipeline, v = m.valid, N = m.names;
     const mdl = esc(N.model), nv = esc(N.naive);
@@ -314,8 +333,9 @@
   }
 
   // ═════════ Сонирхолтой ═════════
-  async function facts() {
+  async function facts(tk) {
     const d = await api("/api/insights");
+    if (!alive(tk)) return;
     document.getElementById("stale-note").hidden = true;
     const R = d.ranges, bold = (s) => `<b>${esc(s)}</b>`;
     const dec3 = Math.round(d.decay[3]);
@@ -380,27 +400,48 @@
     "Kublai Khan": "Хубилай хаан", "Golden Horde": "Алтан Орд", Ulaanbaatar: "Улаанбаатар", Mongols: "Монголчууд", "Ögedei Khan": "Өгөдэй хаан" };
 
   // ═════════ Router ═════════
-  async function route() {
+  // Cold start (ADR 0011, 0027): Render free унтаж байвал анхны хүсэлт удаан. Skeleton нь картын хэмжээтэй (layout үсрэхгүй),
+  // SLOW_MS-ийн дараа шударга мэдэгдэл + хүлээсэн секунд. Хүлээлтийн хугацааг хэмжээгүй тул тоо амлахгүй.
+  const SLOW_MS = 1500;
+  const skeleton = () => `<div class="sk sk-h" aria-hidden="true"></div><div class="sk sk-map" aria-hidden="true"></div>
+    <div class="state-box" role="status" id="sk-msg" hidden><p>${esc(W.COLD)}</p><p class="code" id="sk-t"></p></div>
+    <ul class="cards" aria-hidden="true">${'<li class="sk sk-card"></li>'.repeat(3)}</ul>`;
+  let token = 0;
+  const alive = (tk) => tk === token;   // хуудас солигдсон бол хуучин хүсэлтийн хариу шинэ хуудсыг дарж бичихгүй
+  async function route({ keepScroll = false } = {}) {
+    const tk = ++token;
     redraws = [];
-    document.getElementById("tip").hidden = true;
-    const [page, arg] = location.hash.replace(/^#\/?/, "").split("/");
+    V.hideTip();
+    const [path, qs] = location.hash.replace(/^#\/?/, "").split("?");
+    const [page, arg] = path.split("/");
     const name = ["list", "model", "topic", "facts"].includes(page) ? page : "home";
     document.querySelectorAll(".nav a").forEach((a) =>
       a.dataset.route === name ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-    main.innerHTML = `<p class="state">Ачаалж байна…</p>`;
-    let target;   // хуудас дотор гүйлгэх хэсэг (#/list/<ангилал>)
+    const y = scrollY, t0 = Date.now();
+    main.innerHTML = skeleton();
+    const tick = setInterval(() => {
+      const box = document.getElementById("sk-msg");
+      if (!box) return;
+      const ms = Date.now() - t0;
+      box.hidden = ms < SLOW_MS;
+      document.getElementById("sk-t").textContent = W.waited(Math.round(ms / 1000));
+    }, 250);
     try {
-      if (name === "list") target = await list(decodeURIComponent(arg || ""));
-      else if (name === "facts") await facts();
-      else if (name === "model") await model();
-      else if (name === "topic") await topic(decodeURIComponent(arg || ""));
-      else await home();
+      if (name === "list") await list(new URLSearchParams(qs || ""), tk);
+      else if (name === "facts") await facts(tk);
+      else if (name === "model") await model(tk);
+      else if (name === "topic") await topic(decodeURIComponent(arg || ""), tk);
+      else await home(tk);
     } catch (e) {
-      main.innerHTML = `<p class="state">Өгөгдөл ачаалж чадсангүй (${esc(e.message)}). Хуудсыг дахин ачаалж үзнэ үү.</p>`;
+      if (alive(tk)) { main.innerHTML = errorBox(e); bindRetry(main); }
+      if (!e.path) console.error(e);   // кодын алдаа (хүсэлтийн биш): тестэд харагдана
+    } finally {
+      clearInterval(tick);
     }
+    if (!alive(tk)) return;
     if (name !== "home") main.focus({ preventScroll: true });
-    if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
+    window.scrollTo(0, keepScroll ? y : 0);
   }
-  window.addEventListener("hashchange", route);
+  window.addEventListener("hashchange", () => route());
   route();
 })();

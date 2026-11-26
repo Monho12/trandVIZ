@@ -198,16 +198,24 @@ app = FastAPI(title="Шуугиан API", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
+def with_incomplete(d: dict) -> dict:
+    """ADR 0022 "Өгөгдөл дутуу": сүүлийн татах оролдлогод asof + 1 өдөр бүрэн ирээгүй (сервер тэр өдрийг cache-д нэмээгүй) бол
+    `incomplete` = тэр өдөр ("YYYY-MM-DD"), бусад үед null. Татах алдаа (ERROR) нь дутуу биш: тэр үед `stale` л харагдана."""
+    gap = state.refresh.get("status") in (live.PARTIAL, live.NOT_PUBLISHED)
+    nxt = (pd.Timestamp(d["asof"]) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    return {**d, "incomplete": nxt if gap else None}
+
+
 @app.get("/api/trending")
 def trending():
     """Top-10 (хэмжигдэх сэдэв, таамагласан pct(h3)-ээр) эхэнд, дараа нь бусад бүх сэдэв."""
-    return serve.trending(state.model, state.snapshot, local_today())
+    return with_incomplete(serve.trending(state.model, state.snapshot, local_today()))
 
 
 @app.get("/api/categories")
 def categories():
     """Ангилал тус бүрийн хамгийн их уншигдсан сэдвүүд (вирал -> "Бусад")."""
-    return serve.categories(state.model, state.snapshot, local_today())
+    return with_incomplete(serve.categories(state.model, state.snapshot, local_today()))
 
 
 @app.get("/api/topic/{article}")
@@ -216,13 +224,13 @@ def topic(article: str):
     t = serve.topic(state.model, state.snapshot, article, local_today())
     if t is None:
         raise HTTPException(404, "Ийм сэдэв манай жагсаалтад алга")
-    return t
+    return with_incomplete(t)
 
 
 @app.get("/api/map")
 def attention_map():
     """Анхаарлын газрын зураг: asof өдрийн хамгийн их уншигдсан 40 сэдэв."""
-    return serve.attention_map(state.model, state.snapshot, local_today())
+    return with_incomplete(serve.attention_map(state.model, state.snapshot, local_today()))
 
 
 @app.get("/api/track-record")

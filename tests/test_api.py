@@ -301,3 +301,46 @@ def test_track_record_endpoint_gives_tables_per_source_and_model_version(client)
         for e in s["by_code"] + s["by_band"] + s["by_verdict"]:
             assert e["enough"] == (e["n"] >= situation.MIN_N)
             assert (e["up10"] is None) == (not e["enough"]) and (e.get("text") == "хангалтгүй") == (not e["enough"])
+
+
+# ---------------------------------------------------------------- W7 (#52): ● өдрүүд, өгөгдөл дутуу өдөр
+
+def test_every_topic_carries_its_anomaly_days_within_its_history(client):
+    """● = өнгөрсөн Anomaly (ADR 0024): spark (нүүр) ба гол графикийн (сэдвийн хуудас) тэмдэг. `anom` = [{d, r}], history-ийн
+    өдрүүдээс. asof өдөр нь `anom`-д байх ⇔ сэдвийн `anomaly`, ×N нь `ratio`-тай ижил (feature_rows-ийн замаар тооцсон)."""
+    d = client.get("/api/trending").json()
+    seen = 0
+    for t in d["items"]:
+        days = {h["d"] for h in t["history"]}
+        an = {a["d"]: a["r"] for a in t["anom"]}
+        assert set(an) <= days, t["article"]
+        assert (d["asof"] in an) == t["anomaly"], t["article"]
+        if t["anomaly"]:
+            assert an[d["asof"]] == t["ratio"], t["article"]
+        seen += len(an)
+    assert seen > sum(t["anomaly"] for t in d["items"])   # өмнөх өдрүүдийн ● ч бий
+
+
+def test_topic_page_anomaly_days_span_its_history_and_agree_with_the_list(client):
+    by = {t["article"]: t for t in client.get("/api/trending").json()["items"]}
+    picks = [a for a, t in by.items() if t["anom"]][:3] + ["ChatGPT"]
+    for a in picks:
+        t = client.get(f"/api/topic/{a}").json()
+        days = [h["d"] for h in t["history"]]
+        an = {x["d"]: x["r"] for x in t["anom"]}
+        assert set(an) <= set(days)
+        recent = {k: v for k, v in an.items() if k >= by[a]["history"][0]["d"]}
+        assert recent == {x["d"]: x["r"] for x in by[a]["anom"]}, a
+
+
+@pytest.mark.parametrize("status, incomplete", [("not_published", True), ("partial", True), ("ok", False), ("error", False), (None, False)])
+def test_responses_name_the_day_that_has_not_arrived_complete(client, monkeypatch, status, incomplete):
+    """ADR 0022 "Өгөгдөл дутуу": Wikimedia-аас татахад asof + 1 өдөр бүрэн ирээгүй (сервер тэр өдрийг cache-д нэмдэггүй) бол
+    `incomplete` = тэр өдөр, нүүр "11.10-ны өгөгдөл бүрэн ирээгүй. 11.09-ний дүнг харуулж байна." гэнэ. Бусад үед null.
+    Татах алдаа (error) нь "дутуу" биш: тэр үед зөвхөн хуучирсан (`stale`) эсэхийг харуулна."""
+    import app.main as m
+    monkeypatch.setitem(m.state.refresh, "status", status)
+    for ep in ("/api/trending", "/api/map", "/api/topic/ChatGPT"):
+        d = client.get(ep).json()
+        want = (pd.Timestamp(d["asof"]) + pd.Timedelta(days=1)).strftime("%Y-%m-%d") if incomplete else None
+        assert d["incomplete"] == want, ep

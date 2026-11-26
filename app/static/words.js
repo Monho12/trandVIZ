@@ -20,13 +20,8 @@
 
   const isYesterday = (age) => age === 1;
   const day = (asof, age) => (isYesterday(age) ? "өчигдөр" : md(asof));                      // шошго, график
-  const dayLong = (asof, age) => (isYesterday(age) ? "өчигдөр" : longDate(asof));             // өгүүлбэр
   const dayTile = (asof, age) => (isYesterday(age) ? "Өчигдөр" : md(asof));
-  const homeTitle = (asof, age) => `${isYesterday(age) ? "Өчигдөр" : longDate(asof) + "-нд"} дэлхий юуг уншив?`;
 
-  // ▲ шошго (ADR 0017: ×N нь анхаарал дээр): урт "өчигдөр анхаарал ×3" / "11.08 анхаарал ×3", богино "×3" (нүүрний нарийн
-  // картанд, "анхаарал" нь tooltip-д). ▲ тэмдгийг CSS нэмнэ. Tooltip үргэлж огноотой; z тоог харуулахгүй, тайлбар нь давтамжаар.
-  const surgeText = (ratio, asof, age, short) => (short ? `×${ratio}` : `${day(asof, age)} анхаарал ×${ratio}`);
   // t: /api/*-ийн сэдэв (ratio, views_ratio, typical_pct, similar_days). Түүхий уншилтын ×N хаалтанд (CONTEXT.md).
   const surgeTip = (t, asof) => [
     `${longDate(asof)}-нд анхаарал ердийн өдрөөс ${t.ratio} дахин их${t.views_ratio == null ? "" : ` (уншилт ×${t.views_ratio})`}.`,
@@ -37,46 +32,6 @@
   const interval = (text) => (text ? text.replace(/^80%:\s*/, "10 удаагийн 8-д: ") : "");
   // API-ийн "— (өчигдөр уншилтгүй)" шошгыг хуучирсан өгөгдөлд огноотой болгоно
   const forecastLabel = (label, asof, age) => (isYesterday(age) ? label : label.replace("өчигдөр", `${md(asof)}-нд`));
-
-  // Нүүрний "Ирэх 3 өдөрт юу өсөх вэ?"-ийн тайлбар (PLAN, Нүүр). dates: API-ийн "11.11–11.13", fires: 🔥-ийн тоо,
-  // T: 🔥-ийн босго (0.25 -> "25%"), n: API-ийн жагсаалтын (`beyond`) бодит урт: дээд тал нь 10, цөөн бол цөөн, мөчлөгийн
-  // өсөлтгүй (ADR 0019). 0 бол шударга нэг мөр. "Хэт цөөн уншигддаг..." өгүүлбэрийг app.js tooltip-тэй нь нэмнэ (W.LOW_VIEWS).
-  const pctText = (x) => `${Math.round(x * 100)}%`;
-  const CYCLE_NOTE = "Долоо хоног бүр давтагддаг өсөлтийг оруулаагүй.";
-  const trendLead = (dates, fires, T, n) => (n === 0
-    ? `${dates}: долоо хоног бүр давтагддаг өсөлтөөс илүү өсөх таамаг алга.`
-    : `${fires >= 1
-      ? `${dates}-нд анхаарал нь хамгийн их өсөх ${n} сэдэв (model-ийн таамаг). 🔥 = ${pctText(T)} ба түүнээс их өсөлт.`
-      : `${dates}: онцгой өсөлт (🔥) таамаглагдаагүй. Хамгийн өндөр таамагтай ${n} сэдэв.`} ${CYCLE_NOTE}`);
-  // Treemap-ийн хүрээ: n = нийт сэдэв (/api/trending-ийн мөр), m = газрын зурагт орсон (/api/map-ийн мөр)
-  const mapScope = (n, m) => `Манай ${n} сэдвээс хамгийн их уншигдсан ${m}, англи Wikipedia.`;
-  // "Ангилал бүрт юу уншигдав?"-ийн тайлбар. nCats: картын тоо, perCat: сонгосон сэдэв ÷ ангилал (~15),
-  // shown: карт бүрт харуулах сэдэв, reason: "яагаад эдгээр ангилал" (хоосон бол оруулахгүй).
-  const catLead = (nCats, perCat, shown, asof, age, reason) => [
-    `${nCats} бүлэгт тус бүр ~${Math.round(perCat)} сэдвийг бид гараар сонгосон.`, reason,
-    `Карт бүрт ${isYesterday(age) ? "өчигдөр" : longDate(asof) + "-нд"} хамгийн их уншигдсан ${shown} нь.`,
-    "▲ анхаарал ×2 = ердийн өдрөөс 2 дахин их."].filter(Boolean).join(" ");
-  // PLAN-ийн "[Майк бөглөнө: яагаад эдгээр ангилал]". Майк бөглөтөл хоосон (test_words шалгана),
-  // "оюутан, залуучуудын сонирхдог" гэж бичихгүй.
-  const CAT_REASON = "";
-  // Хэмжигдэх сэдвийн босго уншилтаар хөдөлдөг тул тоогүй (ADR 0004)
-  const LOW_VIEWS = "Хэт цөөн уншигддаг сэдвийг оруулаагүй.";
-  // "Бүх сэдэв"-ийн хэсгийг дэлгэх / хураах товч (сумгүй) ба нүүрний ангиллын картын холбоос (сумтай). n: хэсгийн бодит сэдвийн тоо
-  const expand = (n) => `Бүгдийг харах (${n})`;
-  const COLLAPSE = "Хураах";
-  const seeAll = (n) => `${expand(n)} →`;
-  // Хэмжигдэх биш сэдвийн саарал тэмдэг (ADR 0013, 5-р зүйл); tooltip нь TIP.lowViews
-  const LOW_TAG = "цөөн уншилттай";
-  // "Бусад" хэсгийн гарчгийн доорх 2 мөр (ADR 0013, 7-р зүйл): how = яаж сонгосон (нарийн тоо нь TIP.other, src/fetch_data.py,
-  // test_words шалгана), why = яагаад нэмсэн
-  const OTHER_NOTE = {
-    how: "Wikipedia-ийн сарын топ жагсаалтад 1–2 сар л гараад алга болсон нийтлэлүүд (2021 оноос, жил бүрээс санамсаргүй сонгосон).",
-    why: "Сонгосон сэдвүүд ихэвчлэн тогтвортой байдаг тул гэнэт өссөн сэдэв цааш нь үргэлжлэх үү, унтрах уу гэдгийг model сурахын тулд нэмсэн.",
-  };
-
-  // "Бүх сэдэв" хуудасны тайлбар (ADR 0013): ▲-ийн өдөр нь asof = өчигдөр үед л "өчигдөр", эрэмбийн өдөр үргэлж огноо.
-  const listLead = (asof, age) => "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. "
-    + `▲ = ${dayLong(asof, age)} анхаарал ердийнхөөс хэд дахин их. Ангилал бүрт ${longDate(asof)}-нд хамгийн их уншигдсанаас нь эхлэн.`;
 
   // ── "Сонирхолтой" хуудас (issue #33). Юуг харуулахыг app/data/make_insights.py сонгоно, энд зөвхөн үг. ──
   const DAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];                                   // 0 = Даваа
@@ -188,6 +143,73 @@
     };
   };
 
+  // ── W7 (#52): нүүр, карт, "Бүх сэдэв" (ADR 0022, 0024, 0026, 0027). Огноо бүр энд. ──
+  // Харьяалах тийн ялгал: "11.10-ны", "11.09-ний" (сүүлийн тэгээс өөр цифр 1, 4, 9 бол -ний: нэг, дөрөв, ес)
+  const of = (iso) => { const d = ymd(iso)[2], k = d % 10 || Math.floor(d / 10); return `${md(iso)}-${[1, 4, 9].includes(k) && d % 10 ? "ний" : "ны"}`; };
+  const signed = (p) => (p == null ? "—" : `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.round(Math.abs(p) * 100)}%`);
+  const arrow = (p) => (p == null ? "" : p <= -0.1 ? "↘" : p >= 0.1 ? "↗" : "≈");   // ADR 0026: ↓-г ↘-д нэгтгэнэ
+  const homeH1 = (asof, n) => (n === 0 ? `${md(asof)}-нд огцом өссөн сэдэв гараагүй`
+    : `${md(asof)}-нд огцом өссөн ${n} сэдэв: ирэх 3 өдөрт үргэлжлэх үү, унтрах уу?`);
+  // s: /api/trending-ийн anomalies ({n, continue, fade, all_fade}). Тоог app.js тодруулна: [өмнө, тоо, дараа] хэсгүүдээр
+  const homeSum = (s) => (s.n === 0 ? [["Сэдвүүд ердийн түвшиндээ уншигдсан."]]
+    : s.all_fade ? [["", s.n, " сэдвийн бүгд нь ирэх 3 өдөрт унтрах төлөвтэй."]]
+      : [["", s.continue, " нь үргэлжлэх, "], ["", s.fade, " нь унтрах төлөвтэй."]]);
+  const mapTitle = (asof) => `${md(asof)}-нд англи Wikipedia-д юу уншигдав?`;
+  const MAP_KEY = { size: "Хэмжээ = уншилт", ratio: "ердийнхөөс ×1 … ×10+", dot: "огцом өссөн" };
+  const cellLabel = (r, fmt) => `${r.title}: ${fmt(r.views)} уншилт, ердийнхөөс ×${r.ratio ?? 1}${r.anomaly ? ", огцом өссөн" : ""}`;
+  const cellValue = (r, fmt) => `${fmt(r.views)} · ×${r.ratio ?? 1}`;
+  const cellTip = (r, asof, fmt) => [r.title, `${fmt(r.views)} уншилт, ${longDate(asof)}`, `Ердийнхөөс ×${r.ratio ?? 1}${r.anomaly ? " · ● огцом өссөн" : ""}`];
+  const VERDICT = { continue: "үргэлжлэх", fade: "унтрах" };
+  const GROUP = { continue: "Үргэлжлэх төлөвтэй", fade: "Унтрах төлөвтэй" };
+  const groupEmpty = (asof, v) => `${md(asof)}-нд "${VERDICT[v]}" төлөвтэй сэдэв алга.`;
+  const seeAllN = (n) => `Бүгдийг харах (${n}) →`;
+  const reviveTitle = (dates) => `${dates}-нд сэргэх төлөвтэй`;
+  const REVIVE_LEAD = "Саяхан ердийн түвшнээсээ доош орсон, буцаж өсөх таамагтай сэдвүүд.";
+  const REVIVE_EMPTY = "Энэ өдөр жагсаалтад сэдэв алга.";
+  const cycleTitle = (n) => `Долоо хоногийн ердийн өсөлт (${n})`;
+  const CYCLE_LEAD = "Эдгээр нь гарагийн ердийн хэв маягаар өсөх таамагтай: ховор дохио биш.";
+  const CYCLE_WORD = "долоо хоног бүр ийм";
+  const cycleTip = (c) => `Энэ гарагуудад ердийн долоо хоногт ${signed(c)} өөрчлөгддөг`;
+  const markText = (r) => (r == null ? "огцом" : `×${r}`);
+  const markTip = (t, asof) => `${longDate(asof)}-нд анхаарал ердийнхөөс ${t.ratio == null ? "огцом" : `×${t.ratio}`} өссөн`;
+  const byDay = (iso) => `${md(iso)} гэхэд`;
+  const MORE = "Ямар нөхцөлд?";
+  const CODE_TEXT = {
+    after_peak: "Сүүлийн 7 хоногт огцом өссөн өдөр байсан. Сүүлийн өдрийн уншилт тэр оргилоос доогуур байна.",
+    growing: "Уншилт 7 хоногийн дунджаасаа дээгүүр, 3 өдрийн өмнөхөөсөө өндөр байна.",
+    cycle: "Энэ гарагуудад уншилт ердийн долоо хоногт ийм өөрчлөгддөг.",
+    rebound: "Огцом өсөөгүй. Уншилт 7 хоногийн дунджаасаа доош орсон байна.",
+    total: "Тэр өдөр англи Wikipedia-ийн нийт уншилт ердийнхөөс огцом зөрсөн.",
+    unclear: "Дээрх нөхцлүүдийн аль нь ч ажиглагдаагүй.",
+  };
+  const DISCLAIM = "Энэ нь таамгийн шалтгаан биш. Ийм үед өмнө нь юу болж байсныг харуулна.";
+  const NEUTRAL = "Огцом уншилт сайн, муу гэсэн үг биш: нас баралт, дайн ч уншилтыг өсгөдөг.";
+  // 3а-ийн track record (ADR 0020): Anomaly-д "≥ 10% буурсан", бусдад "долоо хоногийн ердийнхөөс ≥ 10% илүү өссөн"
+  const tenOf = (rate) => Math.round(rate * 10);
+  const codeWhat = (anomaly) => (anomaly ? "3 өдрийн дараа ≥ 10% буурсан" : "3 өдрийн дараа долоо хоногийн ердийнхөөс ≥ 10% илүү өссөн");
+  const codeHit = (rate, anomaly) => [`10-аас ${tenOf(rate)}`, ` нь ${codeWhat(anomaly)}`];
+  const codeBase = (rate) => `10-аас ${tenOf(rate)}: ердийн үед (бүх сэдэв)`;
+  const codeFew = (minN) => `Ийм нөхцөлийн өмнөх тохиолдол хангалтгүй (n < ${minN}).`;
+  const prov = (src, n) => `${src.source} · model ${src.model_version}${n == null ? "" : ` · n ${num(n)}`}`;
+  const sparkLabel = (t, fmt) => {
+    const h = t.history[t.history.length - 1], f = t.forecast[t.forecast.length - 1];
+    return `${t.title}: сүүлийн 14 өдрийн уншилт, ${md(h.d)}-нд ${fmt(h.v)}. ${md(f.d)}-нд ≈ ${fmt(f.y)} гэж таамагласан, 80% магадлалтай ${fmt(f.lo)}–${fmt(f.hi)}.`;
+  };
+  // Мэдэгдэл: өгөгдөл дутуу (ADR 0022), хуучирсан, cold start, алдаа (ADR 0027)
+  const incompleteNote = (day, asof) => `${of(day)} өгөгдөл Wikimedia-аас бүрэн ирээгүй. ${of(asof)} дүнг харуулж байна.`;
+  const staleNote = (asof, age) => `Өгөгдөл ${age} өдрийн өмнөх (${longDate(asof)} хүртэл): Wikimedia-аас шинэчилж амжаагүй байна.`;
+  const COLD = "Сервер унтаж байсан бол сэрэхэд хэсэг хугацаа шаардана. Хуудас өөрөө ачаалагдана.";
+  const waited = (sec) => `${sec} секунд болж байна`;
+  const ERROR = { what: "Өгөгдөл ирсэнгүй.", why: "Сервер түр ажиллахгүй байж магадгүй.", retry: "Дахин оролдох", retrying: "Оролдож байна…" };
+  const LIST = {
+    title: "Бүх сэдэв",
+    lead: (asof, n, dates) => `${md(asof)}-ний ${n} сэдэв, ирэх 3 өдрийн (${dates}) таамагтай.`,
+    filters: [["all", "Бүгд"], ["continue", "Үргэлжлэх"], ["fade", "Унтрах"]],
+    sorts: [["views", "Уншилтаар"], ["up", "Өсөлтөөр"], ["down", "Бууралтаар"]],
+    filterLabel: "Шүүлтүүр", sortLabel: "Эрэмбэ", more: (n) => `Дахиад харах (${n})`, none: (asof, v) => groupEmpty(asof, v),
+    low: "цөөн уншилттай",
+  };
+
   const TIP = {
     attention: "Анхаарал: Wikipedia-ийн нийт уншилтад эзлэх хувь",
     interval: "80% интервал: model-ийн өмнөх алдаанаас тооцсон хүрээ",
@@ -198,11 +220,13 @@
     other: "Сарын шилдэг 200-д 1–2 сар орсон, оргил өдөр нь ердийнхөөсөө 8+ дахин их",
   };
 
-  const Words = { md, longDate, day, dayTile, homeTitle, surgeText, surgeTip, interval, forecastLabel, trendLead, mapScope, catLead, CAT_REASON, seeAll, expand, COLLAPSE,
-    listLead, LOW_TAG, OTHER_NOTE, LOW_VIEWS, TIP,
+  const Words = { md, longDate, day, dayTile, surgeTip, interval, forecastLabel, TIP,
     DAYS, span, factsLead, decayNote, catsNote, mongoliaNote, catsHeadline, weekdayTitle, weekdayLabel, WEEKDAY_NOTE,
     HOLIDAY_TITLE, holidayLabel, holidayNote,
-    num, maePct, months, modelWords };
+    num, maePct, months, modelWords,
+    of, signed, arrow, homeH1, homeSum, mapTitle, MAP_KEY, cellLabel, cellValue, cellTip, VERDICT, GROUP, groupEmpty, seeAllN,
+    reviveTitle, REVIVE_LEAD, REVIVE_EMPTY, cycleTitle, CYCLE_LEAD, CYCLE_WORD, cycleTip, markText, markTip, byDay, MORE, CODE_TEXT,
+    DISCLAIM, NEUTRAL, tenOf, codeHit, codeBase, codeFew, prov, sparkLabel, incompleteNote, staleNote, COLD, waited, ERROR, LIST };
   if (typeof module !== "undefined" && module.exports) module.exports = Words;
   else root.Words = Words;
 })(typeof window !== "undefined" ? window : globalThis);
