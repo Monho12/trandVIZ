@@ -36,19 +36,8 @@ def test_long_date_for_sentences_names_the_month_and_adds_the_year_only_when_it_
     assert words("longDate", "2026-11-10T03:15:00+08:00") == "11-р сарын 10"    # /api/model-ийн trained_at
 
 
-def test_surge_label_says_yesterday_only_when_asof_is_yesterday():
-    """▲ ×N нь анхаарал дээр (ADR 0017): картанд "анхаарал" гэж бичнэ."""
-    assert words("surgeText", 3, ASOF, 1) == "өчигдөр анхаарал ×3"
-    assert words("surgeText", 3, ASOF, 4) == "11.09 анхаарал ×3"     # хуучирсан өгөгдөл: огноо
-    assert words("surgeText", 3, ASOF, 0) == "11.09 анхаарал ×3"     # asof = өнөөдөр ч "өчигдөр" биш
-    assert words("surgeText", 2.4, "2026-01-05", 2) == "01.05 анхаарал ×2.4"
 
 
-def test_short_surge_label_has_no_day():
-    """Богино хэлбэр нүүрний нарийн ангиллын картанд: "анхаарал" гэвэл гарчиг 1 үсэг болтол тайрагддаг (Playwright, #48).
-    Тэнд "анхаарал" нь tooltip ба картын дээрх тайлбарт ("▲ анхаарал ×2 = ...") бий."""
-    assert words("surgeText", 3, ASOF, 1, True) == "×3"
-    assert words("surgeText", 3, ASOF, 4, True) == "×3"
 
 
 def topic(ratio=3, views_ratio=2.8, typical_pct=0.08, similar_days=0):
@@ -71,13 +60,13 @@ def test_surge_tooltip_skips_raw_views_ratio_when_unknown():
     assert tip.startswith("11-р сарын 9-нд анхаарал ердийн өдрөөс 3 дахин их. Энэ сэдэв") and "уншилт ×" not in tip
 
 
+
+
 def test_day_word_for_titles_and_tiles():
     assert words("day", ASOF, 1) == "өчигдөр"
     assert words("day", ASOF, 3) == "11.09"
     assert words("dayTile", ASOF, 1) == "Өчигдөр"
     assert words("dayTile", ASOF, 3) == "11.09"
-    assert words("homeTitle", ASOF, 1) == "Өчигдөр дэлхий юуг уншив?"
-    assert words("homeTitle", ASOF, 3) == "11-р сарын 9-нд дэлхий юуг уншив?"
 
 
 def test_interval_reads_as_8_of_10_times():
@@ -104,87 +93,30 @@ def test_static_files_have_no_banned_words_or_old_colour_name():
     assert "--forecast: #e63946" in (STATIC / "styles.css").read_text(encoding="utf-8")
 
 
-DATES = "11.11–11.13"   # /api/*-ийн dates (src/serve.py: dates_text)
 
 
-CYCLE_NOTE = "Долоо хоног бүр давтагддаг өсөлтийг оруулаагүй."   # ADR 0019: мөчлөгийн өсөлтийг жагсаалтаас хассан
 
 
-def test_trend_lead_with_fires_names_dates_and_threshold_in_percent():
-    s = words("trendLead", DATES, 3, 0.25, 10)
-    assert s == ("11.11–11.13-нд анхаарал нь хамгийн их өсөх 10 сэдэв (model-ийн таамаг). "
-                 "🔥 = 25% ба түүнээс их өсөлт. " + CYCLE_NOTE)
-    assert "0.25" not in s
-    assert words("trendLead", DATES, 1, 0.3, 8).startswith("11.11–11.13-нд анхаарал нь хамгийн их өсөх 8 сэдэв")
-    assert "🔥 = 30% ба" in words("trendLead", DATES, 1, 0.3, 8)
 
 
-def test_trend_lead_without_fires_does_not_mention_a_threshold():
-    s = words("trendLead", DATES, 0, 0.25, 10)
-    assert s == "11.11–11.13: онцгой өсөлт (🔥) таамаглагдаагүй. Хамгийн өндөр таамагтай 10 сэдэв. " + CYCLE_NOTE
-    assert "ба түүнээс их" not in s and "хамгийн их өсөх" not in s
 
 
-def test_trend_lead_counts_a_short_list_as_it_is():
-    """ADR 0019: дээд тал нь 10, цөөн бол цөөн. Тоо нь API-ийн жагсаалтын бодит урт."""
-    assert words("trendLead", DATES, 0, 0.25, 3) == (
-        "11.11–11.13: онцгой өсөлт (🔥) таамаглагдаагүй. Хамгийн өндөр таамагтай 3 сэдэв. " + CYCLE_NOTE)
 
 
-def test_trend_lead_for_an_empty_list_is_one_honest_line():
-    """ADR 0019: жагсаалт 0 бол шударга нэг мөр ("0 сэдэв" эсвэл 🔥-ийн тайлбаргүй). CONTEXT.md: "давж өсөх" гэж бичихгүй."""
-    s = words("trendLead", DATES, 0, 0.25, 0)
-    assert s == "11.11–11.13: долоо хоног бүр давтагддаг өсөлтөөс илүү өсөх таамаг алга."
-    assert "давж" not in s and "0 сэдэв" not in s and "🔥" not in s
 
 
-def test_map_scope_names_both_counts():
-    assert words("mapScope", 301, 40) == "Манай 301 сэдвээс хамгийн их уншигдсан 40, англи Wikipedia."
 
 
-def test_category_lead_counts_from_data_and_skips_empty_reason():
-    assert words("catLead", 10, 15.1, 4, ASOF, 1, "") == (
-        "10 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Карт бүрт өчигдөр хамгийн их уншигдсан 4 нь. "
-        "▲ анхаарал ×2 = ердийн өдрөөс 2 дахин их.")
-    assert words("catLead", 9, 14.6, 3, ASOF, 4, "Учир нь X.") == (
-        "9 бүлэгт тус бүр ~15 сэдвийг бид гараар сонгосон. Учир нь X. Карт бүрт 11-р сарын 9-нд хамгийн их уншигдсан 3 нь. "
-        "▲ анхаарал ×2 = ердийн өдрөөс 2 дахин их.")
 
 
-def test_category_reason_stays_out_until_mike_fills_it_in_plan():
-    plan = (ROOT / "docs" / "PLAN.md").read_text(encoding="utf-8")
-    reason = words("CAT_REASON")
-    if "[Майк бөглөнө" in plan:
-        assert reason == ""
-    else:
-        assert reason and reason in plan
 
 
-def test_see_all_link_text():
-    assert words("seeAll", 16) == "Бүгдийг харах (16) →"
 
 
-def test_list_lead_explains_the_bars_and_names_the_asof_date():
-    assert words("listLead", ASOF, 1) == (
-        "Багана: цэнхэр = бодит уншилт, улаан = ирэх 3 өдрийн таамаг. ▲ = өчигдөр анхаарал ердийнхөөс хэд дахин их. "
-        "Ангилал бүрт 11-р сарын 9-нд хамгийн их уншигдсанаас нь эхлэн.")
-    stale = words("listLead", ASOF, 4)       # хуучирсан өгөгдөл: "өчигдөр" гэж хэлэхгүй
-    assert "▲ = 11-р сарын 9 анхаарал ердийнхөөс хэд дахин их." in stale and "өчигдөр" not in stale
 
 
-def test_expand_button_text_has_the_count_and_no_arrow():
-    assert words("expand", 150) == "Бүгдийг харах (150)"      # товч: холбоос биш тул сумгүй
-    assert words("seeAll", 150) == "Бүгдийг харах (150) →"
 
 
-def test_other_section_note_agrees_with_how_viral_topics_were_picked():
-    """ "Бусад" хэсгийн 2 мөр тайлбар ба tooltip-ийн тоо src/fetch_data.py-тай таарна (ADR 0013, 7-р зүйл)."""
-    from src import fetch_data
-    note, tip = words("OTHER_NOTE"), words("TIP")["other"]
-    assert set(note) == {"how", "why"} and f"{fetch_data.START.year} оноос" in note["how"]
-    assert f"оргил өдөр нь ердийнхөөсөө {fetch_data.VIRAL_MIN_RATIO}+ дахин их" in tip
-    shown = " ".join([note["how"], note["why"], tip]).lower()
-    assert "viral" not in shown and "вирал" not in shown   # ADR 0005
 
 
 # ── "Сонирхолтой" хуудас (issue #33): гарчиг, саарал мөр, огнооны хүрээ ──
@@ -236,7 +168,7 @@ def test_holiday_note_mentions_the_unfinished_year_only_when_there_is_one():
 def test_facts_page_has_no_stale_window_words_or_red():
     """Хүрээг файлаас уншина: "сүүлийн 30 хоног / 1 жил / 5 жил" гэж гараар бичихгүй; графикт улаан үгүй."""
     js = (STATIC / "app.js").read_text(encoding="utf-8")
-    facts = js[js.index("async function facts()"):js.index("// ═════════ Router")]
+    facts = js[js.index("async function facts("):js.index("// ═════════ Router")]
     for stale in ("сүүлийн 30", "1 жил", "5 жил", "таамаглахад амар", "#e63946", "Ажлын өдөр"):
         assert stale not in facts, stale
     css = (STATIC / "styles.css").read_text(encoding="utf-8")

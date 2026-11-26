@@ -71,6 +71,11 @@ class Snapshot:
         return feature_rows(self.tail(), self.asof)
 
     @cached_property
+    def list_anomalies(self) -> dict[str, list[dict]]:
+        """Бүх сэдвийн сүүлийн LIST_DAYS өдрийн Anomaly өдрүүд (`anomaly_days`, нэг хувилбарт нэг удаа): нүүрний spark-ийн ●."""
+        return anomaly_days(self.clean, self.asof, LIST_DAYS)
+
+    @cached_property
     def total_note(self) -> dict | None:
         """asof өдөр Wikipedia-ийн нийт уншилт ердийнхөөс огцом зөрсөн бол өдрийн мөр (ADR 0017), үгүй бол None."""
         return anomaly.total_note(self.clean.drop_duplicates("date")[["date", "total_views"]], self.asof)
@@ -88,6 +93,21 @@ def clean_chunks(raw: RawCache, size: int = CHUNK_ARTICLES):
         al = raw.alias.take(np.concatenate(rows)) if rows else raw.alias.iloc[:0]
         cl, _ = clean.clean_frame(pv, al, raw.total, end=raw.end)
         yield cl
+
+
+def anomaly_days(clean: pd.DataFrame, asof: pd.Timestamp, days: int, articles=None) -> dict[str, list[dict]]:
+    """Сүүлийн `days` өдрийн Anomaly өдрүүд сэдэв бүрээр (ADR 0017, 0024: ● = өнгөрсөн): [{d, r}], r = ×N анхаарал дээр.
+    Өдөр бүрийн z нь өөрийн t−59 … t−7 цонхоор (`anomaly.score`), asof өдрийнх нь `feature_rows`-ийнхтой ижил."""
+    since = asof - pd.Timedelta(days=days - 1)
+    c = clean[clean["date"] >= since - pd.Timedelta(days=anomaly.WINDOW_FROM)]
+    if articles is not None:
+        c = c[c["article"].isin(articles)]
+    s = anomaly.score(c[["article", "date", "y", "attention", "views"]])
+    hit = c[s["anomaly"].to_numpy(bool) & (c["date"] >= since).to_numpy()]
+    out: dict[str, list[dict]] = {}
+    for a, d, r in zip(hit["article"].astype(str), hit["date"], s.loc[hit.index, "ratio"]):
+        out.setdefault(a, []).append({"d": d.strftime("%Y-%m-%d"), "r": _num(r, 1)})
+    return out
 
 
 def feature_rows(tail: pd.DataFrame, asof: pd.Timestamp) -> pd.DataFrame:
@@ -219,7 +239,8 @@ def verdict_tracks(model, path: Path | None = None) -> dict[str, dict]:
             for e in src["by_verdict"]}
 
 
-def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None, tracks: dict | None = None) -> dict:
+def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None, tracks: dict | None = None,
+         anom: dict | None = None) -> dict:
     """Нэг сэдвийн JSON. Хуучин бүтэц (article, title, category, views, ratio, history, forecast) хэвээр,
     дээр нь pct (h3, 5%-д дугуйлсан), 80% интервал, сум, 🔥, хэмжигдэх эсэх, огноо нэмэгдэнэ.
     Anomaly (ADR 0017, src/anomaly.py): `ratio` = ▲ ×N АНХААРАЛ дээр, `views_ratio` = түүхий уншилтын ×N (хаалтанд),
@@ -228,7 +249,8 @@ def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None, 
     Мөчлөг (ADR 0019, src/cycle.py): `cycle` = долоо хоногийн мөчлөг (h3), `excess` = таамгийн илүүдэл (хоёулаа pct шиг
     5%-ийн алхмаар тэг рүү тайрсан тул ±10%-ийн хил хадгалагдана), `cyclical` = мөчлөгийн өсөлт эсвэл бууралт.
     Нөхцөл байдал (ADR 0020, src/situation.py): `situation` = код, `situation_label` = нэр. Anomaly-д л (ADR 0021): `verdict` =
-    "continue"/"fade", `verdict_label` = "үргэлжлэх"/"унтрах", `verdict_track` = тэр дүгнэлтийн track record (tracks-аас)."""
+    "continue"/"fade", `verdict_label` = "үргэлжлэх"/"унтрах", `verdict_track` = тэр дүгнэлтийн track record (tracks-аас).
+    `anom` = history-ийн Anomaly өдрүүд [{d, r}] (`anomaly_days`, ADR 0024: графикийн ●); anom өгөөгүй бол хоосон."""
     normal = _num(r.normal, 0)
     v = r.verdict
     return {
@@ -242,6 +264,7 @@ def item(r, history: pd.DataFrame, asof: pd.Timestamp, rank: int | None = None, 
         "verdict": v, "verdict_label": None if v is None else situation.VERDICTS[v],
         "verdict_track": None if v is None else (tracks or {}).get(v),
         "history": [{"d": d.strftime("%Y-%m-%d"), "v": int(v)} for d, v in zip(history["date"], history["views"])],
+        "anom": [a for a in (anom or {}).get(r.article, []) if a["d"] >= history["date"].iloc[0].strftime("%Y-%m-%d")],
         "forecast": [{"d": d.strftime("%Y-%m-%d"), "y": round(getattr(r, f"views_h{h}")),
                       "lo": round(getattr(r, f"views_lo_h{h}")), "hi": round(getattr(r, f"views_hi_h{h}")),
                       "pct": _r(getattr(r, f"pct_h{h}"))}
@@ -282,7 +305,8 @@ def trending(model, snap: Snapshot, today) -> dict:
     p = ranked(predict(model, snap.universe))
     hist = _histories(snap, p["article"], LIST_DAYS)
     tracks = verdict_tracks(model)
-    items = [item(r, hist[r.article], snap.asof, None if pd.isna(r.rank) else int(r.rank), tracks) for r in p.itertuples()]
+    items = [item(r, hist[r.article], snap.asof, None if pd.isna(r.rank) else int(r.rank), tracks, snap.list_anomalies)
+             for r in p.itertuples()]
     beyond = [i for i in items if i["rank"] is not None]
     return {**day_block(snap, today), "T": model.meta["fire"]["T"], "anomalies": anomaly_summary(items),
             "fires": sum(i["fire"] for i in beyond), "top_n": scoring.TOP_N,
@@ -322,4 +346,5 @@ def topic(model, snap: Snapshot, article: str, today) -> dict | None:
         return None
     r = next(p.itertuples())
     hist = _histories(snap, [article], TOPIC_DAYS)[article]
-    return {**day_block(snap, today), **item(r, hist, snap.asof, tracks=verdict_tracks(model))}
+    anom = anomaly_days(snap.clean, snap.asof, TOPIC_DAYS, [article])
+    return {**day_block(snap, today), **item(r, hist, snap.asof, tracks=verdict_tracks(model), anom=anom)}

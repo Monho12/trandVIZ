@@ -9,7 +9,7 @@
   --line: #e3e5ea;
   --text: #15171c;
   --text-2: #4a4f5c;
-  --muted: #737887;
+  --muted: #5f6472;       /* цагаан дээр 5.9:1, --bg дээр 5.4:1 (AA) */
   --blue: #2a78d6;
   --blue-soft: rgba(42, 120, 214, .10);
   --forecast: #e63946;   /* таамаг = улаан */
@@ -19,6 +19,15 @@
   --red-soft: rgba(230, 57, 70, .10);
   --gray-bar: #b7bcc8;
   --naive: #8a909c;    /* "Одоогийнхтой адилхан" (энгийн арга): dataviz validator, цэнхэртэй CVD ΔE 14, contrast ≥ 3:1 */
+  /* W7 (#52), theme 1 (ADR 0023, 0028): брэнд (лого, accent) ба өгөгдлийн өнгө тусдаа. Өгөгдөл нэг hue: бодит = --data,
+     таамаг = --data-fc (дэвсгэр рүү ойртсон tint, цагаан дээр 3.38:1), band = --band + --data-fc хүрээ. ● = бэх (--ink), hue биш. */
+  --ink: #15171c;
+  --data: #1d5a9e;         /* бодит уншилт: цагаан дээр 6.98:1 */
+  --data-fc: #4a8fd8;      /* таамаг: цагаан дээр 3.38:1 (≥ 3:1, бодитоос цайвар) */
+  --band: rgba(74, 143, 216, .16);
+  --base-win: rgba(21, 23, 28, .035);
+  --tm-0: #eef1f5; --tm-1: #cce3fd; --tm-2: #9dc8f7; --tm-3: #4a8fd8; --tm-4: #1d5a9e;   /* treemap: --data-ийн sequential scale */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
   --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
   --wrap: 1120px;
@@ -111,20 +120,10 @@ a.pick { padding: 7px 12px; text-decoration: none; }
 .hint { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; }
 .chart-sub { margin: 0 0 6px; color: var(--muted); font-size: 13.5px; }
 
-/* ── Ангилал ── */
 .sec { padding-top: 44px; }
 .sec h2 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
-.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-.cat { background: var(--surface); border-radius: var(--r); padding: 14px 16px 10px; border: 1px solid var(--line); }
-.cat h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
-.cat ul { list-style: none; margin: 0; padding: 0; }
-.cat li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0;
-  border-top: 1px solid var(--line); font-size: 14px; }
-.cat li a { text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cat li a:hover { text-decoration: underline; }
 .more { display: inline-block; margin: 8px 0 2px; font-size: 13px; font-weight: 500; color: var(--blue); text-decoration: none; }
 .more:hover { text-decoration: underline; }
-button.more { padding: 0; border: 0; background: none; cursor: pointer; }
 
 /* ── Бүх сэдэв ── */
 .rows { list-style: none; margin: 0; padding: 0; }
@@ -236,41 +235,13 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
   .big b { font-size: 24px; }
 }
 
-/* ── Анхаарлын газрын зураг (treemap) ── */
-.map-key { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 4px 0 12px; font-size: 14px; color: var(--text-2); }
-.map-key b { color: var(--text); font-weight: 600; }
-.map-key .scale { display: inline-flex; align-items: center; gap: 6px; }
-.map-key .scale i { width: 16px; height: 12px; border-radius: 3px; display: inline-block; }
-.map-key .scale em { font-style: normal; margin-right: 6px; }
-.tmap { position: relative; height: 440px; border-radius: 16px; overflow: hidden; background: var(--surface); }
-.tm-cell { position: absolute; box-sizing: border-box; border: 2px solid var(--bg); border-radius: 8px; padding: 8px 10px;
-  text-decoration: none; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px;
-  transition: filter .15s; animation: tm-in .45s ease-out both; animation-delay: calc(var(--i) * 12ms); }
-.tm-cell:hover { filter: brightness(1.06) saturate(1.1); }
-.tm-cell:focus-visible { outline: 3px solid var(--text); outline-offset: -3px; }
-.tm-t { font-size: 12.5px; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.tm-t.tm-big { font-size: 17px; }
-.tm-v { font-size: 13px; opacity: .85; font-weight: 500; }
-@keyframes tm-in { from { opacity: 0; transform: scale(.96); } }
-.sub-h { margin: 40px 0 2px; font-size: 22px; font-weight: 700; }
-
-/* Ангиллын картын sparkline */
-.cat li { display: grid; grid-template-columns: minmax(0, 1fr) 64px auto; }
-.sp { height: 22px; display: block; }
-.ch .sp-area { fill: rgba(42, 120, 214, .12); }
-.ch .sp-line { fill: none; stroke: #2a78d6; stroke-width: 1.5; }
-.ch .sp-dot { fill: #2a78d6; }
-
 /* Илүү амьд багана */
 .ch .b-grad { fill: url(#g-blue); }
 .ch .b-grad-soft { fill: url(#g-blue-soft); }
 .ch .b-hatch { fill: url(#p-cast); stroke: #e63946; stroke-width: 1; }
 .ch .peak { fill: var(--muted); }
-@media (prefers-reduced-motion: reduce) { .tm-cell { animation: none; } }
-@media (max-width: 760px) { .tmap { height: 380px; } .tm-t.tm-big { font-size: 15px; } }
 @media (max-width: 760px) {
   .nav { gap: 0; } .nav a { padding: 7px 8px; font-size: 14px; }
-  .map-key { flex-direction: column; gap: 4px; font-size: 13px; }
 }
 
 /* ── Загвар: dumbbell, алхам, "Яагаад" ── */
@@ -327,4 +298,143 @@ svg.ch { display: block; width: 100%; height: 100%; overflow: visible; }
     border: 1px solid var(--line); border-radius: var(--r); color: var(--text-2); font-size: 14px; }
   .pl-panel { display: none; }
   .mcard .big { font-size: 17px; } .mcard .big b { font-size: 24px; }
+}
+
+/* ══════════ W7 (#52): нүүр, карт, treemap, "Бүх сэдэв", төлөвүүд (ADR 0022, 0024, 0026, 0027; prototype 1-р шат, theme 1) ══════════ */
+[hidden] { display: none !important; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.page-h { text-wrap: balance; max-width: 34ch; }
+.sum { margin: 10px 0 0; font-size: 15px; color: var(--text-2); }
+.sum b { color: var(--ink); }
+.neutral { margin: 0 0 6px; color: var(--muted); font-size: 14px; max-width: 66ch; }
+.prov { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+h2.sec-h { margin: 36px 0 4px; font-size: 22px; font-weight: 700; }
+.sec-h + .lead { margin-bottom: 12px; }
+.grp { margin-top: 18px; }
+h2.grp-h { margin: 0 0 8px; font-size: 16px; font-weight: 600; color: var(--text-2); }
+.see-all { margin: 4px 0 0; }
+.see-all a { display: inline-flex; align-items: center; min-height: 44px; color: var(--blue); font-weight: 500; font-size: 15px; text-decoration: none; }
+.see-all a:hover { text-decoration: underline; }
+
+/* Карт (давхарга 2) */
+.cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 6px;
+  transition: box-shadow .18s var(--ease-out), border-color .18s var(--ease-out); scroll-margin: 90px 0 120px; }
+.card.lit { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.card.flash { animation: flash 1.2s var(--ease-out); }
+@keyframes flash { 0% { box-shadow: 0 0 0 4px rgba(21, 23, 28, .25); } 100% { box-shadow: 0 0 0 1px transparent; } }
+.c-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.c-name { margin: 0; font-size: 17px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.c-name a { text-decoration: none; display: inline-block; padding: 12px 0; margin: -12px 0; }
+.c-name a:hover { text-decoration: underline; }
+.dot-mark { flex: none; font-size: 14px; color: var(--text-2); white-space: nowrap; }
+.dot-mark i { font-style: normal; color: var(--ink); font-size: 12px; margin-right: 3px; }
+.c-verdict { margin: 4px 0 0; font-size: 16px; color: var(--text-2); display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.c-verdict .w.bold, .num.bold { color: var(--ink); font-weight: 700; }
+.num { color: var(--text-2); white-space: nowrap; }
+.cyc { color: var(--text-2); font-size: 14px; white-space: nowrap; }
+.spark { position: relative; height: 54px; margin: 6px 0 2px; touch-action: pan-y; }
+.c-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.more-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 2px; border: 0; background: none; cursor: pointer;
+  color: var(--blue); font-weight: 500; font-size: 14.5px; }
+.more-btn::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg); transition: transform .2s var(--ease-out); }
+.more-btn[aria-expanded="true"]::after { transform: translateY(1px) rotate(-135deg); }
+.more-btn:active { transform: scale(.97); }
+.c-dates { font-size: 13px; color: var(--muted); }
+.detail { border-top: 1px solid var(--line); margin: 2px 0 4px; padding: 10px 0 4px; font-size: 14.5px; color: var(--text-2); }
+.detail .code { margin: 0 0 4px; color: var(--ink); font-weight: 600; }
+.detail p { margin: 0 0 8px; }
+.disclaim { color: var(--muted); font-size: 13px; }
+.ia { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; margin: 4px 0 10px; }
+.ia-sq { display: inline-flex; gap: 3px; }
+.ia-sq i { width: 12px; height: 12px; border-radius: 2px; border: 1.5px solid var(--data); }
+.ia-sq i.on { background: var(--data); }
+.ia-sq.base i { border-color: var(--muted); } .ia-sq.base i.on { background: var(--muted); }
+.ia-t { font-size: 13.5px; color: var(--text-2); }
+.ia-t b { color: var(--ink); }
+
+/* Skeleton (cold start), алдаа */
+.sk { background: linear-gradient(90deg, #eceef2 0 40%, #f6f7f9 50%, #eceef2 60% 100%) 0 0 / 300% 100%; border-radius: 6px;
+  animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -150% 0; } }
+.sk-h { height: 34px; width: min(560px, 90%); margin: 28px 0 12px; }
+.sk-map { height: 200px; border-radius: 14px; margin-bottom: 14px; }
+.sk-card { height: 156px; }
+.state-box { margin: 14px 0; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; max-width: 60ch; }
+.state-box p { margin: 0 0 6px; }
+.state-box .code { color: var(--muted); font-size: 12.5px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--ink);
+  background: var(--ink); color: #fff; font-weight: 600; cursor: pointer; transition: transform .16s var(--ease-out); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .6; cursor: progress; }
+.btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); }
+
+/* Treemap (нүүрний дээд хэсэг) */
+.tm-sec { margin-top: 8px; }
+.tm-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0 0 8px; font-size: 13.5px; color: var(--text-2); }
+.tm-key .ramp { display: inline-flex; align-items: center; gap: 2px; }
+.tm-key .ramp i { width: 18px; height: 12px; border-radius: 2px; }
+.tm-key .ramp i:first-child { box-shadow: inset 0 0 0 1px #d5dae3; }
+.tmap { position: relative; height: 420px; border-radius: 14px; overflow: hidden; background: var(--surface); touch-action: pan-y; }
+.tm-cell { position: absolute; border: 2px solid var(--bg); border-radius: 8px; padding: 6px 8px; text-decoration: none; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 1px; color: var(--ink); transition: box-shadow .15s ease; }
+.tm-cell.dark { color: #fff; }
+.tm-cell.lit { box-shadow: inset 0 0 0 3px var(--ink); z-index: 2; }
+.tm-cell.dark.lit { box-shadow: inset 0 0 0 3px var(--ink), inset 0 0 0 5px #fff; }
+.tm-cell:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+.tm-t { font-size: 12.5px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tm-v { font-size: 12px; font-weight: 500; }
+.tm-dot { position: absolute; top: 6px; right: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+.tm-dot.halo { box-shadow: 0 0 0 2px #fff; }
+
+details.cyc-list { margin-top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+details.cyc-list summary { cursor: pointer; padding: 0 16px; min-height: 48px; display: flex; align-items: center; font-weight: 600; font-size: 16px; }
+details.cyc-list > div { padding: 0 16px 12px; }
+.rowlist { list-style: none; margin: 0; padding: 0; }
+.rowlist li { display: flex; justify-content: space-between; align-items: center; gap: 4px 12px; border-top: 1px solid var(--line); font-size: 15px; flex-wrap: wrap; }
+.rowlist a { text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; min-height: 44px; }
+.rowlist a:hover { text-decoration: underline; }
+
+/* Графикийн SVG (spark): ● = бэх, таамаг = тасархай tint, band */
+.ch .act { fill: none; stroke: var(--data); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ch .fc { fill: none; stroke: var(--data-fc); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; }
+.ch .band { fill: var(--band); stroke: var(--data-fc); stroke-width: 1; }
+.ch .dot { fill: var(--ink); stroke: var(--surface); stroke-width: 2; }
+.spark .ch .split { stroke: var(--muted); stroke-width: 1; stroke-dasharray: none; }
+.tip { max-width: 260px; }
+.tip span { display: block; }
+
+/* "Бүх сэдэв": шүүлтүүр, эрэмбэ (холбоос: URL-д хадгалагдана, буцах товч ажиллана) */
+.sortbar { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 6px 0 14px; }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ctl .lbl { font-size: 14px; color: var(--muted); }
+.seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 2px; background: var(--bg); }
+.seg a, .seg button { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; background: none; border-radius: 8px;
+  cursor: pointer; font-size: 14px; color: var(--text-2); font-weight: 500; text-decoration: none; }
+.seg [aria-current="true"], .seg [aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(21, 23, 28, .12); }
+.more-rows { margin-top: 12px; }
+
+@media (max-width: 760px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .tmap { height: 210px; }
+  .tm-t { font-size: 11.5px; -webkit-line-clamp: 1; }
+  .tm-v { display: none; }
+  .tm-key { font-size: 12.5px; gap: 2px 12px; }
+  .sk-map { height: 210px; }
+}
+@media (max-width: 360px) {   /* zoom 200% (~195px CSS өргөн) reflow, WCAG 1.4.10 */
+  .ia { grid-template-columns: minmax(0, 1fr); }
+  .ia-sq { flex-wrap: wrap; }
+  .cyc, .num { white-space: normal; }
+  .c-top { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk { animation: none; }
+  .card, .more-btn::after, .btn, .tm-cell { transition: none; }
+  .card.flash { animation: none; }
+}
+@media (max-width: 760px) {   /* 390×844-д эхний карт бүтнээрээ (ADR 0027): h1-ийн дээд зай ба treemap-ийг шахна */
+  main .page-h:first-child { margin-top: 14px; }
+  .tmap, .sk-map { height: 190px; }
 }
