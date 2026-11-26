@@ -137,5 +137,167 @@
       <span class="ia-t">${text}</span>`;
   };
 
-  window.Viz = { el, svg, poly, showTip, hideTip, spark, treemap, tmKey, flash, linkHover, iconArray, reduced };
+  // ═════════ Сэдвийн хуудасны гол график (3б, ADR 0026, 0027): шугам + area (бодит), тасархай + band (таамаг), ●, ердийн өдөр,
+  // суурь цонх (t−59 … t−7) бүдэг дэвсгэр, түүх/таамгийн зааг. y 0-ээс, шугаман. rp = өнгөрсөн таамаг (зөвхөн 60 горимд). ═════════
+  const niceMax = (m) => { const e = 10 ** Math.floor(Math.log10(m || 1)), f = m / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; };
+  function mainChart(box, t, { days, rp }) {
+    const T = W.TOPIC, hist = t.history.slice(-days), fc = t.forecast, H = hist.length, N = H + fc.length;
+    if (!H) return;
+    const { s, w, h } = svg(box, T.chartLabel(t, days, fmt));
+    const pad = { l: 52, r: 12, t: 14, b: 24 }, step = (w - pad.l - pad.r) / N;
+    const X = (i) => pad.l + (i + 0.5) * step;
+    const max = niceMax(Math.max(...hist.map((d) => d.v), ...fc.map((f) => f.hi), ...(rp ? rp.forecast.map((f) => f.hi) : [])) * 1.04);
+    const Y = (v) => h - pad.b - (v / max) * (h - pad.t - pad.b);
+    for (let k = 0; k <= 4; k++) {
+      const v = (max / 4) * k;
+      el("line", { class: k ? "grid" : "axis", x1: pad.l, x2: w - pad.r, y1: Y(v), y2: Y(v) }, s);
+      el("text", { class: "tick", x: pad.l - 6, y: Y(v) + 4, "text-anchor": "end" }, s).textContent = k ? fmt(v).replace(" мянга", " мян.") : "0";
+    }
+    const a0 = Math.max(0, H - 60), b0 = H - 8;   // суурь цонх t−59 … t−7 (ADR 0017)
+    if (b0 > a0) el("rect", { class: "basewin", x: X(a0) - step / 2, y: pad.t, width: X(b0) - X(a0) + step, height: h - pad.t - pad.b }, s);
+    const xs = days === 60 ? 10 : 30;
+    hist.forEach((d, i) => { if (i < H - 4 && (H - 1 - i) % xs === 0) el("text", { class: "tick", x: X(i), y: h - 6, "text-anchor": "middle" }, s).textContent = W.md(d.d); });
+    el("text", { class: "tick", x: X(N - 1), y: h - 6, "text-anchor": "end" }, s).textContent = W.md(fc[fc.length - 1].d);
+    const last = [X(H - 1), Y(hist[H - 1].v)];
+    el("path", { class: "act-area", d: poly([[X(0), Y(0)], ...hist.map((d, i) => [X(i), Y(d.v)]), [X(H - 1), Y(0)]]) + "Z" }, s);
+    el("path", { class: "band", d: poly([last, ...fc.map((f, i) => [X(H + i), Y(f.hi)]), ...fc.map((f, i) => [X(H + i), Y(f.lo)]).reverse()]) + "Z" }, s);
+    el("path", { class: "act", d: poly(hist.map((d, i) => [X(i), Y(d.v)])) }, s);
+    el("path", { class: "fc", d: poly([last, ...fc.map((f, i) => [X(H + i), Y(f.y)])]) }, s);
+    if (t.normal != null) {
+      el("line", { class: "norm", x1: pad.l, x2: X(H - 1), y1: Y(t.normal), y2: Y(t.normal) }, s);
+      el("text", { class: "lbl", x: pad.l + 4, y: Y(t.normal) - 5 }, s).textContent = T.norm(t.normal, fmt);
+    }
+    el("line", { class: "split", x1: X(H - 1) + step / 2, x2: X(H - 1) + step / 2, y1: pad.t, y2: h - pad.b }, s);
+    if (rp) {   // өнгөрсөн таамаг = дүүргэлтгүй: бэх тасархай шугам + band-ийн outline (ADR 0026). Цэгтэй шугам биш (● = Anomaly)
+      const iD = hist.findIndex((d) => d.d === rp.asof);
+      if (iD >= 0) {
+        const at = (k) => iD + 1 + k, o = [X(iD), Y(hist[iD].v)];
+        el("path", { class: "rp-band", d: poly([o, ...rp.forecast.map((f, k) => [X(at(k)), Y(f.hi)]), ...rp.forecast.map((f, k) => [X(at(k)), Y(f.lo)]).reverse()]) + "Z" }, s);
+        el("path", { class: "rp-fc", d: poly([o, ...rp.forecast.map((f, k) => [X(at(k)), Y(f.y)])]) }, s);
+      }
+    }
+    const an = Object.fromEntries((t.anom || []).map((a) => [a.d, a.r]));
+    hist.forEach((d, i) => { if (d.d in an) el("circle", { class: "dot", cx: X(i), cy: Y(d.v), r: days === 60 ? 3.5 : 2.5 }, s); });
+    // Crosshair: tap / hover / гар (← →). Босоо чирэлт = гүйлгэх (touch-action: pan-y, ADR 0027)
+    const xh = el("line", { class: "xh", y1: pad.t, y2: h - pad.b, visibility: "hidden" }, s);
+    const hp = el("circle", { class: "hp", r: 4.5, visibility: "hidden" }, s);
+    const hit = el("rect", { class: "hit", x: pad.l, y: 0, width: w - pad.l - pad.r, height: h, tabindex: 0, role: "slider",
+      "aria-label": T.hitLabel, "aria-valuemin": 0, "aria-valuemax": N - 1, "aria-valuenow": H - 1 }, s);
+    let cur = -1;
+    const who = { box, kind: "main", clear: () => { xh.setAttribute("visibility", "hidden"); hp.setAttribute("visibility", "hidden"); cur = -1; } };
+    function at(i, cx, cy) {
+      cur = i = Math.max(0, Math.min(N - 1, i));
+      const isF = i >= H, f = isF ? fc[i - H] : null, dd = isF ? f.d : hist[i].d, v = isF ? f.y : hist[i].v;
+      xh.setAttribute("x1", X(i)); xh.setAttribute("x2", X(i)); xh.setAttribute("visibility", "visible");
+      hp.setAttribute("cx", X(i)); hp.setAttribute("cy", Y(v)); hp.setAttribute("visibility", "visible");
+      const lines = isF ? T.tipFc(f, t.asof, fmt) : T.tipActual(v, dd, t.asof, fmt);
+      if (!isF && dd in an) lines.push(T.tipDot(an[dd]));
+      if (rp) { const k = rp.forecast.findIndex((x) => x.d === dd); if (k >= 0) lines.push(...T.tipRp(rp.asof, rp.forecast[k], fmt)); }
+      if (!isF && i >= a0 && i <= b0) lines.push(T.tipBase);
+      hit.setAttribute("aria-valuenow", i); hit.setAttribute("aria-valuetext", lines.join(", "));
+      const r = box.getBoundingClientRect();
+      showTip(`<b>${esc(lines[0])}</b>${lines.slice(1).map((x) => `<span>${esc(x)}</span>`).join("")}`, cx ?? r.left + X(i), cy ?? r.top + Y(v), who);
+    }
+    const idx = (e) => Math.round((e.clientX - box.getBoundingClientRect().left - pad.l) / step - 0.5);
+    hit.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") at(idx(e), e.clientX, e.clientY); });
+    hit.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hideTip(); });
+    hit.addEventListener("click", (e) => at(idx(e), e.clientX, e.clientY));
+    hit.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); at((cur < 0 ? H - 1 : cur) + (e.key === "ArrowLeft" ? -1 : 1)); }
+    });
+    hit.addEventListener("focus", () => at(H - 1));
+    hit.addEventListener("blur", hideTip);
+  }
+
+  // ═════════ "Загвар" хуудасны графикууд (ADR 0027, 2026-11-26): өссөн = --data, буурсан / ердийн үед = саарал. Тоо бүр шууд шошготой,
+  // tooltip-д яг тоо + n (data-tip: мөрүүдийг "\n"-ээр). Нэг хөдөлгөөн: багана суурийнхаа шугамаас ургана (.grow, reduced-motion үед үгүй). ═════════
+  const tipAttr = (lines) => `data-tip="${esc(lines.join("\n"))}" tabindex="0"`;
+  function bindTips(root) {
+    root.querySelectorAll("[data-tip]").forEach((n) => {
+      const show = (x, y) => { const [b, ...rest] = n.dataset.tip.split("\n"); showTip(`<b>${esc(b)}</b>${rest.map((r) => `<span>${esc(r)}</span>`).join("")}`, x, y, { box: n, kind: "proof" }); };
+      const at = () => { const r = n.getBoundingClientRect(); show(r.left + Math.min(r.width / 2, 160), r.top); };
+      n.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") show(e.clientX, e.clientY); });
+      n.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") hideTip(); });
+      n.addEventListener("click", at);
+      n.addEventListener("focus", at);
+      n.addEventListener("blur", hideTip);
+    });
+  }
+  // Хэвтээ харьцуулалт: rows [{label, v (0…1), n, base}] → шошго дээр, багана доор, утга баганын үзүүрт
+  const compare = (rows, big) => `<div class="cmp${big ? " big" : ""}">${rows.map((r) => `
+    <div class="cmp-row${r.base ? " base" : ""}" ${tipAttr(W.PROOF.barTip(r.label, r.v, r.n))}>
+      <span class="cmp-l">${esc(r.label)}</span>
+      <span class="cmp-bar" style="--v:${r.v.toFixed(4)}"><i class="grow"></i><b>${esc(W.PROOF.pc(r.v))}</b></span>
+    </div>`).join("")}</div>`;
+  // Таамгийн зурвас бүрээр: өссөн (дээш, --data) ба буурсан (доош, саарал) хувь, зурвас зүүнээс баруун тийш өсөх дарааллаар = шат
+  function stair(box, bands) {
+    const P = W.PROOF.bands;
+    const { s, w, h } = svg(box, `${P.q} ${bands.map((b) => `${b.label}: өссөн ${W.PROOF.pc(b.up10)}, буурсан ${W.PROOF.pc(b.down10)}`).join("; ")}`);
+    const pad = { l: 8, r: 8, t: 22, b: 40 }, mid = pad.t + (h - pad.t - pad.b) / 2, half = (h - pad.t - pad.b) / 2;
+    const col = (w - pad.l - pad.r) / bands.length, bw = Math.min(56, col * 0.56);
+    el("line", { class: "axis", x1: pad.l, x2: w - pad.r, y1: mid, y2: mid }, s);
+    bands.forEach((b, i) => {
+      const cx = pad.l + col * (i + 0.5), up = b.up10 * half, dn = b.down10 * half;
+      const g = el("g", { class: "st-col", tabindex: 0, "data-tip": W.PROOF.bands.tip(b).join("\n") }, s);
+      el("rect", { class: "hitbox", x: cx - col / 2, y: pad.t - 18, width: col, height: h - pad.t - pad.b + 36 }, g);
+      el("rect", { class: "st-up grow-y", x: cx - bw / 2, y: mid - up, width: bw, height: Math.max(up - 1, 0), rx: 3 }, g);
+      el("rect", { class: "st-dn grow-y dn", x: cx - bw / 2, y: mid + 1, width: bw, height: Math.max(dn - 1, 0), rx: 3 }, g);
+      el("text", { class: "val", x: cx, y: mid - up - 6, "text-anchor": "middle" }, g).textContent = W.PROOF.pc(b.up10);
+      el("text", { class: "val2", x: cx, y: mid + dn + 14, "text-anchor": "middle" }, g).textContent = W.PROOF.pc(b.down10);
+      el("text", { class: "tick", x: cx, y: h - 8, "text-anchor": "middle" }, g).textContent = b.label;
+    });
+    bindTips(box);
+  }
+  // Нөхцөл бүрээр хэвтээ diverging: буурсан ← | → өссөн, n < min_n бол бүдэг + "тоо хангалтгүй"
+  const diverge = (codes) => `<div class="dv"><div class="dv-head" aria-hidden="true"><span></span><span>${esc(W.PROOF.codes.down)}</span><span>${esc(W.PROOF.codes.up)}</span></div>
+    ${codes.map((c) => `<div class="dv-row${c.enough ? "" : " few"}" ${tipAttr(W.PROOF.codes.tip(c))}>
+      <span class="dv-l">${esc(c.label)}${c.enough ? "" : ` <em>${esc(W.PROOF.codes.few)}</em>`}</span>
+      <span class="dv-dn" style="--v:${c.down10.toFixed(4)}"><i class="grow rtl"></i><b>${esc(W.PROOF.pc(c.down10))}</b></span>
+      <span class="dv-up" style="--v:${c.up10.toFixed(4)}"><i class="grow"></i><b>${esc(W.PROOF.pc(c.up10))}</b></span>
+    </div>`).join("")}</div>`;
+  // Нэг жишээ: D хүртэлх 14 өдөр + D+1…D+3-ын бодит (шугам) ба тэр өдрийн таамаг (тасархай + band)
+  function replayMini(box, t, r) {
+    const hist = t.history, iD = hist.findIndex((d) => d.d === r.asof);
+    if (iD < 0) { box.innerHTML = ""; return; }
+    const from = Math.max(0, iD - 13), seg = hist.slice(from, iD + 4), D = iD - from;
+    const { s, w, h } = svg(box, W.PROOF.example.label(t.title, r));
+    const pad = { l: 46, r: 10, t: 10, b: 22 }, N = seg.length;
+    const X = (i) => pad.l + (i / (N - 1)) * (w - pad.l - pad.r);
+    const max = niceMax(Math.max(...seg.map((d) => d.v), ...r.forecast.map((f) => f.hi)) * 1.04);
+    const Y = (v) => h - pad.b - (v / max) * (h - pad.t - pad.b);
+    [0, max / 2, max].forEach((v, k) => {
+      el("line", { class: k ? "grid" : "axis", x1: pad.l, x2: w - pad.r, y1: Y(v), y2: Y(v) }, s);
+      el("text", { class: "tick", x: pad.l - 6, y: Y(v) + 4, "text-anchor": "end" }, s).textContent = k ? fmt(v).replace(" мянга", " мян.") : "0";
+    });
+    const o = [X(D), Y(seg[D].v)];
+    el("path", { class: "band", d: poly([o, ...r.forecast.map((f, k) => [X(D + 1 + k), Y(f.hi)]), ...r.forecast.map((f, k) => [X(D + 1 + k), Y(f.lo)]).reverse()]) + "Z" }, s);
+    el("path", { class: "act", d: poly(seg.map((d, i) => [X(i), Y(d.v)])) }, s);
+    el("path", { class: "fc", d: poly([o, ...r.forecast.map((f, k) => [X(D + 1 + k), Y(f.y)])]) }, s);
+    el("line", { class: "split", x1: X(D), x2: X(D), y1: pad.t, y2: h - pad.b }, s);
+    el("circle", { class: "hp", cx: o[0], cy: o[1], r: 4 }, s);
+    el("text", { class: "tick", x: X(D), y: h - 6, "text-anchor": "middle" }, s).textContent = W.md(r.asof);
+    el("text", { class: "tick", x: X(0), y: h - 6, "text-anchor": "start" }, s).textContent = W.md(seg[0].d);
+    if (N - 1 > D) el("text", { class: "tick", x: X(N - 1), y: h - 6, "text-anchor": "end" }, s).textContent = W.md(seg[N - 1].d);
+  }
+  // Skill score + 95% интервал (h бүр): цэг = утга, зураас = интервал, 0-ээс
+  function skillCI(box, skill) {
+    const P = W.PROOF.skill, hs = [1, 2, 3].filter((k) => skill["h" + k]);
+    const { s, w, h } = svg(box, `${P.q} ${hs.map((k) => `${k} өдөр: ${skill["h" + k].point}% (95%: ${skill["h" + k].lo}–${skill["h" + k].hi}%)`).join("; ")}`);
+    const pad = { l: 110, r: 46, t: 6, b: 22 }, rowH = (h - pad.t - pad.b) / hs.length;
+    const max = niceMax(Math.max(...hs.map((k) => skill["h" + k].hi)) * 1.1), X = (v) => pad.l + (v / max) * (w - pad.l - pad.r);
+    [0, max / 2, max].forEach((v) => el("text", { class: "tick", x: X(v), y: h - 6, "text-anchor": "middle" }, s).textContent = `${Math.round(v)}%`);
+    el("line", { class: "axis", x1: X(0), x2: X(0), y1: pad.t, y2: h - pad.b }, s);
+    hs.forEach((k, i) => {
+      const v = skill["h" + k], y = pad.t + rowH * (i + 0.5);
+      const g = el("g", { class: "st-col", tabindex: 0, "data-tip": P.tip(k, v).join("\n") }, s);
+      el("rect", { class: "hitbox", x: 0, y: y - rowH / 2, width: w, height: rowH }, g);
+      el("text", { class: "lbl2", x: 0, y: y + 4 }, g).textContent = P.row(k);
+      el("line", { class: "ci", x1: X(v.lo), x2: X(v.hi), y1: y, y2: y }, g);
+      el("circle", { class: "ci-dot", cx: X(v.point), cy: y, r: 5 }, g);
+      el("text", { class: "val", x: X(v.hi) + 8, y: y + 4 }, g).textContent = `${v.point}%`;
+    });
+    bindTips(box);
+  }
+
+  window.Viz = { el, svg, poly, showTip, hideTip, spark, treemap, tmKey, flash, linkHover, iconArray, reduced, mainChart, bindTips, compare, stair, diverge, replayMini, skillCI };
 })();

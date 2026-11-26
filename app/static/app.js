@@ -12,15 +12,6 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const href = (a) => "#/topic/" + encodeURIComponent(a);
   const in3 = (t) => t.forecast[t.forecast.length - 1];
-  // Таамгийн хувь (ADR 0003/0004, 0014): backend-ийн pct(h3), сум, 🔥. Хувь = "анхаарал", тоо = "уншилт".
-  const tipped = (text, tip) => `<span class="anh" title="${esc(tip)}">${esc(text)}</span>`;
-  const pct = (t, d) => `${tipped("анхаарал", W.TIP.attention)} ${esc(W.forecastLabel(t.label, d.asof, d.age_days))}`;
-  const iv = (t) => {
-    const text = W.interval(t.interval_text), cut = text.indexOf(": ");   // tooltip нь "10 удаагийн 8-д" дээр
-    if (!text) return "";
-    return `<span class="iv">${cut < 0 ? tipped(text, W.TIP.interval) : tipped(text.slice(0, cut), W.TIP.interval) + esc(text.slice(cut))}</span>`;
-  };
-
   let redraws = [], rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => redraws.forEach((f) => f()), 150); });
   const draw = (fn) => { redraws.push(fn); fn(); return fn; };
@@ -38,33 +29,6 @@
     s.hidden = !text;
     s.textContent = text;
   }
-
-  // Сэдвийн дэлгэрэнгүй хэсэг (нүүр болон сэдвийн хуудсанд хоёуланд)
-  function focusHTML(t, d, { titleTag = "h2", link = true } = {}) {
-    const title = link ? `<a href="${href(t.article)}">${esc(t.title)}</a>` : esc(t.title);
-    return `
-      <div class="focus-head">
-        <${titleTag} class="focus-title">${title}</${titleTag}>
-        <span class="focus-cat">${cat(t.category)}</span>
-      </div>
-      <dl class="tiles">
-        <div class="tile t-blue"><dt>${W.dayTile(d.asof, d.age_days)}</dt><dd>${C.fmt(t.views)}<small>уншилт</small></dd></div>
-        <div class="tile"><dt>${tipped("Ердийн өдөр", W.TIP.normal)}</dt><dd>${t.normal == null ? "—" : C.fmt(t.normal)}<small>${t.anomaly && t.ratio != null
-          ? tipped(`анхаарал ×${t.ratio}`, W.surgeTip(t, d.asof)) : ""}</small></dd></div>
-        <div class="tile t-forecast"><dt>${W.md(in3(t).d)}-нд (таамаг)</dt><dd>≈ ${C.fmt(in3(t).y)}<small>уншилт</small><small class="sub">${pct(t, d)}</small><small class="iv">${iv(t)}</small></dd></div>
-      </dl>
-      <p class="chart-h">Өдөр бүрийн уншилт</p>
-      <div class="chart" id="chart"></div>
-      <ul class="key">
-        <li><i class="k-blue"></i>Бодит</li>
-        <li><i class="k-forecast"></i>Таамаг</li>
-        <li><i class="k-norm"></i>Ердийн өдөр</li>
-        <li><i class="k-range"></i>Таамгийн хүрээ</li>
-      </ul>`;
-  }
-  const drawFocus = (t, d) => () => C.columns(document.getElementById("chart"), { ...t, axis: true, normal: t.normal,   // API-ийн ердийн өдрийн уншилт (ADR 0017)
-    day: W.day(d.asof, d.age_days),
-    label: `${t.title}: өдөр бүрийн уншилт ба ирэх 3 өдрийн таамаг` });
 
   // ═════════ Карт (давхарга 2, ADR 0027): нэр · ● ×N · дүгнэлт ба таамаг · spark · "Ямар нөхцөлд?" (3а) ═════════
   // ctx: { asof, T (хүчтэй өсөлтийн босго), src (track record-ын эх сурвалж эсвэл null), minN }
@@ -115,7 +79,7 @@
   const TOP = 3;   // нүүрэнд хэсэг бүрт (ADR 0027, 2026-11-26)
 
   // Төлөвүүд (ADR 0027): алдаа + "Дахин оролдох" (зөвхөн хүсэлтийг давтана), cold start-ийн skeleton
-  const errorBox = (e) => `<div class="state-box" role="alert"><p><b>${esc(W.ERROR.what)}</b> ${esc(W.ERROR.why)}</p>
+  const errorBox = (e) => `<div class="state-box" role="alert"><p>${e && e.path ? `<b>${esc(W.ERROR.what)}</b> ${esc(W.ERROR.why)}` : `<b>${esc(W.ERROR.bug)}</b>`}</p>
       <p><button class="btn" type="button" data-retry>${esc(W.ERROR.retry)}</button></p>
       <p class="code">HTTP ${esc(e && (e.status || e.message))}${e && e.path ? ` · ${esc(e.path)}` : ""}</p></div>`;
   function bindRetry(root) {
@@ -199,21 +163,95 @@
     });
   }
 
-  // ═════════ Нэг сэдэв ═════════
+  // ═════════ Сэдвийн хуудас (3б, ADR 0026, 0027): 2–3 мөр текст, 60 хоногийн гол график (180 сэлгэгч), replay, "Ямар нөхцөлд?" ═════════
   async function topic(article, tk) {
-    const t = await api("/api/topic/" + encodeURIComponent(article));
+    const T = W.TOPIC;
+    let t;
+    try { t = await api("/api/topic/" + encodeURIComponent(article)); } catch (e) {
+      if (e.status !== 404) throw e;
+      if (!alive(tk)) return;
+      main.innerHTML = `<a class="back" href="#/">${esc(T.back)}</a><h1 class="topic-h">${esc(article.replace(/_/g, " "))}</h1><p class="lead">${esc(T.missing)}</p>`;
+      return;
+    }
+    const tracks = await api("/api/track-record").catch(() => null);
     if (!alive(tk)) return;
     meta(t);
-    main.innerHTML = `
-      <a class="back" href="#/">← Нүүр рүү буцах</a>
-      <section class="focus topic" style="margin-top:14px">${focusHTML(t, t, { titleTag: "h1", link: false })}
-        <table class="fc">
-          <caption>Ирэх 3 өдрийн таамагласан уншилт. ${W.TIP.table}</caption>
-          <thead><tr><th>Өдөр</th><th>Доод</th><th>Таамаг</th><th>Дээд</th></tr></thead>
-          <tbody>${t.forecast.map((f) => `<tr><td>${W.longDate(f.d, t.asof)}</td><td>${C.fmt(f.lo)}</td><td class="y">${C.fmt(f.y)}</td><td>${C.fmt(f.hi)}</td></tr>`).join("")}</tbody>
-        </table>
-      </section>`;
-    draw(drawFocus(t, t));
+    const src = tracks ? (tracks.sources.find((x) => x.current && x.source_key === "recomputed") || null) : null;
+    const ctx = { asof: t.asof, T: t.T, src, minN: tracks ? tracks.min_n : null };
+    const view = { days: 60, rp: null };
+    const anomOf = Object.fromEntries((t.anom || []).map((a) => [a.d, a.r]));
+    main.innerHTML = `<a class="back" href="#/">${esc(T.back)}</a>
+      <h1 class="topic-h">${esc(t.title)}</h1><p class="topic-cat">${esc(catOnly(t.category))}</p>
+      <p class="t-lines">${markHTML(t, t.asof)}<span>${esc(T.dayLine(t, t.asof, C.fmt))}</span></p>
+      <p class="t-lines"><span class="c-verdict">${verdictHTML(t, ctx.T)}</span><span>${esc(T.fcLine(in3(t), C.fmt))}</span></p>
+      <p class="t-iv">${esc(T.iv80(t.interval))}</p>
+      <div class="panel">
+        <div class="ch-head"><h2 class="ch-title">${esc(T.chart)}</h2>
+          <div class="seg" role="group" aria-label="${esc(T.rangeLabel)}">${T.range.map(([n, l]) => `<button type="button" data-days="${n}" aria-pressed="${n === 60}">${esc(l)}</button>`).join("")}</div></div>
+        <div class="main-ch" id="main-ch"></div>
+        <ul class="key"><li><i class="k-act"></i>${esc(T.key.act)}</li><li><i class="k-fc"></i>${esc(T.key.fc)}</li><li><i class="k-band"></i>${esc(T.key.band)}</li>
+          <li><i class="k-dot"></i>${esc(T.key.dot)}</li><li><i class="k-norm"></i>${esc(T.key.norm)}</li><li><i class="k-base"></i>${esc(T.key.base)}</li>
+          <li id="rp-key" hidden><i class="k-rp"></i>${esc(T.key.rp)}</li></ul>
+        <section class="replay" aria-labelledby="rp-h"><h3 id="rp-h">${esc(T.replay)}</h3>
+          <div class="rp-ctl"><label class="vh" for="rp-sel">${esc(T.dayLabel)}</label>
+            <select id="rp-sel" disabled><option value="">${esc(T.loading)}</option></select>
+            <button class="btn ghost" type="button" id="rp-prev" aria-label="${esc(T.prev)}" disabled>←</button>
+            <button class="btn ghost" type="button" id="rp-next" aria-label="${esc(T.next)}" disabled>→</button></div>
+          <p class="rp-note" id="rp-note" hidden>${esc(T.only60)}</p>
+          <div class="rp-out" id="rp-out" aria-live="polite"></div></section>
+        <details class="tbl"><summary>${esc(T.table)}</summary><div class="tbl-wrap"><table class="data"><caption class="vh">${esc(T.caption)}</caption>
+          <thead><tr>${T.cols.map((c) => `<th scope="col">${esc(c)}</th>`).join("")}</tr></thead><tbody>
+          ${t.history.slice(-14).map((d) => `<tr><td>${W.md(d.d)}</td><td>${C.fmt(d.v)}</td><td></td><td></td><td></td><td>${d.d in anomOf ? esc(`● ×${anomOf[d.d]}`) : ""}</td></tr>`).join("")}
+          ${t.forecast.map((f) => `<tr><td>${W.md(f.d)}</td><td></td><td>${C.fmt(f.y)}</td><td>${C.fmt(f.lo)}</td><td>${C.fmt(f.hi)}</td><td></td></tr>`).join("")}</tbody></table></div></details>
+      </div>
+      <section class="panel" aria-labelledby="cond-h"><h2 class="ch-title" id="cond-h">${esc(W.MORE)}</h2><div class="detail flat">${detailHTML(t, ctx)}</div></section>
+      <p class="neutral">${esc(W.NEUTRAL)}</p>`;
+    const box = document.getElementById("main-ch");
+    const chart = () => V.mainChart(box, t, view);
+    draw(chart);
+    const sel = document.getElementById("rp-sel"), out = document.getElementById("rp-out");
+    function setDays(n) {
+      view.days = n;
+      main.querySelectorAll("[data-days]").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.days === n));
+      document.getElementById("rp-note").hidden = n === 60;
+      document.getElementById("rp-key").hidden = !(view.rp && n === 60);
+      chart();
+    }
+    main.querySelectorAll("[data-days]").forEach((b) => b.addEventListener("click", () => setDays(+b.dataset.days)));
+    // Өнгөрсөн таамаг: сэргээж тооцсон (ADR 0015), сэдвийн хуудаснаас тусдаа ачаална (нэг сэдэвт хэдэн секунд)
+    let rps = [];
+    function bandOutcome(r) {
+      const b = src && src.by_band.find((x) => x.key === T.bandKey(r.pct));
+      if (!b || r.pct == null) return "";
+      const [k, what] = T.bandWhat(b.key), v = k === "down" ? b.down10 : k === "up" ? b.up10 : 1 - b.up10 - b.down10;
+      const [x, y, z] = T.bandLine(b.label, v, what);
+      return `<div class="ia">${V.iconArray(v, `${esc(x)}<b>${esc(y)}</b>${esc(z)}`)}</div><p class="prov">${esc(W.prov(src, b.n))}</p>`;
+    }
+    function setRp(asof) {
+      const r = rps.find((x) => x.asof === asof) || null;
+      view.rp = r; sel.value = r ? r.asof : "";
+      if (r) {
+        const act = t.history.find((h) => h.d === r.forecast[r.forecast.length - 1].d);
+        const [said, got] = T.outcome(r, act, C.fmt);
+        out.innerHTML = `<p>${esc(said)}${got ? ` ${esc(got[0])}<b>${esc(got[1])}</b>${esc(got[2])}` : ""}</p>${bandOutcome(r)}<p class="rp-note">${esc(T.notOne)}</p>`;
+      } else out.innerHTML = "";
+      setDays(r ? 60 : view.days);
+    }
+    sel.addEventListener("change", () => setRp(sel.value));
+    const step = (k) => { const i = rps.findIndex((r) => r === view.rp); setRp(rps[Math.max(0, Math.min(rps.length - 1, i < 0 ? 0 : i + k))].asof); };
+    document.getElementById("rp-prev").addEventListener("click", () => step(1));    // rps: шинээс хуучин руу
+    document.getElementById("rp-next").addEventListener("click", () => step(-1));
+    try {
+      const d = await api("/api/topic/" + encodeURIComponent(article) + "/replay");
+      if (!alive(tk)) return;
+      rps = d.items;
+      sel.innerHTML = `<option value="">${esc(T.pick)}</option>${rps.map((r) => `<option value="${r.asof}">${esc(T.option(r))}</option>`).join("")}`;
+      [sel, ...main.querySelectorAll("#rp-prev, #rp-next")].forEach((x) => { x.disabled = !rps.length; });
+    } catch (e) {
+      if (!alive(tk)) return;
+      sel.closest(".rp-ctl").outerHTML = errorBox(e);
+      main.querySelector(".replay [data-retry]")?.addEventListener("click", () => { route({ keepScroll: true }); });
+    }
   }
 
   // ═════════ Загвар ═════════
@@ -224,10 +262,91 @@
     roll_std_28: "28 хоногийн савлагаа", roll_mean_7: "7 хоногийн дундаж", roll_max_28: "28 хоногийн оргил",
     from_max_28: "28 хоногийн оргилоос хэр доор", days_since_peak: "Оргилоос хойш хэдэн хоног",
     doy_sin: "Жилийн аль үе", doy_cos: "Жилийн аль үе", level_365: "Жилийн ердийн түвшин", month: "Сар", is_weekend: "Амралтын өдөр эсэх" };
+  // ═════════ "Загвар" (ADR 0027, Майк 2026-11-26): график түрүүлнэ, хүснэгт нөөцөнд. Гарчиг = асуулт, нэг мөр дүгнэлт, саарал тайлбар ═════════
+  const tableHTML = (head, rows) => `<details class="tbl"><summary>${esc(W.PROOF.table)}</summary><div class="tbl-wrap"><table class="data">
+    <thead><tr>${head.map((x) => `<th scope="col">${esc(x)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.map((r) => `<tr>${r.map((x) => `<td>${esc(x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+  function proofHTML(src) {
+    const P = W.PROOF, pc = P.pc, v = (k) => src.by_verdict.find((x) => x.key === k), ab = src.anomaly_base;
+    const verdict = (k, big) => {
+      const x = v(k), w = P[k];
+      if (!x) return "";
+      return `<section class="pf${big ? " hero" : ""}" aria-labelledby="pf-${k}"><h2 id="pf-${k}">${esc(w.q)}</h2><p class="say">${esc(w.say(x))}</p>
+        ${V.compare([{ label: w.model, v: x.hit, n: x.n }, { label: w.base, v: x.base_hit, n: ab.n, base: true }], big)}
+        <p class="prov">${esc(w.what)} ${esc(P.nOf(x.n, ab.n))} · ${esc(W.prov(src))}</p>
+        ${tableHTML(["", "%", "n"], [[w.model, pc(x.hit), num(x.n)], [w.base, pc(x.base_hit), num(ab.n)]])}</section>`;
+    };
+    const bands = src.by_band, codes = [...src.by_code].sort((a, b) => (b.up10 - b.down10) - (a.up10 - a.down10));
+    const ok = codes.filter((c) => c.enough), best = ok[0], worst = [...ok].sort((a, b) => b.down10 - a.down10)[0];
+    return `${verdict("continue", true)}${verdict("fade", false)}
+      <section class="pf" aria-labelledby="pf-bands"><h2 id="pf-bands">${esc(P.bands.q)}</h2><p class="say">${esc(P.bands.say(bands[0], bands[bands.length - 1]))}</p>
+        <ul class="key"><li><i class="k-up"></i>${esc(P.bands.up)}</li><li><i class="k-dn"></i>${esc(P.bands.down)}</li></ul>
+        <div class="stair" id="pf-stair"></div><p class="axis-t">${esc(P.bands.axis)}</p>
+        <p class="prov">${esc(P.bands.what)} · ${esc(W.prov(src))}</p>
+        ${tableHTML(["", P.bands.up, P.bands.down, "n"], bands.map((b) => [b.label, pc(b.up10), pc(b.down10), num(b.n)]))}</section>
+      <section class="pf" aria-labelledby="pf-codes"><h2 id="pf-codes">${esc(P.codes.q)}</h2>${best && worst ? `<p class="say">${esc(P.codes.say(best, worst))}</p>` : ""}
+        ${V.diverge(codes)}
+        <p class="prov">${esc(P.codes.what)} · ${esc(W.prov(src))}</p>
+        ${tableHTML(["", P.bands.up, P.bands.down, "n"], codes.map((c) => [c.label, pc(c.up10), pc(c.down10), num(c.n)]))}</section>`;
+  }
+  const num = (n) => W.num(n);
+  // Нэг жишээ: хамгийн их уншигдсан сэдвийн өнгөрсөн өдрийн таамаг (replay, ADR 0015) ба бодит
+  async function example(tk, tr) {
+    const box = document.getElementById("pf-ex");
+    if (!box || !tr) return;
+    const X = W.PROOF.example, top = [...tr.items].sort((a, b) => b.views - a.views)[0];
+    let t, rp;
+    try { [t, rp] = await Promise.all([api("/api/topic/" + encodeURIComponent(top.article)), api("/api/topic/" + encodeURIComponent(top.article) + "/replay")]); }
+    catch (e) { if (alive(tk)) { box.innerHTML = errorBox(e); bindRetry(box); } return; }
+    if (!alive(tk) || !rp.items.length) return;
+    let i = 0;
+    box.innerHTML = `<div class="ex-ctl"><button class="btn ghost" type="button" id="ex-prev" aria-label="${esc(X.prev)}">←</button>
+        <p class="ex-day" id="ex-day" aria-live="polite"></p><button class="btn ghost" type="button" id="ex-next" aria-label="${esc(X.next)}">→</button></div>
+      <p class="say" id="ex-say"></p><div class="ex-ch" id="ex-ch"></div>
+      <ul class="key"><li><i class="k-act"></i>${esc(X.key.act)}</li><li><i class="k-fc"></i>${esc(X.key.fc)}</li><li><i class="k-band"></i>${esc(X.key.band)}</li></ul>
+      <p class="prov">${esc(X.what)} · ${esc(rp.source)} · model ${esc(rp.model_version)}</p>
+      <p class="see-all"><a href="${href(t.article)}">${esc(X.open)}</a></p>`;
+    const show = () => {
+      const r = rp.items[i], act = t.history.find((h) => h.d === r.forecast[r.forecast.length - 1].d), [a, b] = X.say(r, act, C.fmt);
+      document.getElementById("ex-day").textContent = `${t.title} · ${X.day(r)}`;
+      document.getElementById("ex-say").innerHTML = `${esc(a)}${b ? ` → <b>${esc(b)}</b>` : ""}`;
+      document.getElementById("ex-prev").disabled = i >= rp.items.length - 1;
+      document.getElementById("ex-next").disabled = i <= 0;
+      V.replayMini(document.getElementById("ex-ch"), t, r);
+    };
+    document.getElementById("ex-prev").addEventListener("click", () => { i = Math.min(rp.items.length - 1, i + 1); show(); });   // items: шинээс хуучин руу
+    document.getElementById("ex-next").addEventListener("click", () => { i = Math.max(0, i - 1); show(); });
+    draw(show);
+  }
+
   async function model(tk) {
-    const m = await api("/api/model");
+    const [mR, srcR, trR] = await Promise.allSettled([api("/api/model"), api("/api/track-record"), api("/api/trending")]);
     if (!alive(tk)) return;
-    meta(m);
+    if (mR.status === "rejected" && srcR.status === "rejected") throw mR.reason;
+    const m = mR.value, tracks = srcR.value, tr = trR.value;
+    if (m || tr) meta(m || tr);
+    const src = tracks ? (tracks.sources.find((x) => x.current && x.source_key === "recomputed") || null) : null;
+    const P = W.PROOF;
+    main.innerHTML = `<h1 class="page-h">${esc(W.MODEL_TITLE)}</h1>
+      <p class="lead">${esc(P.lead)}${src ? ` <span class="prov">${esc(P.provAll(src))}</span>` : ""}</p>
+      ${src ? proofHTML(src) : tracks ? "" : errorBox(srcR.reason)}
+      ${tr ? `<section class="pf" aria-labelledby="pf-ex-h"><h2 id="pf-ex-h">${esc(P.example.q)}</h2><div id="pf-ex"><div class="sk ex-sk" aria-hidden="true"></div></div></section>` : ""}
+      <p class="neutral">${esc(W.NEUTRAL)}</p>
+      <details class="tech" id="tech"><summary>${esc(P.tech)}</summary><div class="tech-body" id="tech-body">${m ? `<p class="lead">${esc(P.techLead)}</p>` : errorBox(mR.reason)}</div></details>`;
+    bindRetry(main);
+    if (src) {
+      draw(() => V.stair(document.getElementById("pf-stair"), src.by_band));
+      main.querySelectorAll(".cmp, .dv").forEach(V.bindTips);
+      requestAnimationFrame(() => requestAnimationFrame(() => main.classList.add("grown")));   // нэг хөдөлгөөн: баганууд ургана
+    }
+    example(tk, tr);
+    if (!m) return;
+    const tech = document.getElementById("tech");
+    tech.addEventListener("toggle", () => { if (tech.open && !tech.dataset.drawn) { tech.dataset.drawn = "1"; technical(m); } });
+  }
+
+  // Техникийн хэсэг (хаалттай, нээхэд зурагдана): skill score + 95% интервал, өмнөх "Загвар" хуудасны графикууд
+  function technical(m) {
     const p = m.pipeline, v = m.valid, N = m.names;
     const mdl = esc(N.model), nv = esc(N.naive);
     const h3 = m.metrics.find((r) => r.h === 3), e = Math.round(h3[m.winner]);
@@ -236,9 +355,9 @@
     const spread = Math.max(...v.rows.map((r) => Math.max(...v.algos.map((a) => r[a])) - Math.min(...v.algos.map((a) => r[a]))));
     const vsNaive = Math.min(...v.rows.map((r) => r.naive - r[m.winner]));
     const T = W.modelWords(m), steps = T.steps;   // хуудасны үг (#34): words.js
-    main.innerHTML = `
-      <h1 class="page-h">${esc(T.title)}</h1>
-      <p class="lead">Энгийн аргаас илүү зөв үү?</p>
+    document.getElementById("tech-body").insertAdjacentHTML("beforeend", `
+      <section class="pf flat" aria-labelledby="sk-h"><h2 id="sk-h">${esc(W.PROOF.skill.q)}</h2><p class="say">${esc(W.PROOF.skill.say(m.skill))}</p>
+        <div class="skill" id="m-skill"></div><p class="prov">${esc(W.PROOF.skill.what)}</p></section>
       <p class="chart-sub">Сайтын ард ажиллаж буй model: <b>${esc(m.live.algo_name)}</b> ${esc(m.live.version)}, сургасан ${W.longDate(m.live.trained_at, m.live.data_asof)},
         өгөгдөл ${W.longDate(m.live.data_asof)} хүртэл, таамаг ${esc(m.dates)}</p>
       <div class="mgrid">
@@ -310,8 +429,9 @@
             <div class="mchart" id="m-imp" style="height:220px"></div>
           </div>
         </div>
-      </section>`;
+      </section>`);
 
+    draw(() => V.skillCI(document.getElementById("m-skill"), m.skill));
     draw(() => C.dumbbell(document.getElementById("m-err"), rows, { names: N, label: `${N.model} ба ${N.naive}: алдааг хувиар, 1–3 өдрийн дараа` }));
     draw(() => C.curve(document.getElementById("m-curve"), m.curve, m.best_iter, `Сургалт ба validation алдааны муруй, ${m.curve_h} өдрийн дараах model`));
     draw(() => C.hbarsV(document.getElementById("m-algo"), [...order, "naive"].map((a) => ({
@@ -333,7 +453,7 @@
     }));
   }
 
-  // ═════════ Сонирхолтой ═════════
+  // ═════════ Хэв маяг (өмнө нь "Сонирхолтой", ADR 0022) ═════════
   async function facts(tk) {
     const d = await api("/api/insights");
     if (!alive(tk)) return;
@@ -345,7 +465,7 @@
     const lim = Math.max(...picks.flatMap((p) => off(p.key).map(Math.abs)));       // хоёр графикт нэг тэнхлэг
     const mn = d.mongolia[0], H = d.holidays;
     main.innerHTML = `
-      <h1 class="page-h">Сонирхолтой</h1>
+      <h1 class="page-h">Хэв маяг</h1>
       <p class="lead">${esc(W.factsLead(R.decay, d.topics_n))}</p>
       <div class="fgrid">
         <section class="fcard">

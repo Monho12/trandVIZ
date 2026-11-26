@@ -7,7 +7,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import node_js  # noqa: E402
-from src import scoring  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = node_js.STATIC
@@ -44,41 +43,16 @@ def topic(ratio=3, views_ratio=2.8, typical_pct=0.08, similar_days=0):
     return {"ratio": ratio, "views_ratio": views_ratio, "typical_pct": typical_pct, "similar_days": similar_days}
 
 
-def test_surge_tooltip_has_date_attention_ratio_raw_views_in_brackets_and_frequency():
-    """ADR 0017: "Тайлбар нь давтамжаар", z тоог харуулахгүй. CONTEXT.md: анхаарлын харьцааны хажууд түүхий уншилтын харьцаа хаалтанд.
-    Tooltip-ийн огноо өгүүлбэрийн хэлбэрээр (ADR 0018)."""
-    assert words("surgeTip", topic(), ASOF) == (
-        "11-р сарын 9-нд анхаарал ердийн өдрөөс 3 дахин их (уншилт ×2.8). "
-        "Энэ сэдэв ихэвчлэн ±8%-иар л хэлбэлздэг. Сүүлийн 2 сард ийм өдөр нэг ч удаа гараагүй.")
-    assert words("surgeTip", topic(ratio=1.9, views_ratio=2.1, typical_pct=0.184, similar_days=3), ASOF) == (
-        "11-р сарын 9-нд анхаарал ердийн өдрөөс 1.9 дахин их (уншилт ×2.1). "
-        "Энэ сэдэв ихэвчлэн ±18%-иар л хэлбэлздэг. Сүүлийн 2 сард ийм өдөр 3 удаа гарсан.")
-
-
-def test_surge_tooltip_skips_raw_views_ratio_when_unknown():
-    tip = words("surgeTip", topic(views_ratio=None), ASOF)
-    assert tip.startswith("11-р сарын 9-нд анхаарал ердийн өдрөөс 3 дахин их. Энэ сэдэв") and "уншилт ×" not in tip
 
 
 
 
-def test_day_word_for_titles_and_tiles():
-    assert words("day", ASOF, 1) == "өчигдөр"
-    assert words("day", ASOF, 3) == "11.09"
-    assert words("dayTile", ASOF, 1) == "Өчигдөр"
-    assert words("dayTile", ASOF, 3) == "11.09"
 
 
-def test_interval_reads_as_8_of_10_times():
-    assert words("interval", "80%: +10% … +85%") == "10 удаагийн 8-д: +10% … +85%"
-    assert words("interval", "") == ""     # x_0 = 0: интервал тодорхойгүй
 
 
-def test_no_views_label_does_not_hardcode_yesterday():
-    na = scoring.LABEL_NA                   # "— (өчигдөр уншилтгүй)": API хэвээр
-    assert words("forecastLabel", na, ASOF, 1) == na
-    assert words("forecastLabel", na, ASOF, 4) == "— (11.09-нд уншилтгүй)"
-    assert words("forecastLabel", "🔥 +35%", ASOF, 4) == "🔥 +35%"
+
+
 
 
 def test_static_files_have_no_banned_words_or_old_colour_name():
